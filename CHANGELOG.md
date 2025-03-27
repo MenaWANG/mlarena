@@ -1,0 +1,53 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - 2025-03-25
+
+### Added
+- Initial release of MLArena
+- `PreProcessor` class for data preprocessing
+  - Filter Feature Selection
+  - Categorical encoding (OneHot, Target)
+  - Recommendation of encoding strategy
+  - Plot to compare target encoding smoothing parameters
+  - Numeric scaling
+  - Missing value imputation
+- `ML_PIPELINE` class for machine learning workflow
+  - Algorithm agnostic model wrapper
+  - Support both classification (binary) and regression algorithms
+  - Model training and scoring
+  - Model global and local explanation
+  - Model evaluation with comprehensive reporting and plots
+  - Iterative hyperparameter tuning with diagnostic plot
+  - Threshold analysis and optimization for classification models
+- Comprehensive documentation
+  - Installation guide
+  - Usage guide
+  - API reference
+  - Examples
+  - Contributing guidelines
+- Test suite with pytest
+- Development tools configuration
+  - black for code formatting
+  - flake8 for linting
+  - isort for import sorting
+  - mypy for type checking
+
+### Changed
+- None (initial release)
+
+### Deprecated
+- None (initial release)
+
+### Removed
+- None (initial release)
+
+### Fixed
+- None (initial release)
+
+### Security
+- None (initial release) 

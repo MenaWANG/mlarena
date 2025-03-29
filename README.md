@@ -1,5 +1,12 @@
 # MLArena
 
+[![Python Version](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![PyPI version](https://badge.fury.io/py/mlarena.svg)](https://badge.fury.io/py/mlarena)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![CI/CD](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml/badge.svg)](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml)
+
 An algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization.
 
 ## Features
@@ -32,6 +39,25 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
   - Early stopping to prevent overfitting
   - Variance penalty to ensure stable solutions
 
+## Visual Examples:
+
+### Model Performance Analysis
+
+![Classification Model Performance](docs/images/model_performance_classification.png)    
+
+![Regression Model Performance](docs/images/model_performance_regression.png)    
+
+### Explainable ML
+One liner to create global and local explaination based on shap that will work across various classification and regression algorithms.     
+
+![Global Explanation](docs/images/global_explanation.png)    
+
+![Local Explanation](docs/images/local_explanation.png)    
+
+### Hyperparameter Optimization
+Parallel Coordinate plot for hyperparameter search space diagnostics.    
+![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
+
 
 ## Installation
 
@@ -39,37 +65,21 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
 pip install mlarena
 ```
 
-## Quick Start
+## Usage Example
 
-```python
-from mlarena import PreProcessor, ML_PIPELINE
-from sklearn.ensemble import RandomForestClassifier
+For quick start with a basic example, see [examples/basic_usage.ipynb](examples/basic_example.ipynb).
 
-# Initialize the preprocessor
-preprocessor = PreProcessor(
-    num_impute_strategy='median',
-    cat_impute_strategy='most_frequent'
-)
 
-# Initialize the pipeline
-ml_pipeline = ML_PIPELINE(
-    model = RandomForestClassifier(),
-    preprocessor = preprocessor
-)
+## Publications
 
-# Train the model
-ml_pipeline.fit(X_train, y_train)
+Learn more about the concepts and methodologies behind MLArena through these articles:
 
-# Make predictions
-y_pred = ml_pipeline.predict(X_test)
+1. [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535) - Published in Towards Data Science
+   > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
 
-# Comprehensive Evaluation Report and Visuals
-results = ml_pipeline.evaluate(X_test, y_test)
+2. [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96) - Published in Towards Data Science
+   > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
 
-# Explain the model
-ml_pipeline.explain_model(X_test)
-
-```
 
 ## Documentation
 

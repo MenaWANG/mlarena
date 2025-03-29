@@ -56,16 +56,16 @@ def test_classification_pipeline():
 
     # Assertions
     assert isinstance(results, dict)
-    assert 'accuracy' in results
-    assert 'precision' in results
-    assert 'recall' in results
-    assert 'f1' in results
-    assert 'auc' in results
-    assert 0 <= results['accuracy'] <= 1
-    assert 0 <= results['precision'] <= 1
-    assert 0 <= results['recall'] <= 1
-    assert 0 <= results['f1'] <= 1
-    assert 0 <= results['auc'] <= 1
+    assert "accuracy" in results
+    assert "precision" in results
+    assert "recall" in results
+    assert "f1" in results
+    assert "auc" in results
+    assert 0 <= results["accuracy"] <= 1
+    assert 0 <= results["precision"] <= 1
+    assert 0 <= results["recall"] <= 1
+    assert 0 <= results["f1"] <= 1
+    assert 0 <= results["auc"] <= 1
 
 
 def test_regression_pipeline():
@@ -109,12 +109,12 @@ def test_regression_pipeline():
 
     # Assertions
     assert isinstance(results, dict)
-    assert 'rmse' in results
-    assert 'r2' in results
-    assert 'adj_r2' in results
-    assert results['rmse'] >= 0
-    assert -float('inf') <= results['r2'] <= 1
-    assert -float('inf') <= results['adj_r2'] <= 1
+    assert "rmse" in results
+    assert "r2" in results
+    assert "adj_r2" in results
+    assert results["rmse"] >= 0
+    assert -float("inf") <= results["r2"] <= 1
+    assert -float("inf") <= results["adj_r2"] <= 1
 
 
 if __name__ == "__main__":

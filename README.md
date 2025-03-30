@@ -39,6 +39,26 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
   - Early stopping to prevent overfitting
   - Variance penalty to ensure stable solutions
 
+## Publications
+
+Learn more about the concepts and methodologies behind MLArena through these articles:
+
+1. [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535) - Published in Towards Data Science
+   > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
+
+2. [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96) - Published in Towards Data Science
+   > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
+
+## Installation
+
+```bash
+pip install mlarena
+```
+
+## Usage Example
+
+For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).
+
 ## Visual Examples:
 
 ### Model Performance Analysis
@@ -57,28 +77,6 @@ One liner to create global and local explaination based on shap that will work a
 ### Hyperparameter Optimization
 Parallel Coordinate plot for hyperparameter search space diagnostics.    
 ![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
-
-
-## Installation
-
-```bash
-pip install mlarena
-```
-
-## Usage Example
-
-For quick start with a basic example, see [examples/basic_usage.ipynb](examples/basic_example.ipynb).
-
-
-## Publications
-
-Learn more about the concepts and methodologies behind MLArena through these articles:
-
-1. [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535) - Published in Towards Data Science
-   > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
-
-2. [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96) - Published in Towards Data Science
-   > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
 
 
 ## Documentation

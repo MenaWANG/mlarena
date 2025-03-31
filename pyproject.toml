@@ -30,6 +30,7 @@ mlflow = ">=2.13.1"
 shap = ">=0.44.0"
 hyperopt = ">=0.2.7"
 setuptools = ">=68.0.0"
+lightgbm = { version = ">=4.5.0", optional = true }
 
 [tool.poetry.group.dev.dependencies]
 jupyter = ">=1.0.0"

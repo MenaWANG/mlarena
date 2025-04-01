@@ -57,8 +57,8 @@ pip install mlarena
 
 ## Usage Example
 
-For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).
-For more advanced examples, see [examples/advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/advanced_usage.ipynb).
+* For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).   
+* For more advanced examples, see [examples/advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/advanced_usage.ipynb).   
 
 ## Visual Examples:
 

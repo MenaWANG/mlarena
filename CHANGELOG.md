@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `setuptools` as a dependency to fix compatibility issues with hyperopt's ATPE module
 - This fix is particularly important for Python 3.12+ users where setuptools is not automatically installed
 
-## [0.1.0] - 2025-03-25
+## [0.1.0] - 2025-03-27
 
 ### Added
 - Initial release of MLArena

@@ -8,6 +8,7 @@ This package provides:
 
 try:
     from importlib.metadata import version
+
     __version__ = version("mlarena")
 except ImportError:
     __version__ = "0.1.5"

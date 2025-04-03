@@ -688,7 +688,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 )
 
                 model.fit(X_fold_train, y_fold_train)
-                results = model.evaluate(X_fold_val, y_fold_val)
+                results = model.evaluate(
+                    X_fold_val, y_fold_val, verbose=False, visualize=False
+                )
                 if task == "classification":
                     cv_scores.append(results["auc"])  # maximize auc
                 elif task == "regression":

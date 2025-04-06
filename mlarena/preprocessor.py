@@ -105,9 +105,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             for col in X.select_dtypes(exclude=np.number).columns
             if col not in (self.target_encode_cols or [])
         ]
-        
-        transformed_dfs = []
 
+        transformed_dfs = []
 
         # Handle target encoding features
         if self.target_encode_cols:
@@ -121,15 +120,15 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ),
                 ]
             )
-            target_encoded = self.target_transformer.fit_transform(X[self.target_encode_cols], y)
+            target_encoded = self.target_transformer.fit_transform(
+                X[self.target_encode_cols], y
+            )
             transformed_dfs.append(
                 pd.DataFrame(
-                    target_encoded, 
-                    columns=self.target_encode_cols,
-                    index=X.index
+                    target_encoded, columns=self.target_encode_cols, index=X.index
                 )
             )
-        
+
         # Handle numeric features
         if self.num_features:
             self.num_transformer = Pipeline(
@@ -140,11 +139,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             )
             num_transformed = self.num_transformer.fit_transform(X[self.num_features])
             transformed_dfs.append(
-                pd.DataFrame(
-                    num_transformed, 
-                    columns=self.num_features,
-                    index=X.index
-                )
+                pd.DataFrame(num_transformed, columns=self.num_features, index=X.index)
             )
 
         # Handle categorical features
@@ -155,15 +150,17 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ("encoder", OneHotEncoder(handle_unknown="ignore", drop="first")),
                 ]
             )
-            cat_transformed = self.cat_transformer.fit_transform(X[self.cat_features]).toarray()
+            cat_transformed = self.cat_transformer.fit_transform(
+                X[self.cat_features]
+            ).toarray()
             transformed_dfs.append(
                 pd.DataFrame(
                     cat_transformed,
                     columns=self.get_transformed_cat_cols(),
-                    index=X.index
+                    index=X.index,
                 )
             )
-            
+
         return pd.concat(transformed_dfs, axis=1)
 
     def get_transformed_cat_cols(self):
@@ -337,7 +334,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             # Add sample sizes to x-labels
             ax.set_xticks(range(len(results)))
             ax.set_xticklabels(
-                [f'{idx}\n(n={results["Sample_Size"][idx]})' for idx in results.index],
+                [f"{idx}\n(n={results['Sample_Size'][idx]})" for idx in results.index],
                 rotation=45,
             )
             ax.legend()
@@ -598,7 +595,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         print(f"Total features analyzed: {len(X.columns)}")
 
         print(
-            f"\n1. High missing ratio (>{missing_threshold*100}%): {len(cols_missing)} columns"
+            f"\n1. High missing ratio (>{missing_threshold * 100}%): {len(cols_missing)} columns"
         )
         if cols_missing:
             print("   Columns:", ", ".join(cols_missing))

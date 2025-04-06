@@ -70,21 +70,22 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         self.target_encode_cols = target_encode_cols
         self.target_encode_smooth = target_encode_smooth
 
-    def fit(self, X, y=None):
+    def fit_transform(self, X, y=None):
         """
-        Fit transformer on input data.
+        Fit transformer on input data and transform it.
 
         - Identifies feature types
         - Configures feature scaling
         - Sets up encoding
         - Fits imputation strategies
+        - Transforms the input data
 
         Parameters:
             X (pd.DataFrame): Input features
             y (pd.Series, optional): Target variable, not used
 
         Returns:
-            CustomTransformer: Fitted transformer
+            pd.DataFrame: Transformed data
         """
         if self.target_encode_cols and y is None:
             raise ValueError(
@@ -105,6 +106,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             if col not in (self.target_encode_cols or [])
         ]
 
+        transformed_dfs = []
+
         # Handle target encoding features
         if self.target_encode_cols:
             # self.target_encode_cols = [f for f in self.target_encode_cols if f in X.columns] # if we want target coding to continue working even if some cols are missing
@@ -117,8 +120,16 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ),
                 ]
             )
-            self.target_transformer.fit(X[self.target_encode_cols], y)
+            target_encoded = self.target_transformer.fit_transform(
+                X[self.target_encode_cols], y
+            )
+            transformed_dfs.append(
+                pd.DataFrame(
+                    target_encoded, columns=self.target_encode_cols, index=X.index
+                )
+            )
 
+        # Handle numeric features
         if self.num_features:
             self.num_transformer = Pipeline(
                 steps=[
@@ -126,18 +137,31 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ("scaler", StandardScaler()),
                 ]
             )
-            self.num_transformer.fit(X[self.num_features])
+            num_transformed = self.num_transformer.fit_transform(X[self.num_features])
+            transformed_dfs.append(
+                pd.DataFrame(num_transformed, columns=self.num_features, index=X.index)
+            )
 
+        # Handle categorical features
         if self.cat_features:
             self.cat_transformer = Pipeline(
                 steps=[
                     ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
-                    ("encoder", OneHotEncoder(handle_unknown="ignore")),
+                    ("encoder", OneHotEncoder(handle_unknown="ignore", drop="first")),
                 ]
             )
-            self.cat_transformer.fit(X[self.cat_features])
+            cat_transformed = self.cat_transformer.fit_transform(
+                X[self.cat_features]
+            ).toarray()
+            transformed_dfs.append(
+                pd.DataFrame(
+                    cat_transformed,
+                    columns=self.get_transformed_cat_cols(),
+                    index=X.index,
+                )
+            )
 
-        return self
+        return pd.concat(transformed_dfs, axis=1)
 
     def get_transformed_cat_cols(self):
         """
@@ -156,8 +180,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cats = self.cat_features
         cat_values = self.cat_transformer["encoder"].categories_
         for cat, values in zip(cats, cat_values):
+            # Skip the first value since drop="first"
             cat_cols += [
-                re.sub(r"[^a-zA-Z0-9_]", "_", f"{cat}_{value}") for value in values
+                re.sub(r"[^a-zA-Z0-9_]", "_", f"{cat}_{value}") for value in values[1:]
             ]
 
         return cat_cols
@@ -214,23 +239,23 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         return X_transformed
 
-    def fit_transform(self, X, y=None):
-        """
-        Fit and transform input data.
+    # def fit_transform(self, X, y=None):
+    #     """
+    #     Fit and transform input data.
 
-        - Fits transformer to data
-        - Applies transformation
-        - Combines both operations
+    #     - Fits transformer to data
+    #     - Applies transformation
+    #     - Combines both operations
 
-        Parameters:
-            X (pd.DataFrame): Input features
-            y (pd.Series, optional): Target variable, not used
+    #     Parameters:
+    #         X (pd.DataFrame): Input features
+    #         y (pd.Series, optional): Target variable, not used
 
-        Returns:
-            pd.DataFrame: Transformed data
-        """
-        self.fit(X, y)
-        return self.transform(X)
+    #     Returns:
+    #         pd.DataFrame: Transformed data
+    #     """
+    #     self.fit(X, y)
+    #     return self.transform(X)
 
     @staticmethod
     def plot_target_encoding_comparison(
@@ -309,7 +334,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             # Add sample sizes to x-labels
             ax.set_xticks(range(len(results)))
             ax.set_xticklabels(
-                [f'{idx}\n(n={results["Sample_Size"][idx]})' for idx in results.index],
+                [f"{idx}\n(n={results['Sample_Size'][idx]})" for idx in results.index],
                 rotation=45,
             )
             ax.legend()
@@ -570,7 +595,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         print(f"Total features analyzed: {len(X.columns)}")
 
         print(
-            f"\n1. High missing ratio (>{missing_threshold*100}%): {len(cols_missing)} columns"
+            f"\n1. High missing ratio (>{missing_threshold * 100}%): {len(cols_missing)} columns"
         )
         if cols_missing:
             print("   Columns:", ", ".join(cols_missing))

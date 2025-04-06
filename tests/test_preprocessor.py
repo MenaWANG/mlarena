@@ -78,7 +78,7 @@ def test_preprocessor_transform():
 
     print("Fitting PreProcessor on training data...")
     preprocessor = PreProcessor()
-    preprocessor.fit(X_train, y_train)
+    _ = preprocessor.fit_transform(X_train, y_train)
 
     print("Transforming test data...")
     X_test_transformed = preprocessor.transform(X_test)

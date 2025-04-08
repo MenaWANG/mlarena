@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.compose import ColumnTransformer
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
@@ -41,6 +42,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cat_features (List[str]): Categorical feature names
         target_encode_cols (List[str]): Columns for target encoding
         target_encode_smooth (Union[str, float]): Smoothing parameter for target encoding
+        drop_first (bool): Whether to drop the first category for one-hot encoded features
     """
 
     def __init__(
@@ -49,6 +51,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cat_impute_strategy="most_frequent",
         target_encode_cols=None,
         target_encode_smooth="auto",
+        drop_first=False,
     ):
         """
         Initialize the transformer.
@@ -69,6 +72,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         self.cat_impute_strategy = cat_impute_strategy
         self.target_encode_cols = target_encode_cols
         self.target_encode_smooth = target_encode_smooth
+        self.drop_first = drop_first
 
     def fit_transform(self, X, y=None):
         """
@@ -144,15 +148,46 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         # Handle categorical features
         if self.cat_features:
-            self.cat_transformer = Pipeline(
-                steps=[
-                    ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
-                    ("encoder", OneHotEncoder(handle_unknown="ignore", drop="first")),
-                ]
+            if self.drop_first:
+                drop_param = "first"
+            else:
+                drop_param = None
+
+            # Split categorical features into binary and multi-valued
+            binary_cats = [col for col in self.cat_features if X[col].nunique() <= 2]
+            multi_cats = [col for col in self.cat_features if X[col].nunique() > 2]
+
+            # Different pipelines for binary and multi-valued features
+            pipelines = []
+
+            if binary_cats:
+                binary_transformer = Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
+                        (
+                            "encoder",
+                            OneHotEncoder(handle_unknown="ignore", drop="first"),
+                        ),
+                    ]
+                )
+                pipelines.append(("binary", binary_transformer, binary_cats))
+
+            if multi_cats:
+                multi_transformer = Pipeline(
+                    [
+                        ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
+                        (
+                            "encoder",
+                            OneHotEncoder(handle_unknown="ignore", drop=drop_param),
+                        ),
+                    ]
+                )
+                pipelines.append(("multi", multi_transformer, multi_cats))
+
+            self.cat_transformer = ColumnTransformer(
+                transformers=pipelines, remainder="drop"
             )
-            cat_transformed = self.cat_transformer.fit_transform(
-                X[self.cat_features]
-            ).toarray()
+            cat_transformed = self.cat_transformer.fit_transform(X[self.cat_features])
             transformed_dfs.append(
                 pd.DataFrame(
                     cat_transformed,
@@ -169,6 +204,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         - Creates names after one-hot encoding
         - Combines category with encoded values
+        - Handles both binary and multi-category features
+        - Accounts for user's drop_first preference for multi-category features
 
         Returns:
             List[str]: One-hot encoded column names
@@ -177,13 +214,29 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             return []
 
         cat_cols = []
-        cats = self.cat_features
-        cat_values = self.cat_transformer["encoder"].categories_
-        for cat, values in zip(cats, cat_values):
-            # Skip the first value since drop="first"
-            cat_cols += [
-                re.sub(r"[^a-zA-Z0-9_]", "_", f"{cat}_{value}") for value in values[1:]
-            ]
+
+        # Get transformers from ColumnTransformer
+        for name, transformer, columns in self.cat_transformer.transformers_:
+            if name == "remainder":
+                continue
+
+            # Get the encoder from the pipeline
+            encoder = transformer.named_steps["encoder"]
+
+            # Get the feature names from the encoder
+            for i, col in enumerate(columns):
+                values = encoder.categories_[i]
+
+                # For binary features or when drop_first is True, skip the first value
+                if name == "binary" or (name == "multi" and self.drop_first):
+                    values_to_use = values[1:]
+                else:
+                    values_to_use = values
+
+                cat_cols += [
+                    re.sub(r"[^a-zA-Z0-9_]", "_", f"{col}_{value}")
+                    for value in values_to_use
+                ]
 
         return cat_cols
 
@@ -223,9 +276,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             transformed_parts.append(transformed_num_df)
 
         if self.cat_features:
-            transformed_cat_data = self.cat_transformer.transform(
-                X[self.cat_features]
-            ).toarray()
+            transformed_cat_data = self.cat_transformer.transform(X[self.cat_features])
             self.transformed_cat_cols = self.get_transformed_cat_cols()
             transformed_cat_df = pd.DataFrame(
                 transformed_cat_data, columns=self.transformed_cat_cols, index=X.index
@@ -238,24 +289,6 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         X_transformed.index = X.index
 
         return X_transformed
-
-    # def fit_transform(self, X, y=None):
-    #     """
-    #     Fit and transform input data.
-
-    #     - Fits transformer to data
-    #     - Applies transformation
-    #     - Combines both operations
-
-    #     Parameters:
-    #         X (pd.DataFrame): Input features
-    #         y (pd.Series, optional): Target variable, not used
-
-    #     Returns:
-    #         pd.DataFrame: Transformed data
-    #     """
-    #     self.fit(X, y)
-    #     return self.transform(X)
 
     @staticmethod
     def plot_target_encoding_comparison(

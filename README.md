@@ -11,9 +11,9 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
 
 ## Features
 
-- **Comprehensive ML Pipeline**:
+- **Algorithm Agnostic ML Pipeline**:
   - End-to-end workflow from preprocessing to deployment
-  - Model-agnostic design (works with any scikit-learn compatible model)
+  - Model-agnostic design (works with any scikit-learn compatible model), easily experiment with and swap between algorithms
   - Support for both classification and regression tasks
   - Early stopping and validation set support
   - MLflow integration for experiment tracking and deployment  
@@ -22,6 +22,8 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
   - Automated feature type detection and handling
   - Smart encoding recommendations based on feature cardinality and rare category
   - Target encoding with visualization to support smoothing parameter selection
+  - New `drop_first` (boolean) parameter in PreProcessor to fine tune one-hot encoding
+  - Intelligent handling of binary vs multi-category features in one-hot encoding  
   - Missing value handling with configurable strategies
   - Feature selection recommendations with mutual information analysis
 
@@ -59,6 +61,7 @@ pip install mlarena
 
 * For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).   
 * For more advanced examples, see [examples/advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/advanced_usage.ipynb).   
+* For thoughtful features data scientists will appreciate, see [examples/little_delights.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/little_delights.ipynb).
 
 ## Visual Examples:
 

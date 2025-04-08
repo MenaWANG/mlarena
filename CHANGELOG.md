@@ -5,13 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.7] - 
+## [0.1.7] - 2025-04-08
+
+### Added
+- New `drop_first` (boolean) parameter in PreProcessor to fine tune one-hot encoding
+- Intelligent handling of binary vs multi-category features in one-hot encoding
+  - Binary features always use `drop="first"` 
+  - Multi-category features behavior controlled by the `drop_first` parameter
+- Update get_transformed_cat_cols to handle dropped categories and ColumnTransformer
 
 ### Fixed
 - Replace fit with fit_transform to leverage TargetEncoder's cross-fitting ability
-- Add drop='first' to OneHotEncoder 
-- Update get_transformed_cat_cols to handle dropped categories"
-
 
 ## [0.1.6] - 2025-04-03
 

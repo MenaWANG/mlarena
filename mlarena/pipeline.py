@@ -193,10 +193,16 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
         # get the shape of shap values and extract accordingly
         self.both_class = len(self.shap_values.values.shape) == 3
-        if self.both_class:
-            shap.summary_plot(self.shap_values[:, :, 1], plot_size=plot_size)
-        elif self.both_class == False:
-            shap.summary_plot(self.shap_values, plot_size=plot_size)
+        try:
+            if self.both_class:
+                shap.summary_plot(self.shap_values[:, :, 1], plot_size=plot_size)
+            elif self.both_class == False:
+                shap.summary_plot(self.shap_values, plot_size=plot_size)
+        except Exception as e:
+            print(
+                "warnings: Could not display SHAP plot. This might be due to display configuration."
+            )
+            print("SHAP values are still calculated and available in self.shap_values")
 
     def explain_case(self, n):
         """
@@ -229,7 +235,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             self.shap_values.data = self.X_explain
             if self.both_class:
                 shap.plots.waterfall(self.shap_values[:, :, 1][n - 1])
-            elif self.both_class == False:
+            elif not self.both_class:
                 shap.plots.waterfall(self.shap_values[n - 1])
 
     def _evaluate_regression_model(self, y_true, y_pred, verbose: bool = False):
@@ -526,6 +532,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         beta: float = 1.0,
         verbose: bool = True,
         visualize: bool = True,
+        log_model: bool = False,
     ) -> dict:
         """
         Evaluate model performance using appropriate metrics.
@@ -537,6 +544,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             beta: Beta value for F-beta score (default=1.0)
             verbose: If True, prints detailed evaluation metrics
             visualize: If True, displays relevant visualization plots
+            log_model: If True, logs model to MLflow (default=False)
 
         Returns:
             dict: Dictionary containing evaluation metrics
@@ -555,7 +563,15 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             metrics = self._evaluate_regression_model(y_test, y_pred, verbose=verbose)
             if visualize:
                 self._plot_regression_metrics(X_test, y_test, y_pred)
-        return metrics
+
+        results = metrics.copy()
+        if log_model:
+            model_info = self._log_model(
+                metrics=metrics, params=self.model.get_params()
+            )
+            results["model_info"] = model_info
+
+        return results
 
     @staticmethod
     def _plot_hyperparameter_search(trials, save_path=None):
@@ -848,7 +864,6 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         # Initialize CV
         cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
         thresholds_cv = []
-        curves_cv = []
 
         for train_idx, val_idx in cv.split(y_true, y_true):
             y_true_val = y_true.iloc[val_idx]
@@ -875,3 +890,30 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             "threshold_std": np.std(thresholds_cv),
             "threshold_cv_values": thresholds_cv,
         }
+
+    def _log_model(self, metrics=None, params=None, additional_artifacts=None):
+        """
+        Log model, metrics, parameters and additional artifacts to MLflow.
+
+        Args:
+            metrics (dict, optional): Metrics to log
+            params (dict, optional): Parameters to log
+            additional_artifacts (dict, optional): Additional artifacts to log
+                e.g., {"parallel_coords_plot": plot_path}
+        """
+        # Log metrics and parameters
+        if metrics:
+            mlflow.log_metrics(metrics)
+        if params:
+            mlflow.log_params(params)
+
+        # Add any additional artifacts
+        artifacts = {}
+        if additional_artifacts:
+            artifacts.update(additional_artifacts)
+
+        # Log the model with all artifacts
+        model_info = mlflow.pyfunc.log_model(
+            artifact_path="ml_pipeline", python_model=self, artifacts=artifacts
+        )
+        return model_info

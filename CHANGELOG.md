@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.8]
+
+## Added
+- Add MLflow model logging functionality to track models, metrics, and artifacts:
+  - Add `_log_model` method to ML_PIPELINE class
+  - Add optional `log_model` parameter to `evaluate` method
+  - Return model logging info in evaluation results when logging enabled
+  - Update basic usage examples to demonstrate MLflow integration
+
+## Fixed
+- tests/test_pipeline.py: Handle SHAP visualization errors
+
+
 ## [0.1.7] - 2025-04-08
 
 ### Added

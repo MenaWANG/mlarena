@@ -68,3 +68,6 @@ coverage.xml
 
 .mypy_cache/
 .pytest_cache/
+
+# mlflow
+mlruns/

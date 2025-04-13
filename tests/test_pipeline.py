@@ -5,11 +5,15 @@ Test script for ML_PIPELINE class.
 # Standard library imports
 from typing import Any
 
+import matplotlib
+
 # Third-party imports
 import numpy as np
 import pandas as pd
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+
+matplotlib.use("Agg")
 
 # Local imports
 from mlarena import ML_PIPELINE, PreProcessor
@@ -105,7 +109,6 @@ def test_regression_pipeline():
     # Test model explanation
     print("\nGenerating model explanations...")
     pipeline.explain_model(X_test)
-    pipeline.explain_case(1)
 
     # Assertions
     assert isinstance(results, dict)

@@ -13,6 +13,7 @@ try:
 except ImportError:
     __version__ = "0.1.7"
 
+from . import utils
 from .pipeline import ML_PIPELINE
 from .preprocessor import PreProcessor
 

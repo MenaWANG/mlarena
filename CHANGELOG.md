@@ -8,11 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.8]
 
 ## Added
-- Add MLflow model logging functionality to track models, metrics, and artifacts:
+- Add MLflow model logging functionality:
   - Add `_log_model` method to ML_PIPELINE class
-  - Add optional `log_model` parameter to `evaluate` method
+  - Add optional `log_model` parameter to `evaluate` method 
   - Return model logging info in evaluation results when logging enabled
   - Update basic usage examples to demonstrate MLflow integration
+
+- Add utility functions:
+  - New utils module with initial plotting utilities (`boxplot_scatter_overlay`)
+  - Modular structure for utility functions with clean import paths
 
 ## Fixed
 - tests/test_pipeline.py: Handle SHAP visualization errors

@@ -22,8 +22,7 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
   - Automated feature type detection and handling
   - Smart encoding recommendations based on feature cardinality and rare category
   - Target encoding with visualization to support smoothing parameter selection
-  - New `drop_first` (boolean) parameter in PreProcessor to fine tune one-hot encoding
-  - Intelligent handling of binary vs multi-category features in one-hot encoding  
+  - Tunable drop options to optimize one-hot encoding based on model  (tree vs linear) and feature type (binary vs multi-category)
   - Missing value handling with configurable strategies
   - Feature selection recommendations with mutual information analysis
 

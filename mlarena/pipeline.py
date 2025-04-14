@@ -818,13 +818,16 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             print(f"{param}: {value}")
         if log_best_model:
             print("Logging the best model to MLflow")
-            final_model._log_model(metrics=final_results, params=best_params)
+            model_info = final_model._log_model(
+                metrics=final_results, params=best_params
+            )
 
         if visualize:
             ML_PIPELINE._plot_hyperparameter_search(trials)
 
         if task == "classification":
             return {
+                "model_info": model_info,
                 "best_params": best_params,
                 "best_pipeline": final_model,
                 "trials": trials,
@@ -839,6 +842,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             }
         elif task == "regression":
             return {
+                "model_info": model_info,
                 "best_params": best_params,
                 "best_pipeline": final_model,
                 "trials": trials,

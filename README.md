@@ -56,6 +56,12 @@ Learn more about the concepts and methodologies behind MLArena through these art
 pip install mlarena
 ```
 
+If you are using the package in Databricks using ML Cluster with DBR runtime >= 15.2, you can try installing without dependencies (experimental feature):
+
+```bash
+pip install mlarena --no-deps
+```
+
 ## Usage Example
 
 * For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).   

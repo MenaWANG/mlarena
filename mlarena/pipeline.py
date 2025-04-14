@@ -642,6 +642,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         cv_variance_penalty=0.1,
         visualize=True,
         task="classification",
+        log_best_model=True,
     ):
         """
         Static method to tune hyperparameters using AUC and find optimal threshold.
@@ -662,10 +663,13 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             cv_variance_penalty: Weight for penalizing high variance in cross-validation scores (default=0.1)
             visualize: If True, displays relevant visualization plots
             task: classification or regression
+            log_best_model: If True, logs the best model to MLflow (default=True)
 
         Returns:
             dict: Contains:
                 - best_params: Best hyperparameters found
+                - best_pipeline: Best pipeline model
+                - other metrics and results
         """
 
         # Split train+test
@@ -788,7 +792,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             print(
                 f"Best CV AUC: {objective.best_cv_scores['mean']:.3f}({objective.best_cv_scores['std']:.3f})"
             )
-            print(f"\nPerformance on holdout validation set:")
+            print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
                 X_test,
                 y_test,
@@ -812,12 +816,18 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         print(f"\nBest parameters found:")
         for param, value in best_params.items():
             print(f"{param}: {value}")
+        if log_best_model:
+            print("Logging the best model to MLflow")
+            model_info = final_model._log_model(
+                metrics=final_results, params=best_params
+            )
 
         if visualize:
             ML_PIPELINE._plot_hyperparameter_search(trials)
 
         if task == "classification":
             return {
+                "model_info": model_info,
                 "best_params": best_params,
                 "best_pipeline": final_model,
                 "trials": trials,
@@ -832,6 +842,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             }
         elif task == "regression":
             return {
+                "model_info": model_info,
                 "best_params": best_params,
                 "best_pipeline": final_model,
                 "trials": trials,

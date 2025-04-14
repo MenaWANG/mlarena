@@ -5,14 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.8]
+## [0.1.8] - 2025-04-14
 
 ## Added
 - Add MLflow model logging functionality:
   - Add `_log_model` method to ML_PIPELINE class
   - Add optional `log_model` parameter to `evaluate` method 
+  - Add optional `log_best_model` parameter to `tune` method
   - Return model logging info in evaluation results when logging enabled
-  - Update basic usage examples to demonstrate MLflow integration
+  - Update basic and advanced usage examples to demonstrate MLflow integration
 
 - Add utility functions:
   - New utils module with initial plotting utilities (`boxplot_scatter_overlay`)
@@ -20,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Fixed
 - tests/test_pipeline.py: Handle SHAP visualization errors
+- test/test_preprocessor: Add testing for all feature types
+- leverage `drop` parameter and "binary_first" option in sklearn OneHotEncoder rather than rewrite the logic
 
 
 ## [0.1.7] - 2025-04-08

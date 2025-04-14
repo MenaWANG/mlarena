@@ -42,7 +42,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cat_features (List[str]): Categorical feature names
         target_encode_cols (List[str]): Columns for target encoding
         target_encode_smooth (Union[str, float]): Smoothing parameter for target encoding
-        drop_first (bool): Whether to drop the first category for one-hot encoded features
+        drop (str): Strategy for dropping categories in OneHotEncoder
+                   Options: 'if_binary', 'first', None
     """
 
     def __init__(
@@ -51,7 +52,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cat_impute_strategy="most_frequent",
         target_encode_cols=None,
         target_encode_smooth="auto",
-        drop_first=False,
+        drop="if_binary",  # choose "first" for linear models and "if_binary" for tree models
     ):
         """
         Initialize the transformer.
@@ -67,12 +68,14 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             target_encode_cols (List[str]): Columns to apply mean encoding
             target_encode_smooth (Union[str, float]): Smoothing parameter for target encoding,
                                                       'auto' or float value (default='auto')
+            drop (str): Strategy for dropping categories in OneHotEncoder
+                       Options: 'if_binary', 'first', None
         """
         self.num_impute_strategy = num_impute_strategy
         self.cat_impute_strategy = cat_impute_strategy
         self.target_encode_cols = target_encode_cols
         self.target_encode_smooth = target_encode_smooth
-        self.drop_first = drop_first
+        self.drop = drop
 
     def fit_transform(self, X, y=None):
         """
@@ -148,45 +151,18 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         # Handle categorical features
         if self.cat_features:
-            if self.drop_first:
-                drop_param = "first"
-            else:
-                drop_param = None
-
-            # Split categorical features into binary and multi-valued
-            binary_cats = [col for col in self.cat_features if X[col].nunique() <= 2]
-            multi_cats = [col for col in self.cat_features if X[col].nunique() > 2]
-
-            # Different pipelines for binary and multi-valued features
-            pipelines = []
-
-            if binary_cats:
-                binary_transformer = Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
-                        (
-                            "encoder",
-                            OneHotEncoder(handle_unknown="ignore", drop="first"),
+            self.cat_transformer = Pipeline(
+                steps=[
+                    ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
+                    (
+                        "encoder",
+                        OneHotEncoder(
+                            handle_unknown="ignore", drop=self.drop, sparse_output=False
                         ),
-                    ]
-                )
-                pipelines.append(("binary", binary_transformer, binary_cats))
-
-            if multi_cats:
-                multi_transformer = Pipeline(
-                    [
-                        ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
-                        (
-                            "encoder",
-                            OneHotEncoder(handle_unknown="ignore", drop=drop_param),
-                        ),
-                    ]
-                )
-                pipelines.append(("multi", multi_transformer, multi_cats))
-
-            self.cat_transformer = ColumnTransformer(
-                transformers=pipelines, remainder="drop"
+                    ),
+                ]
             )
+
             cat_transformed = self.cat_transformer.fit_transform(X[self.cat_features])
             transformed_dfs.append(
                 pd.DataFrame(
@@ -200,12 +176,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
     def get_transformed_cat_cols(self):
         """
-        Get transformed categorical column names.
-
-        - Creates names after one-hot encoding
-        - Combines category with encoded values
-        - Handles both binary and multi-category features
-        - Accounts for user's drop_first preference for multi-category features
+        Get transformed categorical column names using sklearn's built-in method.
 
         Returns:
             List[str]: One-hot encoded column names
@@ -213,32 +184,11 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         if not hasattr(self, "cat_transformer"):
             return []
 
-        cat_cols = []
+        # Get the encoder from the pipeline
+        encoder = self.cat_transformer.named_steps["encoder"]
 
-        # Get transformers from ColumnTransformer
-        for name, transformer, columns in self.cat_transformer.transformers_:
-            if name == "remainder":
-                continue
-
-            # Get the encoder from the pipeline
-            encoder = transformer.named_steps["encoder"]
-
-            # Get the feature names from the encoder
-            for i, col in enumerate(columns):
-                values = encoder.categories_[i]
-
-                # For binary features or when drop_first is True, skip the first value
-                if name == "binary" or (name == "multi" and self.drop_first):
-                    values_to_use = values[1:]
-                else:
-                    values_to_use = values
-
-                cat_cols += [
-                    re.sub(r"[^a-zA-Z0-9_]", "_", f"{col}_{value}")
-                    for value in values_to_use
-                ]
-
-        return cat_cols
+        # Use sklearn's built-in method to get feature names
+        return encoder.get_feature_names_out(self.cat_features)
 
     def transform(self, X):
         """
@@ -472,7 +422,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                         f"Recommend higher smoothing for target encoding."
                     )
                     print(
-                        f"""Recommend target encoding with higher smoothing due to moderate cardinality and rare category"""
+                        """Recommend target encoding with higher smoothing due to moderate cardinality and rare category"""
                     )
                 elif prefer_target:
                     target_encode_cols.append(col)

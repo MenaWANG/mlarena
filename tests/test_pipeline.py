@@ -13,10 +13,10 @@ import pandas as pd
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
-matplotlib.use("Agg")
-
 # Local imports
 from mlarena import ML_PIPELINE, PreProcessor
+
+# matplotlib.use("Agg") # Use non-interactive backend for testing
 
 
 def test_classification_pipeline():

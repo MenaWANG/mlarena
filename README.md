@@ -22,8 +22,7 @@ An algorithm-agnostic machine learning toolkit for model training, diagnostics a
   - Automated feature type detection and handling
   - Smart encoding recommendations based on feature cardinality and rare category
   - Target encoding with visualization to support smoothing parameter selection
-  - New `drop_first` (boolean) parameter in PreProcessor to fine tune one-hot encoding
-  - Intelligent handling of binary vs multi-category features in one-hot encoding  
+  - Tunable drop options to optimize one-hot encoding based on model  (tree vs linear) and feature type (binary vs multi-category)
   - Missing value handling with configurable strategies
   - Feature selection recommendations with mutual information analysis
 
@@ -55,6 +54,12 @@ Learn more about the concepts and methodologies behind MLArena through these art
 
 ```bash
 pip install mlarena
+```
+
+If you are using the package in Databricks using ML Cluster with DBR runtime >= 15.2, you can try installing without dependencies (experimental feature):
+
+```bash
+pip install mlarena --no-deps
 ```
 
 ## Usage Example

@@ -5,6 +5,9 @@ Tests for the PreProcessor class.
 import numpy as np
 import pandas as pd
 from sklearn.datasets import make_classification
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder
 
 from mlarena.preprocessor import PreProcessor
 
@@ -95,9 +98,104 @@ def test_preprocessor_transform():
     print("✓ PreProcessor transform test passed")
 
 
+def test_preprocessor_encoding():
+    """Test PreProcessor encoding for both categorical and target encoding."""
+    print("\nTesting PreProcessor encoding...")
+
+    # Create sample data with different feature types
+    X = pd.DataFrame(
+        {
+            "numeric1": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+            "numeric2": [10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+            "binary_cat": ["A", "B", "A", "B", "A", "B", "A", "B", "A", "B"],
+            "multi_cat": ["X", "Y", "Z", "X", "Y", "Z", "X", "Y", "Z", "X"],
+            "target_encode": [
+                "C1",
+                "C2",
+                "C1",
+                "C2",
+                "C1",
+                "C2",
+                "C1",
+                "C2",
+                "C1",
+                "C2",
+            ],
+        }
+    )
+    y = pd.Series([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+
+    # Test with different drop strategies
+    for drop_strategy in ["if_binary", "first", None]:
+        print(f"\nTesting with drop='{drop_strategy}'")
+
+        # Initialize preprocessor with target encoding
+        preprocessor = PreProcessor(
+            target_encode_cols=["target_encode"],
+            drop=drop_strategy,
+            target_encode_smooth=0.1,
+        )
+
+        # Fit and transform
+        X_transformed = preprocessor.fit_transform(X, y)
+
+        # Check transformed data
+        print(f"Transformed shape: {X_transformed.shape}")
+        print(f"Transformed columns: {X_transformed.columns.tolist()}")
+
+        # Verify numeric features are preserved
+        assert "numeric1" in X_transformed.columns
+        assert "numeric2" in X_transformed.columns
+
+        # Verify binary categorical encoding
+        if drop_strategy == "if_binary":
+            assert "binary_cat_B" in X_transformed.columns
+            assert "binary_cat_A" not in X_transformed.columns
+        elif drop_strategy == "first":
+            assert "binary_cat_B" in X_transformed.columns
+            assert "binary_cat_A" not in X_transformed.columns
+        else:  # drop=None
+            assert "binary_cat_A" in X_transformed.columns
+            assert "binary_cat_B" in X_transformed.columns
+
+        # Verify multi-category encoding
+        if drop_strategy == "first":
+            assert "multi_cat_Y" in X_transformed.columns
+            assert "multi_cat_Z" in X_transformed.columns
+            assert "multi_cat_X" not in X_transformed.columns
+        else:
+            assert "multi_cat_X" in X_transformed.columns
+            assert "multi_cat_Y" in X_transformed.columns
+            assert "multi_cat_Z" in X_transformed.columns
+
+        # Verify target encoding
+        assert "target_encode" in X_transformed.columns
+        assert X_transformed["target_encode"].dtype in [np.float64, np.float32]
+
+        # Test transform on new data
+        X_new = pd.DataFrame(
+            {
+                "numeric1": [6, 7],
+                "numeric2": [0, 1],
+                "binary_cat": ["A", "B"],
+                "multi_cat": ["X", "Z"],
+                "target_encode": ["C1", "C2"],
+            }
+        )
+
+        X_new_transformed = preprocessor.transform(X_new)
+        assert X_new_transformed.shape[0] == 2
+        assert set(X_transformed.columns) == set(X_new_transformed.columns)
+
+        print(f"✓ Test passed for drop='{drop_strategy}'")
+
+    print("✓ All encoding tests passed")
+
+
 if __name__ == "__main__":
     print("Starting PreProcessor tests...")
     test_preprocessor_initialization()
     test_preprocessor_fit_transform()
     test_preprocessor_transform()
+    test_preprocessor_encoding()
     print("\nAll PreProcessor tests completed successfully!")

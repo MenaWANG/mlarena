@@ -11,7 +11,7 @@ def boxplot_scatter_overlay(
     value_col,
     title,
     box_alpha=0.3,
-    dot_size=60,
+    dot_size=50,
     dot_alpha=0.8,
     jitter=0.08,
     figsize=(10, 6),

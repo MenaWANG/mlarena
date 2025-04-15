@@ -64,8 +64,8 @@ pip install mlarena --no-deps
 
 ## Usage Example
 
-* For quick start with a basic example, see [examples/basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).   
-* For more advanced examples, see [examples/advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/advanced_usage.ipynb).   
+* For quick start with a basic example, see [examples/1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/basic_usage.ipynb).   
+* For more advanced examples, see [examples/2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/advanced_usage.ipynb).   
 * For thoughtful features data scientists will appreciate, see [examples/little_delights.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/little_delights.ipynb).
 
 ## Visual Examples:

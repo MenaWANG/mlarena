@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.9] 
+
+## Added
+- Doc: Add example notebook `3.utils_plot.ipynb` demonstrating plot utilities
+
+
 ## [0.1.8] - 2025-04-14
 
 ## Added
@@ -22,7 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Fixed
 - tests/test_pipeline.py: Handle SHAP visualization errors
 - test/test_preprocessor: Add testing for all feature types
-- leverage `drop` parameter and "binary_first" option in sklearn OneHotEncoder rather than rewrite the logic
+- leverage `drop` parameter and "if_binary" option in sklearn OneHotEncoder rather than rewrite the logic
 
 
 ## [0.1.7] - 2025-04-08

@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 # Local imports
 from mlarena import ML_PIPELINE, PreProcessor
 
-# matplotlib.use("Agg") # Use non-interactive backend for testing
+matplotlib.use("Agg")  # Use non-interactive backend for testing
 
 
 def test_classification_pipeline():

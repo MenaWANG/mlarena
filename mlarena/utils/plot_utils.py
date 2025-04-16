@@ -6,9 +6,9 @@ __all__ = ["boxplot_scatter_overlay"]
 
 
 def boxplot_scatter_overlay(
-    df,
-    cat_col,
-    value_col,
+    data,
+    x,
+    y,
     title,
     box_alpha=0.3,
     dot_size=50,
@@ -21,23 +21,23 @@ def boxplot_scatter_overlay(
     Draws a box plot with semi-transparent boxes and overlays colored dots matching the box colors.
 
     Parameters:
-    - df: pandas DataFrame containing the data.
-    - item_col: str, the column name for categorical items.
-    - value_col: str, the column name for numerical values.
+    - data: pandas DataFrame containing the data.
+    - x: str, the column name for categorical items.
+    - y: str, the column name for numerical values.
     - title: str, the title of the plot.
     - box_alpha: float, transparency level for box fill (default 0.3).
-    - dot_size: int, size of the overlaid dots (default 60).
+    - dot_size: int, size of the overlaid dots (default 50).
     - jitter: float, amount of horizontal jitter for dots (default 0.08).
     - figsize: tuple, size of the figure (default (10, 6)).
     - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
 
     Returns:
-    - None (displays the plot).
+    - fig, ax: The figure and axis objects for further customization.
     """
     # Prepare data
-    categories = sorted(df[cat_col].unique())
+    categories = sorted(data[x].unique())
     num_categories = len(categories)
-    data_per_category = [df[df[cat_col] == cat][value_col].values for cat in categories]
+    data_per_category = [data[data[x] == cat][y].values for cat in categories]
 
     # Define color palette
     if palette is None:
@@ -80,10 +80,11 @@ def boxplot_scatter_overlay(
     # Customize axes
     ax.set_xticks(range(1, num_categories + 1))
     ax.set_xticklabels(categories, rotation=45, fontsize=12)
-    ax.set_xlabel(cat_col, fontsize=14)
-    ax.set_ylabel(value_col, fontsize=14)
+    ax.set_xlabel(x, fontsize=14)
+    ax.set_ylabel(y, fontsize=14)
     ax.set_title(title, fontsize=16)
     ax.grid(True, linestyle="--", alpha=0.6)
 
     plt.tight_layout()
-    plt.show()
+
+    return fig, ax

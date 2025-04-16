@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Added
 - Doc: Add example notebook `3.utils_plot.ipynb` demonstrating plot utilities
 
+## Fixed
+- update naming of `boxplot_scatter_overlay` parameters to be consistent with seaborn and matplotlib style
+
 
 ## [0.1.8] - 2025-04-14
 

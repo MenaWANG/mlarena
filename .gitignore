@@ -27,6 +27,7 @@ venv/
 env/
 ENV/
 .dev/
+.test_venv/
 
 # IDE
 .idea/

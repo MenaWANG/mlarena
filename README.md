@@ -9,40 +9,9 @@
 
 An algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization.
 
-## Features
-
-- **Algorithm Agnostic ML Pipeline**:
-  - End-to-end workflow from preprocessing to deployment
-  - Model-agnostic design (works with any scikit-learn compatible model), easily experiment with and swap between algorithms
-  - Support for both classification and regression tasks
-  - Early stopping and validation set support
-  - MLflow integration for experiment tracking and deployment  
-
-- **Intelligent Preprocessing**:
-  - Automated feature type detection and handling
-  - Smart encoding recommendations based on feature cardinality and rare category
-  - Target encoding with visualization to support smoothing parameter selection
-  - Tunable drop options to optimize one-hot encoding based on model  (tree vs linear) and feature type (binary vs multi-category)
-  - Missing value handling with configurable strategies
-  - Feature selection recommendations with mutual information analysis
-
-- **Advanced Model Evaluation**:
-  - Comprehensive metrics for both classification and regression
-  - Diagnostic visualization of model performance
-  - Threshold analysis for classification tasks
-  - SHAP-based model explanations (global and local)
-  - Cross-validation with variance penalty
-
-- **Hyperparameter Optimization**:
-  - Bayesian optimization with Hyperopt
-  - Cross-validation based tuning
-  - Parallel coordinates visualization for search space analysis
-  - Early stopping to prevent overfitting
-  - Variance penalty to ensure stable solutions
-
 ## Publications
 
-Learn more about the concepts and methodologies behind MLArena through these articles:
+Read about the concepts and methodologies behind MLArena through these articles:
 
 1. [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535) - Published in Towards Data Science
    > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
@@ -52,11 +21,13 @@ Learn more about the concepts and methodologies behind MLArena through these art
 
 ## Installation
 
+The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
+
 ```bash
-pip install mlarena
+pip install mlarena==0.1.9
 ```
 
-If you are using the package in Databricks using ML Cluster with DBR runtime >= 15.2, you can try installing without dependencies (experimental feature):
+If you are using the package in Databricks ML Cluster with DBR runtime >= 15.2, you can try installing without dependencies (experimental feature):
 
 ```bash
 pip install mlarena --no-deps
@@ -89,30 +60,36 @@ Parallel Coordinate plot for hyperparameter search space diagnostics.
 ![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
 
 
-## Documentation
+## Features
 
-### PreProcessor
+- **Algorithm Agnostic ML Pipeline**:
+  - End-to-end workflow from preprocessing to deployment
+  - Model-agnostic design (works with any scikit-learn compatible model), easily experiment with and swap between algorithms
+  - Support for both classification and regression tasks
+  - Early stopping and validation set support
+  - MLflow integration for experiment tracking and deployment  
 
-The `PreProcessor` class handles all data preprocessing tasks:
+- **Intelligent Preprocessing**:
+  - Automated feature type detection and handling
+  - Smart encoding recommendations based on feature cardinality and rare category
+  - Target encoding with visualization to support smoothing parameter selection
+  - Tunable drop options to optimize one-hot encoding based on model  (tree vs linear) and feature type (binary vs multi-category)
+  - Missing value handling with configurable strategies
+  - Feature selection recommendations with mutual information analysis
 
-- Filter Feature Selection
-- Categorical encoding (OneHot, Target)
-- Recommendation of encoding strategy
-- Plot to compare target encoding smoothing parameters
-- Numeric scaling
-- Missing value imputation
+- **Advanced Model Evaluation**:
+  - Comprehensive metrics for both classification and regression
+  - Diagnostic visualization of model performance
+  - Threshold analysis for classification tasks
+  - SHAP-based model explanations (global and local)
+  - Cross-validation with variance penalty
 
-### ML_PIPELINE
-
-The `ML_PIPELINE` class provides a complete machine learning workflow:
-
-- Algorithm agnostic model wrapper
-- Support both classification (binary) and regression algorithms
-- Model training and scoring
-- Model global and local explanation
-- Model evaluation with comprehensive reporting and plots
-- Iterative hyperparameter tuning with diagnostic plot
-- Threshold analysis and optimization for classification models
+- **Hyperparameter Optimization**:
+  - Bayesian optimization with Hyperopt
+  - Cross-validation based tuning
+  - Parallel coordinates visualization for search space analysis
+  - Early stopping to prevent overfitting
+  - Variance penalty to ensure stable solutions
 
 
 ## Contributing

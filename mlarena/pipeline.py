@@ -2,8 +2,16 @@
 Pipeline module for MLArena package.
 """
 
+import warnings
+
 # Standard library imports
 from typing import Any
+
+# mlarena is published on PyPI on 2025-03-27, but mlflow packages index is updated till 2025-03-04 at the moment
+warnings.filterwarnings(
+    "ignore",
+    message=".*The following packages were not found in the public PyPI package index.*mlarena.*",
+)
 
 import matplotlib.pyplot as plt
 import mlflow
@@ -13,6 +21,7 @@ import numpy as np
 import pandas as pd
 import shap
 from hyperopt import STATUS_OK, Trials, fmin, hp, space_eval, tpe
+from mlflow.models.signature import infer_signature
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
@@ -132,6 +141,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         Returns:
             Any: A NumPy array or DataFrame with the predicted probabilities or output values.
         """
+
         if self.preprocessor is not None:
             processed_model_input = self.preprocessor.transform(model_input.copy())
         else:
@@ -195,9 +205,13 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         self.both_class = len(self.shap_values.values.shape) == 3
         try:
             if self.both_class:
-                shap.summary_plot(self.shap_values[:, :, 1], plot_size=plot_size)
+                rng = np.random.RandomState(42)
+                shap.summary_plot(
+                    self.shap_values[:, :, 1], plot_size=plot_size, rng=rng
+                )
             elif self.both_class == False:
-                shap.summary_plot(self.shap_values, plot_size=plot_size)
+                rng = np.random.RandomState(42)
+                shap.summary_plot(self.shap_values, plot_size=plot_size, rng=rng)
         except Exception as e:
             print(
                 "warnings: Could not display SHAP plot. This might be due to display configuration."
@@ -341,10 +355,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         if verbose:
             print("Classification Metrics Report")
             print("=" * 50)
-            print(f"\nEvaluation Parameters:")
+            print("\nEvaluation Parameters:")
             print(f"Threshold: {metrics['threshold']:.3f}")
             print(f"Beta:      {metrics['beta']:.3f}")
-            print(f"\nMetrics:")
+            print("\nMetrics:")
             print(f"Accuracy:  {metrics['accuracy']:.3f}")
             print(f"F1:        {metrics['f1']:.3f}")
             if beta != 1:
@@ -352,7 +366,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             print(f"Precision: {metrics['precision']:.3f}")
             print(f"Recall:    {metrics['recall']:.3f}")
             print(f"Pos Rate:  {metrics['positive_rate']:.3f}")
-            print(f"\nAUC (threshold independent):")
+            print("\nAUC (threshold independent):")
             print(f"AUC:   {metrics['auc']:.3f}")
 
         return metrics
@@ -566,8 +580,15 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
         results = metrics.copy()
         if log_model:
+            sample_input = X_test.iloc[:1] if len(X_test) > 0 else None
+            sample_output = (
+                y_pred_proba[:1] if self.task == "classification" else y_pred[:1]
+            )
             model_info = self._log_model(
-                metrics=metrics, params=self.model.get_params()
+                metrics=metrics,
+                params=self.model.get_params(),
+                sample_input=sample_input,
+                sample_output=sample_output,
             )
             results["model_info"] = model_info
 
@@ -803,23 +824,31 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             )
         elif task == "regression":
             # Print results on new data
+            y_pred = final_model.predict(
+                context=None, model_input=X_train_full
+            )  # for logging
             print(
                 f"Best CV adjusted r square: {objective.best_cv_scores['mean']:.3f}({objective.best_cv_scores['std']:.3f})"
             )
-            print(f"\nPerformance on holdout validation set:")
+            print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
                 X_test, y_test, verbose=True, visualize=True
             )
 
         print("\nHyperparameter Tuning Results")
         print("=" * 50)
-        print(f"\nBest parameters found:")
+        print("\nBest parameters found:")
         for param, value in best_params.items():
             print(f"{param}: {value}")
         if log_best_model:
             print("Logging the best model to MLflow")
+            sample_input = X_train_full.iloc[:1] if len(X_train_full) > 0 else None
+            sample_output = y_pred_proba[:1] if task == "classification" else y_pred[:1]
             model_info = final_model._log_model(
-                metrics=final_results, params=best_params
+                metrics=final_results,
+                params=best_params,
+                sample_input=sample_input,
+                sample_output=sample_output,
             )
 
         if visualize:
@@ -902,7 +931,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             "threshold_cv_values": thresholds_cv,
         }
 
-    def _log_model(self, metrics=None, params=None, additional_artifacts=None):
+    def _log_model(
+        self,
+        metrics=None,
+        params=None,
+        additional_artifacts=None,
+        sample_input=None,
+        sample_output=None,
+    ):
         """
         Log model, metrics, parameters and additional artifacts to MLflow.
 
@@ -911,6 +947,8 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             params (dict, optional): Parameters to log
             additional_artifacts (dict, optional): Additional artifacts to log
                 e.g., {"parallel_coords_plot": plot_path}
+            sample_input (pd.DataFrame, optional): Sample input for signature inference
+            sample_output (np.ndarray, optional): Sample output for signature inference
         """
         # Log metrics and parameters
         if metrics:
@@ -923,8 +961,24 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         if additional_artifacts:
             artifacts.update(additional_artifacts)
 
-        # Log the model with all artifacts
-        model_info = mlflow.pyfunc.log_model(
-            artifact_path="ml_pipeline", python_model=self, artifacts=artifacts
-        )
-        return model_info
+        if sample_input is not None:
+            sample_input = sample_input.copy()
+            # Convert any category columns to string type for signature inference
+            for col in sample_input.select_dtypes(include=["category"]).columns:
+                sample_input[col] = sample_input[col].astype("object")
+
+        signature = None
+        if sample_input is not None and sample_output is not None:
+            signature = infer_signature(sample_input, sample_output)
+
+        try:
+            model_info = mlflow.pyfunc.log_model(
+                artifact_path="ml_pipeline",
+                python_model=self,
+                artifacts=artifacts,
+                signature=signature,
+                input_example=sample_input,
+            )
+            return model_info
+        finally:
+            mlflow.end_run()

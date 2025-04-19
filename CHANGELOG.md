@@ -5,13 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.9] 
+## [0.1.9] - 2025-04-19
 
 ## Added
 - Doc: Add example notebook `3.utils_plot.ipynb` demonstrating plot utilities
+- Doc: Add `4.ml_discussions.ipynb` explaining MLflow integration challenges and solutions for Pandas category dtype.
+- Add model signature to `_log_model` method, improving MLflow logging in both `evaluate` and `tune` methods
 
 ## Fixed
 - update naming of `boxplot_scatter_overlay` parameters to be consistent with seaborn and matplotlib style
+- Add automatic type conversion for pandas category and integer columns in MLflow models
+- Improve MLflow model loading compatibility with proper handling of pandas category dtypes
+- Fix SHAP visualization warnings by using explicit random number generator
 
 
 ## [0.1.8] - 2025-04-14

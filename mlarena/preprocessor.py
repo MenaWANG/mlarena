@@ -607,3 +607,31 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                 "mi_threshold": mi_threshold,
             },
         }
+
+    @staticmethod
+    def mlflow_input_prep(data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Prepare data for MLflow compatibility by converting category dtypes to object
+        and integer dtypes to float64.
+
+        This function addresses two MLflow compatibility issues:
+        1. MLflow doesn't support pandas category dtype, so we convert them to object
+        2. MLflow doesn't handle missing values in integer columns, so we convert them to float64
+
+        Parameters:
+            data (pd.DataFrame): Input data possibly containing category columns
+
+        Returns:
+            pd.DataFrame: Data with category columns converted to object dtype
+        """
+        if not isinstance(data, pd.DataFrame):
+            return data
+
+        data_copy = data.copy()
+        # mlflow doesn't support category dtype, so we convert category to object
+        for col in data_copy.select_dtypes(include=["category"]).columns:
+            data_copy[col] = data_copy[col].astype("object")
+        # mlflow doesn't support missing in int dtype, so we convert int to float
+        for col in data_copy.select_dtypes(include=["integer"]).columns:
+            data_copy[col] = data_copy[col].astype("float64")
+        return data_copy

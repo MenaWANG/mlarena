@@ -1,7 +1,7 @@
 # MLArena
 
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
-[![PyPI version](https://badge.fury.io/py/mlarena.svg)](https://badge.fury.io/py/mlarena)
+[![PyPI version](https://badge.fury.io/py/mlarena.svg?v=2)](https://badge.fury.io/py/mlarena)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
@@ -38,7 +38,7 @@ pip install mlarena --no-deps
 * For quick start with a basic example, see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb).   
 * For more advanced examples, see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb).   
 * For visualization utilities, see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb).
-* For machine learning best practices and tips, see [4.ml_tips.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/4.ml_tips.ipynb).
+* For handling common challenges in machine learning, see [4.ml_discussions.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/4.ml_discussions.ipynb).
 
 ## Visual Examples:
 

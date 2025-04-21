@@ -9,7 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.1.10]
 
 ## Added
--  Add `plot_medical_timeseries` function to plot_utils
+- Add `plot_medical_timeseries` function to plot_utils
+  - Support 1-2 metrics with medical standard colors (black/red)
+  - Support treatment markers and min/max annotations
+  - Display alternating year backgrounds
 
 ## [0.1.9] - 2025-04-19
 

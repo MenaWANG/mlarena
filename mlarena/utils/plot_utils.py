@@ -1,8 +1,10 @@
 import matplotlib.colors as mcolors
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
-__all__ = ["boxplot_scatter_overlay"]
+__all__ = ["boxplot_scatter_overlay", "plot_medical_timeseries"]
 
 
 def boxplot_scatter_overlay(
@@ -88,3 +90,154 @@ def boxplot_scatter_overlay(
     plt.tight_layout()
 
     return fig, ax
+
+
+def plot_medical_timeseries(
+    data: pd.DataFrame,
+    date_col: str,
+    metrics: dict,
+    treatment_dates: dict = None,
+    title: str = None,
+    figsize: tuple = (12, 6),
+    show_minmax: bool = True,
+    alternate_years: bool = True,
+):
+    """
+    Plot 1-2 medical metrics over time with treatments and annotations.
+
+    Parameters:
+        data: DataFrame containing the time series data
+        date_col: Name of the date column
+        metrics: Dictionary of metrics to plot, each with values and color (optional)
+                e.g., {'Iron': {'values': 'iron', 'color': 'blue'},
+                       'Ferritin': {'values': 'ferritin', 'color': 'red'}}
+        treatment_dates: Dictionary of treatment dates
+                       e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
+        title: Plot title
+        figsize: Figure size as (width, height)
+        show_minmax: Whether to show min/max annotations
+        alternate_years: Whether to show alternating year backgrounds
+    """
+
+    # Validate and set default colors for metrics (max 2 supported)
+    if len(metrics) > 2:
+        raise ValueError("This function supports plotting of up to 2 metrics only")
+    default_colors = ["#000000", "#FF0000"]  # black, red
+    for (metric_name, metric_info), default_color in zip(
+        metrics.items(), default_colors
+    ):
+        if "color" not in metric_info:
+            metric_info["color"] = default_color
+
+    # Convert dates if needed
+    data = data.copy()
+    data[date_col] = pd.to_datetime(data[date_col])
+
+    # Create figure
+    fig, ax1 = plt.subplots(figsize=figsize)
+    axes = [ax1]
+
+    # Create additional y-axes if needed
+    for i in range(len(metrics) - 1):
+        axes.append(ax1.twinx())
+        axes[-1].spines["right"].set_position(("outward", 60 * i))
+
+    # Add alternating year backgrounds if requested
+    if alternate_years:
+        start_year = data[date_col].min().year
+        end_year = data[date_col].max().year
+        for year in range(start_year, end_year + 1):
+            if year % 2 == 0:
+                start = pd.Timestamp(f"{year}-01-01")
+                end = pd.Timestamp(f"{year + 1}-01-01")
+                ax1.axvspan(start, end, color="gray", alpha=0.1)
+
+    # Plot each metric
+    for (metric_name, metric_info), ax in zip(metrics.items(), axes):
+        values = data[metric_info["values"]]
+        color = metric_info["color"]
+
+        # Plot the metric (corrected line)
+        ax.plot(data[date_col], values, "o-", color=color, label=metric_name)
+        ax.set_ylabel(metric_name, color=color)
+        ax.tick_params(axis="y", labelcolor=color)
+
+        # Add min/max annotations if requested
+        if show_minmax:
+            min_idx = values.idxmin()
+            max_idx = values.idxmax()
+
+            # Calculate vertical offsets based on relative position
+            # If points are close, stack annotations vertically
+            for idx, label in [(min_idx, "Min"), (max_idx, "Max")]:
+                # Check if this point is close to any previous annotations
+                point_date = data[date_col][idx]
+                point_value = values[idx]
+
+                # Default offsets
+                x_offset = 5
+                y_offset = -5 if label == "Max" else 5
+
+                # Check proximity to other metric's points
+                for other_metric, other_info in metrics.items():
+                    if other_metric != metric_name:
+                        other_values = data[other_info["values"]]
+                        date_diff = abs(
+                            (point_date - data[date_col]).dt.total_seconds()
+                        )
+                        closest_idx = date_diff.idxmin()
+
+                        # If points are close in time, adjust vertical position
+                        if (
+                            date_diff[closest_idx]
+                            < pd.Timedelta(days=60).total_seconds()
+                        ):
+                            if point_value > other_values[closest_idx]:
+                                y_offset += 10  # Move annotation higher
+                            else:
+                                y_offset += -10  # Move annotation lower
+
+                ax.annotate(
+                    f"{label} {metric_name}: {values[idx]}",
+                    xy=(data[date_col][idx], values[idx]),
+                    xytext=(x_offset, y_offset),
+                    textcoords="offset points",
+                    color=color,
+                    fontsize=8,
+                )
+
+    # Add treatment markers if provided
+    if treatment_dates:
+        for treatment, dates in treatment_dates.items():
+            dates = pd.to_datetime(dates)
+            for i, date in enumerate(dates):
+                plt.axvline(x=date, color="green", linestyle="--", alpha=0.7)
+                plt.annotate(
+                    f"{treatment} {i + 1}",
+                    xy=(date, 0),
+                    xytext=(date, ax1.get_ylim()[1] * 0.1),
+                    rotation=90,
+                    color="green",
+                    fontweight="bold",
+                )
+
+    # Format x-axis
+    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+    ax1.grid(True, axis="x", linestyle="--", alpha=0.2)
+
+    # Set x-axis range with padding
+    date_min = data[date_col].min() - pd.Timedelta(days=30)
+    date_max = data[date_col].max() + pd.Timedelta(days=30)
+    ax1.set_xlim([date_min, date_max])
+
+    # Add title
+    if title:
+        plt.title(title)
+
+    # Adjust layout
+    fig.autofmt_xdate(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.subplots_adjust(bottom=0.2)
+
+    return fig

@@ -6,13 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.1.10]
+## [0.1.10] 
 
 ## Added
 - Add `plot_medical_timeseries` function to plot_utils
   - Support 1-2 metrics with medical standard colors (black/red)
   - Support treatment markers and min/max annotations
   - Display alternating year backgrounds
+- Add `plot_stacked_bar_over_time` function to plot_utils
+  - Display time-based categorical distributions
+  - Support percentage and count visualization
+  - Include custom color palettes and label mapping
+  
 
 ## [0.1.9] - 2025-04-19
 

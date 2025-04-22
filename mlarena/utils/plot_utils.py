@@ -1,10 +1,16 @@
+from typing import Dict, List, Optional
+
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-__all__ = ["boxplot_scatter_overlay", "plot_medical_timeseries"]
+__all__ = [
+    "boxplot_scatter_overlay",
+    "plot_medical_timeseries",
+    "plot_stacked_bar_over_time",
+]
 
 
 def boxplot_scatter_overlay(
@@ -241,3 +247,87 @@ def plot_medical_timeseries(
     plt.subplots_adjust(bottom=0.2)
 
     return fig
+
+
+def plot_stacked_bar_over_time(
+    data: pd.DataFrame,
+    date_col: str,
+    cat_col: str,
+    label_dict: Optional[Dict[str, str]] = None,
+    is_pct: bool = True,
+    title: str = "Time Series Stacked Bar Chart",
+    xlabel: str = "Date",
+    ylabel: Optional[str] = None,
+    figsize: tuple = (12, 6),
+    color_palette: Optional[List[str]] = None,
+) -> None:
+    """
+    Plot a stacked bar chart showing the distribution of a categorical variable over time,
+    either in percentage or actual counts.
+
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        date_col (str): Name of the date column.
+        cat_col (str): Name of the categorical column.
+        label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
+        is_pct (bool): Whether to display percentage (True) or actual count (False).
+        title (str): Title of the plot.
+        xlabel (str): Label for the x-axis.
+        ylabel (str): Label for the y-axis (default is auto-set based on is_pct).
+        figsize (tuple): Figure size.
+        color_palette (List[str], optional): List of colors for the bars.
+    """
+
+    # Use provided color palette or fallback to matplotlib's default color cycle
+    num_categories = data[cat_col].nunique()
+    if label_dict:
+        num_categories = len(label_dict)
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    colors = (
+        color_palette if color_palette is not None else color_cycle[:num_categories]
+    )
+
+    # Convert date column to datetime
+    df = data.copy()
+    df[date_col] = pd.to_datetime(df[date_col])
+
+    # Aggregate data
+    class_agg = df.groupby([date_col, cat_col]).size().unstack(fill_value=0)
+
+    # Sort index for time order
+    class_agg = class_agg.sort_index()
+
+    # Compute percentage if requested
+    if is_pct:
+        data_to_plot = class_agg.div(class_agg.sum(axis=1), axis=0) * 100
+        y_label = ylabel or "Percentage"
+    else:
+        data_to_plot = class_agg
+        y_label = ylabel or "Count"
+
+    # Apply label mapping if provided
+    if label_dict:
+        data_to_plot.rename(columns=label_dict, inplace=True)
+
+    # Format x-axis labels
+    date_labels = data_to_plot.index.strftime("%Y-%m")
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize)
+    data_to_plot.plot(
+        kind="bar", stacked=True, color=colors[: len(data_to_plot.columns)], ax=ax
+    )
+
+    ax.set_xticks(range(len(date_labels)))
+    ax.set_xticklabels(date_labels, rotation=45)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(y_label)
+    ax.legend(
+        title=cat_col if not label_dict else "",
+        bbox_to_anchor=(1.05, 1),
+        loc="upper left",
+    )
+    ax.grid(True, axis="y")
+    plt.tight_layout()
+    plt.show()

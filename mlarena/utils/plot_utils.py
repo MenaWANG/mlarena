@@ -140,12 +140,12 @@ def plot_medical_timeseries(
     data[date_col] = pd.to_datetime(data[date_col])
 
     # Create figure
-    fig, ax1 = plt.subplots(figsize=figsize)
-    axes = [ax1]
+    fig, ax = plt.subplots(figsize=figsize)
+    axes = [ax]
 
     # Create additional y-axes if needed
     for i in range(len(metrics) - 1):
-        axes.append(ax1.twinx())
+        axes.append(ax.twinx())
         axes[-1].spines["right"].set_position(("outward", 60 * i))
 
     # Add alternating year backgrounds if requested
@@ -156,7 +156,7 @@ def plot_medical_timeseries(
             if year % 2 == 0:
                 start = pd.Timestamp(f"{year}-01-01")
                 end = pd.Timestamp(f"{year + 1}-01-01")
-                ax1.axvspan(start, end, color="gray", alpha=0.1)
+                ax.axvspan(start, end, color="gray", alpha=0.1)
 
     # Plot each metric
     for (metric_name, metric_info), ax in zip(metrics.items(), axes):
@@ -217,25 +217,26 @@ def plot_medical_timeseries(
         for treatment, dates in treatment_dates.items():
             dates = pd.to_datetime(dates)
             for i, date in enumerate(dates):
-                plt.axvline(x=date, color="green", linestyle="--", alpha=0.7)
-                plt.annotate(
+                ax.axvline(x=date, color="green", linestyle="--", alpha=0.7)
+                ax.annotate(
                     f"{treatment} {i + 1}",
                     xy=(date, 0),
-                    xytext=(date, ax1.get_ylim()[1] * 0.1),
+                    xytext=(date, ax.get_ylim()[1] * 0.1),
                     rotation=90,
                     color="green",
                     fontweight="bold",
                 )
 
     # Format x-axis
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
-    ax1.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
-    ax1.grid(True, axis="x", linestyle="--", alpha=0.2)
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
     # Set x-axis range with padding
     date_min = data[date_col].min() - pd.Timedelta(days=30)
     date_max = data[date_col].max() + pd.Timedelta(days=30)
-    ax1.set_xlim([date_min, date_max])
+    ax.set_xlim([date_min, date_max])
+    for axis in axes:
+        axis.grid(True, axis="x", linestyle="--", alpha=0.2)
 
     # Add title
     if title:
@@ -245,8 +246,9 @@ def plot_medical_timeseries(
     fig.autofmt_xdate(rotation=45, ha="right")
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)
+    ax.grid(True, axis="x", linestyle="--", alpha=0.2, zorder=10)
 
-    return fig
+    return fig, axes
 
 
 def plot_stacked_bar_over_time(
@@ -330,4 +332,5 @@ def plot_stacked_bar_over_time(
     )
     ax.grid(True, axis="y")
     plt.tight_layout()
-    plt.show()
+
+    return fig, ax

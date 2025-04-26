@@ -11,7 +11,7 @@ try:
 
     __version__ = version("mlarena")
 except ImportError:
-    __version__ = "0.1.10"
+    __version__ = "0.2.0"
 
 from . import utils
 from .pipeline import ML_PIPELINE

@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.1.10] 
+## [0.2.0] - 2025-04-26
 
 ## Added
+- Switched hyperparameter tuning framework from `hyperopt` to `Optuna`
+  - Support for parallel coordinate plots with consistent colorscales (red for higher score)
+  - Implemented patient pruning for early stopping in hyperparameter search
+  - Utilize n_startup_trials to delay pruning until sufficient baseline trials are completed
+  - Added disable_optuna_logging parameter to control Optuna's verbosity
+  - Note that `hyperopt` will be [removed from the Databricks DBR ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/hyperopt-concepts#:~:text=The%20open%2Dsource%20version%20of,Hyperopt%20distributed%20hyperparameter%20tuning%20functionality.)
 - Add `plot_medical_timeseries` function to plot_utils
   - Support 1-2 metrics with medical standard colors (black/red)
   - Support treatment markers and min/max annotations

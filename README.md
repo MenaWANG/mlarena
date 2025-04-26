@@ -24,19 +24,20 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-pip install mlarena==0.1.9
+pip install mlarena==0.2.0
 ```
 
-If you are using the package in Databricks ML Cluster with DBR runtime >= 15.2, you can try installing without dependencies (experimental feature):
+If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-pip install mlarena==0.1.9 --no-deps
+pip install mlarena==0.2.0 --no-deps
 ```
+If you are using earlier DBR runtimes, simply install `optuna` in addition. Note: [`optuna` is recommended by Databricks, while `hyperopt` will be removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ## Usage Example
 
 * For quick start with a basic example, see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb).   
-* For more advanced examples, see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb).   
+* For more advanced examples on model optimization, see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb).   
 * For visualization utilities, see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb).
 * For handling common challenges in machine learning, see [4.ml_discussions.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/4.ml_discussions.ipynb).
 
@@ -49,47 +50,56 @@ pip install mlarena==0.1.9 --no-deps
 ![Regression Model Performance](docs/images/model_performance_regression.png)    
 
 ### Explainable ML
-One liner to create global and local explaination based on shap that will work across various classification and regression algorithms.     
+One liner to create global and local explanation based on SHAP that will work across various classification and regression algorithms.     
 
 ![Global Explanation](docs/images/global_explanation.png)    
 
 ![Local Explanation](docs/images/local_explanation.png)    
 
 ### Hyperparameter Optimization
-Parallel Coordinate plot for hyperparameter search space diagnostics.    
+Parallel coordinates plot for hyperparameter search space diagnostics.    
 ![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
 
 
 ## Features
 
-- **Algorithm Agnostic ML Pipeline**:
-  - End-to-end workflow from preprocessing to deployment
-  - Model-agnostic design (works with any scikit-learn compatible model), easily experiment with and swap between algorithms
-  - Support for both classification and regression tasks
-  - Early stopping and validation set support
-  - MLflow integration for experiment tracking and deployment  
+**Algorithm Agnostic ML Pipeline**
+- End-to-end workflow from preprocessing to model evaluation
+- Model-agnostic design compatible with scikit-learn models
+- Support for classification and regression tasks
+- MLflow integration for experiment tracking
+- Custom validation and evaluation metrics
 
-- **Intelligent Preprocessing**:
-  - Automated feature type detection and handling
-  - Smart encoding recommendations based on feature cardinality and rare category
-  - Target encoding with visualization to support smoothing parameter selection
-  - Tunable drop options to optimize one-hot encoding based on model  (tree vs linear) and feature type (binary vs multi-category)
+**Intelligent Preprocessing**
+- Advanced feature analysis with `PreProcessor`
+  - Automated feature type detection
+  - Smart encoding based on cardinality analysis
   - Missing value handling with configurable strategies
-  - Feature selection recommendations with mutual information analysis
+  - Feature selection with mutual information scoring
+- Support optimized preprocessing for both tree-based and linear models
 
-- **Advanced Model Evaluation**:
-  - Comprehensive metrics for both classification and regression
-  - Diagnostic visualization of model performance
-  - Threshold analysis for classification tasks
-  - SHAP-based model explanations (global and local)
+**Model Optimization**
+- Hyperparameter tuning with Optuna
+  - Parallel optimization support
+  - Early stopping with patience control
   - Cross-validation with variance penalty
+- Parallel coordinates plot for
+  - Search ranges diagnostics and
+  - Optimization history tracking
+- Threshold optimization for classification 
+  - With F-beta scores and
+  - Cross-validation
 
-- **Hyperparameter Optimization**:
-  - Bayesian optimization with Hyperopt
-  - Cross-validation based tuning
-  - Parallel coordinates visualization for search space analysis
-  - Early stopping to prevent overfitting
-  - Variance penalty to ensure stable solutions
+**Performance Analysis**
+- Comprehensive metric tracking
+  - Classification: AUC, F1, Fbeta, precision, recall
+  - Regression: RMSE, MAE, R2, adjusted R2, MAPE 
+- Performance visualization
+  - Classification: ROC_AUC curve, Precision-recall curve
+  - Regression: Residual analysis, Prediction error plot  
+- Model interpretability
+  - Global feature importance
+  - Local prediction explanations
 
 
 ## Contributing

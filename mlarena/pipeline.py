@@ -2,26 +2,32 @@
 Pipeline module for MLArena package.
 """
 
+import logging
 import warnings
 
 # Standard library imports
 from typing import Any
+
+from optuna.exceptions import ExperimentalWarning
 
 # mlarena is published on PyPI on 2025-03-27, but mlflow packages index is updated till 2025-03-04 at the moment
 warnings.filterwarnings(
     "ignore",
     message=".*The following packages were not found in the public PyPI package index.*mlarena.*",
 )
+warnings.filterwarnings("ignore", category=ExperimentalWarning)
 
 import matplotlib.pyplot as plt
 import mlflow
 
 # Third-party imports
 import numpy as np
+import optuna
 import pandas as pd
 import shap
-from hyperopt import STATUS_OK, Trials, fmin, hp, space_eval, tpe
 from mlflow.models.signature import infer_signature
+from optuna.pruners import MedianPruner, PatientPruner
+from optuna.visualization import plot_parallel_coordinate
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
@@ -595,96 +601,51 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         return results
 
     @staticmethod
-    def _plot_hyperparameter_search(trials, save_path=None):
-        """
-        Visualize hyperparameter search results using parallel coordinates plot.
-
-        This visualization helps with:
-        - Parameter relationships: Shows how different combinations affect performance
-        - Search coverage: Reveals explored parameter space and potential gaps
-
-        Parameters:
-            trials: hyperopt trials object
-            save_path: optional path to save the plot
-        """
-        # Extract parameter names and values
-        results = []
-        for trial in trials.trials:
-            params = trial["misc"]["vals"]
-            current_params = {
-                key: values[0] if values else None for key, values in params.items()
-            }
-            current_params["score"] = -trial["result"]["loss"]
-            results.append(current_params)
-
-        df = pd.DataFrame(results)
-
-        fig, ax = plt.subplots(figsize=(12, 6))
-
-        # Normalize all columns to [0,1] for better visualization
-        df_norm = df.copy()
-        for col in df.columns:
-            df_norm[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
-
-        # Plot parameters
-        for i in range(len(df)):
-            color = plt.cm.RdYlBu_r(df_norm["score"].iloc[i])
-            ax.plot(range(len(df.columns)), df_norm.iloc[i], color=color, alpha=0.5)
-
-        # Customize plot
-        ax.set_xticks(range(len(df.columns)))
-        ax.set_xticklabels(df.columns, rotation=45, ha="right")
-        ax.set_ylabel("Normalized Hyperparameter Values")
-        ax.set_title("Hyperparameter Search Results")
-
-        # Add colorbar with proper axes
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.RdYlBu_r)
-        sm.set_array(df["score"])
-        plt.colorbar(sm, ax=ax, label=f"Mean CV Score")
-
-        plt.tight_layout()
-        if save_path:
-            plt.savefig(save_path, bbox_inches="tight")
-        plt.show()
-
-    @staticmethod
     def tune(
         X,
         y,
         algorithm,
         preprocessor,
-        space,
+        param_ranges,
         max_evals=500,
         random_state=42,
         beta=1,
-        early_stopping_rounds=100,
+        patience=100,
+        n_startup_trials=10,
+        n_warmup_steps=0,
         verbose=0,
         cv=5,
         cv_variance_penalty=0.1,
         visualize=True,
         task="classification",
         log_best_model=True,
+        disable_optuna_logging=True,
     ):
         """
-        Static method to tune hyperparameters using AUC and find optimal threshold.
+        Static method to tune hyperparameters using Optuna.
 
         Parameters:
             X: Features
             y: Target
             algorithm: ML algorithm class (e.g., lgb.LGBMClassifier)
             preprocessor (Any or None): Data preprocessing pipeline
-            space: Hyperopt parameter search space
+            param_ranges: Dictionary of parameter ranges for Optuna
+                        e.g., {'n_estimators': (50, 500), 'max_depth': (3, 10)}
+                        Specify as tuple (min, max) for int/float or list for categorical
             max_evals: Maximum number of evaluations
             random_state: Random seed for reproducibility
             beta: Beta value for F-beta score optimization (default=1.0)
                 beta > 1 gives more weight to recall
                 beta < 1 gives more weight to precision
-            early_stopping_rounds: Stop tuning if no improvement in specified number of trials
+            patience: Number of trials without improvement before stopping (default=100)
+            n_startup_trials: Number of trials to run before pruning starts (default=10)
+            n_warmup_steps: Number of steps per trial to run before pruning (default=0)
             cv: number of splits for cross-validation
             cv_variance_penalty: Weight for penalizing high variance in cross-validation scores (default=0.1)
             visualize: If True, displays relevant visualization plots
             task: classification or regression
             log_best_model: If True, logs the best model to MLflow (default=True)
+            disable_optuna_logging: If True, suppresses Optuna's verbose logging (default=True)
 
         Returns:
             dict: Contains:
@@ -692,13 +653,31 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 - best_pipeline: Best pipeline model
                 - other metrics and results
         """
+        # Configure optuna logging to suppress outputs
+        if disable_optuna_logging:
+            optuna.logging.set_verbosity(optuna.logging.WARNING)
 
         # Split train+test
         X_train_full, X_test, y_train_full, y_test = train_test_split(
             X, y, test_size=0.2, random_state=random_state
         )
 
-        def objective(params):
+        def objective(trial):
+            # Create parameters dict from param_ranges
+            params = {}
+            for param_name, param_range in param_ranges.items():
+                # Handle different parameter types based on range values
+                if isinstance(param_range, tuple) and len(param_range) == 2:
+                    start, end = param_range
+                    if isinstance(start, int) and isinstance(end, int):
+                        params[param_name] = trial.suggest_int(param_name, start, end)
+                    elif isinstance(start, float) or isinstance(end, float):
+                        params[param_name] = trial.suggest_float(param_name, start, end)
+                elif isinstance(param_range, list):
+                    params[param_name] = trial.suggest_categorical(
+                        param_name, param_range
+                    )
+
             cv_scores = []
             if task == "classification":
                 kf = StratifiedKFold(
@@ -732,77 +711,60 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 results = model.evaluate(
                     X_fold_val, y_fold_val, verbose=False, visualize=False
                 )
+
                 if task == "classification":
                     cv_scores.append(results["auc"])  # maximize auc
                 elif task == "regression":
-                    cv_scores.append(
-                        results["adj_r2"]
-                    )  # maximize adj_r2, backlog: consider minimize RMSE
+                    cv_scores.append(results["rmse"])  # minimize rmse
 
             mean_score = np.mean(cv_scores)
             std_score = np.std(cv_scores)
 
-            # Store CV scores for the best parameters
-            # print(f'mean_auc for this round: {mean_auc}')
-            if len(trials.trials) > 0:
-                historical_max = max(
-                    trial["result"].get("mean_score", 0) for trial in trials.trials
-                )
-                # print(f"highest historical mean_auc: {historical_max}")
-            else:
-                # print("First trial, no historical mean_auc yet")
-                historical_max = 0
+            # Store components separately for later analysis
+            if task == "classification":
+                trial.set_user_attr("mean_auc", mean_score)
+                trial.set_user_attr("std_auc", std_score)
+                # Apply penalty (still maximizing)
+                score = mean_score - cv_variance_penalty * std_score
+                trial.set_user_attr("penalized_auc", score)
+            else:  # regression
+                trial.set_user_attr("mean_rmse", mean_score)
+                trial.set_user_attr("std_rmse", std_score)
+                # Apply penalty (minimizing)
+                score = mean_score + cv_variance_penalty * std_score
+                trial.set_user_attr("penalized_rmse", score)
+                # Store negative for visualization
+                trial.set_user_attr("negative_penalized_rmse", -score)
 
-            if len(trials.trials) == 0 or mean_score > historical_max:
-                objective.best_cv_scores = {"mean": mean_score, "std": std_score}
+            # Return score based on task (maximize for classification, minimize for regression)
+            return score
 
-            # penalize high variance solutions
-            score = mean_score - cv_variance_penalty * std_score
-
-            return {
-                "loss": -score,
-                "status": STATUS_OK,
-                "mean_score": mean_score,
-                "std_score": std_score,
-            }
-
-        # Initialize storage for best CV scores
-        objective.best_cv_scores = {"mean": 0, "std": 0}
-
-        # Run optimization
-        trials = Trials()
-
-        def early_stop_fn(trials, *args):
-            if len(trials.trials) < early_stopping_rounds:
-                return (False, "Not enough trials")
-            # score for the last early_stopping_rounds, the larger the better
-            scores = [
-                -trial["result"]["loss"]
-                for trial in trials.trials[-early_stopping_rounds:]
-            ]
-
-            if len(scores) >= early_stopping_rounds and max(scores) == scores[0]:
-                return (True, f"No improvement in last {early_stopping_rounds} trials")
-            else:
-                return (False, "Continuing optimization")
-
-        best = fmin(
-            fn=objective,
-            space=space,
-            algo=tpe.suggest,
-            max_evals=max_evals,
-            trials=trials,
-            rstate=np.random.default_rng(random_state),
-            early_stop_fn=early_stop_fn,
+        # Create pruner for early stopping
+        pruner = PatientPruner(
+            MedianPruner(
+                n_startup_trials=n_startup_trials, n_warmup_steps=n_warmup_steps
+            ),
+            patience=patience,
         )
 
-        # Get best parameters and create best pipeline
-        best_params = space_eval(space, best)
+        # Create and run study with appropriate direction
+        study = optuna.create_study(
+            direction="maximize" if task == "classification" else "minimize",
+            sampler=optuna.samplers.TPESampler(seed=random_state),
+            pruner=pruner,
+        )
+
+        study.optimize(objective, n_trials=max_evals)
+
+        # Get best parameters
+        best_params = study.best_params
+
         # Train final model with best parameters on full training set
         final_model = ML_PIPELINE(
             model=algorithm(**best_params, verbose=verbose), preprocessor=PreProcessor()
         )
         final_model.fit(X_train_full, y_train_full)
+
         if task == "classification":
             y_pred_proba = final_model.predict(context=None, model_input=X_train_full)
             optimal_threshold = ML_PIPELINE.threshold_analysis(
@@ -810,8 +772,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             )["optimal_threshold"]
 
             # Print results on new data
+            best_trial = study.best_trial
             print(
-                f"Best CV AUC: {objective.best_cv_scores['mean']:.3f}({objective.best_cv_scores['std']:.3f})"
+                f"Best CV AUC: {best_trial.user_attrs['mean_auc']:.3f}({best_trial.user_attrs['std_auc']:.3f})"
             )
             print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
@@ -827,8 +790,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             y_pred = final_model.predict(
                 context=None, model_input=X_train_full
             )  # for logging
+            best_trial = study.best_trial
             print(
-                f"Best CV adjusted r square: {objective.best_cv_scores['mean']:.3f}({objective.best_cv_scores['std']:.3f})"
+                f"Best CV RMSE: {best_trial.user_attrs['mean_rmse']:.3f}({best_trial.user_attrs['std_rmse']:.3f})"
             )
             print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
@@ -840,6 +804,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         print("\nBest parameters found:")
         for param, value in best_params.items():
             print(f"{param}: {value}")
+
         if log_best_model:
             print("Logging the best model to MLflow")
             sample_input = X_train_full.iloc[:1] if len(X_train_full) > 0 else None
@@ -852,38 +817,81 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             )
 
         if visualize:
-            ML_PIPELINE._plot_hyperparameter_search(trials)
+            try:
+                print("\nHyperparameter Parallel Coordinate Plot:")
+                # Use appropriate target based on task
+                target_name = (
+                    "Penalized AUC"
+                    if task == "classification"
+                    else "Negative Penalized RMSE"
+                )
+                target_attr = (
+                    "penalized_auc"
+                    if task == "classification"
+                    else "negative_penalized_rmse"
+                )
+
+                fig_parallel = plot_parallel_coordinate(
+                    study,
+                    target=lambda t: t.user_attrs[target_attr],
+                    target_name=target_name,
+                )
+
+                # Set color scale to ensure red is for higher values
+                for trace in fig_parallel.data:
+                    if trace.type == "parcoords":
+                        trace.line.colorscale = "RdYlBu"
+                        trace.line.reversescale = True  # red represent higher values
+                        trace.line.colorbar = dict(
+                            title=target_name, title_side="right"
+                        )
+
+                fig_parallel.show()
+
+            except ImportError:
+                print("Plotly is not installed. Skipping parallel coordinate plot.")
+                print(
+                    "To enable this visualization, install Plotly with: pip install plotly"
+                )
+
+        # Prepare return values, similar to current function
+        results = {
+            "best_params": best_params,
+            "best_pipeline": final_model,
+            "study": study,
+        }
+
+        if log_best_model:
+            results["model_info"] = model_info
 
         if task == "classification":
-            return {
-                "model_info": model_info,
-                "best_params": best_params,
-                "best_pipeline": final_model,
-                "trials": trials,
-                "beta": beta,  # beta for f_beta
-                "optimal_threshold": optimal_threshold,  # optimal threshold to maximize f_beta
-                "test_auc": final_results["auc"],
-                "test_Fbeta": final_results["f_beta"],
-                "test_precision": final_results["precision"],
-                "test_recall": final_results["recall"],
-                "cv_auc_mean": objective.best_cv_scores["mean"],
-                "cv_auc_std": objective.best_cv_scores["std"],
-            }
+            results.update(
+                {
+                    "beta": beta,  # beta for f_beta
+                    "optimal_threshold": optimal_threshold,  # optimal threshold to maximize f_beta
+                    "test_auc": final_results["auc"],
+                    "test_Fbeta": final_results["f_beta"],
+                    "test_precision": final_results["precision"],
+                    "test_recall": final_results["recall"],
+                    "cv_auc_mean": best_trial.user_attrs["mean_auc"],
+                    "cv_auc_std": best_trial.user_attrs["std_auc"],
+                }
+            )
         elif task == "regression":
-            return {
-                "model_info": model_info,
-                "best_params": best_params,
-                "best_pipeline": final_model,
-                "trials": trials,
-                "test_rmse": final_results["rmse"],
-                "test_nrmse": final_results["nrmse"],
-                "test_mape": final_results["mape"],
-                "test_r2": final_results["r2"],
-                "test_adj_r2": final_results["adj_r2"],
-                "test_rmse_improvement": final_results["rmse_improvement"],
-                "cv_rmse_mean": objective.best_cv_scores["mean"],
-                "cv_rmse_std": objective.best_cv_scores["std"],
-            }
+            results.update(
+                {
+                    "test_rmse": final_results["rmse"],
+                    "test_nrmse": final_results["nrmse"],
+                    "test_mape": final_results["mape"],
+                    "test_r2": final_results["r2"],
+                    "test_adj_r2": final_results["adj_r2"],
+                    "test_rmse_improvement": final_results["rmse_improvement"],
+                    "cv_rmse_mean": best_trial.user_attrs["mean_rmse"],
+                    "cv_rmse_std": best_trial.user_attrs["std_rmse"],
+                }
+            )
+
+        return results
 
     @staticmethod
     def threshold_analysis(

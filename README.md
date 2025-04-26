@@ -32,7 +32,7 @@ If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0]
 ```bash
 pip install mlarena==0.2.0 --no-deps
 ```
-If you are using earlier DBR runtimes, simply install `optuna` in addition. Note: [`optuna` is recommended by Databricks, while `hyperopt` will be removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
+If you are using earlier DBR runtimes, simply install `optuna` in addition. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ## Usage Example
 
@@ -64,31 +64,27 @@ Parallel coordinates plot for hyperparameter search space diagnostics.
 ## Features
 
 **Algorithm Agnostic ML Pipeline**
-- End-to-end workflow from preprocessing to model evaluation
-- Model-agnostic design compatible with scikit-learn models
-- Support for classification and regression tasks
-- MLflow integration for experiment tracking
-- Custom validation and evaluation metrics
+- Unified interface for any scikit-learn compatible model
+- Consistent workflow across classification and regression tasks
+- Automated report generation with comprehensive metrics and visuals
+- Production-ready with MLflow integration for deployment
+- Simplified handoff between experimentation and production
 
 **Intelligent Preprocessing**
-- Advanced feature analysis with `PreProcessor`
-  - Automated feature type detection
-  - Smart encoding based on cardinality analysis
-  - Missing value handling with configurable strategies
-  - Feature selection with mutual information scoring
-- Support optimized preprocessing for both tree-based and linear models
+- Streamlined feature preprocessing with smart defaults and minimal code
+- Automatic feature analysis with data-driven encoding recommendations 
+- Integrated target encoding with visualization for optimal smoothing selection
+- Feature filtering based on information theory metrics (mutual information)
+- Handles the full preprocessing pipeline from missing values to feature encoding
+- Seamless integration with scikit-learn and MLflow for production deployment
+
 
 **Model Optimization**
-- Hyperparameter tuning with Optuna
-  - Parallel optimization support
-  - Early stopping with patience control
-  - Cross-validation with variance penalty
-- Parallel coordinates plot for
-  - Search ranges diagnostics and
-  - Optimization history tracking
-- Threshold optimization for classification 
-  - With F-beta scores and
-  - Cross-validation
+- Efficient hyperparameter tuning with Optuna's TPE sampler
+- Smart early stopping with patient pruning to save computation resources
+- Cross-validation with variance penalty to prevent overfitting
+- Parallel coordinates visualization for search history tracking and parameter space diagnostics
+- Automated threshold optimization with business-focused F-beta scoring
 
 **Performance Analysis**
 - Comprehensive metric tracking

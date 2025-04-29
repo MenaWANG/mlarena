@@ -24,6 +24,7 @@ def boxplot_scatter_overlay(
     jitter=0.08,
     figsize=(10, 6),
     palette=None,
+    return_summary=False,
 ):
     """
     Draws a box plot with semi-transparent boxes and overlays colored dots matching the box colors.
@@ -38,9 +39,11 @@ def boxplot_scatter_overlay(
     - jitter: float, amount of horizontal jitter for dots (default 0.08).
     - figsize: tuple, size of the figure (default (10, 6)).
     - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
+    - return_summary: bool, whether to return a DataFrame of summary stats (default False).
 
     Returns:
     - fig, ax: The figure and axis objects for further customization.
+    - (Optional) summary_df: DataFrame with count, mean, median, std per category if return_summary=True.
     """
     # Prepare data
     categories = sorted(data[x].unique())
@@ -95,7 +98,15 @@ def boxplot_scatter_overlay(
 
     plt.tight_layout()
 
-    return fig, ax
+    if return_summary:
+        summary_df = (
+            data.groupby(x)[y]
+            .agg(n="count", mean="mean", median="median", sd="std")
+            .reset_index()
+        )
+        return fig, ax, summary_df
+    else:
+        return fig, ax
 
 
 def plot_medical_timeseries(

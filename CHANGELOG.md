@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Classification: 'auc', 'f1', 'accuracy'
     - Regression: 'rmse', 'nrmse', 'mape'
   - Maintains all other metrics in results for reference
+- Enhanced `boxplot_scatter_overlay` function
+  - Added `return_summary` parameter to optionally return summary statistics
+  - Returns DataFrame with count, mean, median, and standard deviation per category
+  - Maintains backward compatibility with default return of figure and axis objects
 
 ## [0.2.0] - 2025-04-26
 

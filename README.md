@@ -90,6 +90,9 @@ Parallel coordinates plot for hyperparameter search space diagnostics.
 - Cross-validation with variance penalty to prevent overfitting
 - Parallel coordinates visualization for search history tracking and parameter space diagnostics
 - Automated threshold optimization with business-focused F-beta scoring
+- Flexible metric selection for optimization
+  - Classification: AUC (default), F1, accuracy
+  - Regression: RMSE (default), NRMSE, MAPE
 
 **Performance Analysis**
 - Comprehensive metric tracking

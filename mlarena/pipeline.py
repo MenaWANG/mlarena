@@ -618,6 +618,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         cv_variance_penalty=0.1,
         visualize=True,
         task=None,
+        tune_metric=None,
         log_best_model=True,
         disable_optuna_logging=True,
     ):
@@ -644,6 +645,11 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             cv_variance_penalty: Weight for penalizing high variance in cross-validation scores (default=0.1)
             visualize: If True, displays relevant visualization plots
             task: Optional task type ('classification' or 'regression'). If None, will be automatically detected.
+            tune_metric: Metric to optimize during hyperparameter tuning.
+                   If None, defaults to 'auc' for classification and 'rmse' for regression.
+                   All metrics supported:
+                    - For classification: 'auc', 'f1', 'accuracy'
+                    - For regression: 'rmse', 'nrmse', 'mape'
             log_best_model: If True, logs the best model to MLflow (default=True)
             disable_optuna_logging: If True, suppresses Optuna's verbose logging (default=True)
 
@@ -671,6 +677,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             else:
                 task = "regression"
             del temp_model
+
+        # Set default metric if not specified
+        if tune_metric is None:
+            tune_metric = "auc" if task == "classification" else "rmse"
 
         def objective(trial):
             # Create parameters dict from param_ranges
@@ -723,28 +733,36 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 )
 
                 if task == "classification":
-                    cv_scores.append(results["auc"])  # maximize auc
+                    if tune_metric not in ["auc", "f1", "accuracy"]:
+                        raise ValueError(
+                            f"Unsupported metric for classification: {tune_metric}"
+                        )
+                    cv_scores.append(results[tune_metric])  # maximize metric
                 elif task == "regression":
-                    cv_scores.append(results["rmse"])  # minimize rmse
+                    if tune_metric not in ["rmse", "nrmse", "mape"]:
+                        raise ValueError(
+                            f"Unsupported metric for regression: {tune_metric}"
+                        )
+                    cv_scores.append(results[tune_metric])  # minimize metric
 
             mean_score = np.mean(cv_scores)
             std_score = np.std(cv_scores)
 
             # Store components separately for later analysis
             if task == "classification":
-                trial.set_user_attr("mean_auc", mean_score)
-                trial.set_user_attr("std_auc", std_score)
+                trial.set_user_attr(f"mean_{tune_metric}", mean_score)
+                trial.set_user_attr(f"std_{tune_metric}", std_score)
                 # Apply penalty (still maximizing)
                 score = mean_score - cv_variance_penalty * std_score
-                trial.set_user_attr("penalized_auc", score)
+                trial.set_user_attr(f"penalized_{tune_metric}", score)
             else:  # regression
-                trial.set_user_attr("mean_rmse", mean_score)
-                trial.set_user_attr("std_rmse", std_score)
+                trial.set_user_attr(f"mean_{tune_metric}", mean_score)
+                trial.set_user_attr(f"std_{tune_metric}", std_score)
                 # Apply penalty (minimizing)
                 score = mean_score + cv_variance_penalty * std_score
-                trial.set_user_attr("penalized_rmse", score)
+                trial.set_user_attr(f"penalized_{tune_metric}", score)
                 # Store negative for visualization
-                trial.set_user_attr("negative_penalized_rmse", -score)
+                trial.set_user_attr(f"negative_penalized_{tune_metric}", -score)
 
             # Return score based on task (maximize for classification, minimize for regression)
             return score
@@ -784,7 +802,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             # Print results on new data
             best_trial = study.best_trial
             print(
-                f"Best CV AUC: {best_trial.user_attrs['mean_auc']:.3f}({best_trial.user_attrs['std_auc']:.3f})"
+                f"Best CV {tune_metric.upper()}: {best_trial.user_attrs[f'mean_{tune_metric}']:.3f}({best_trial.user_attrs[f'std_{tune_metric}']:.3f})"
             )
             print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
@@ -802,7 +820,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             )  # for logging
             best_trial = study.best_trial
             print(
-                f"Best CV RMSE: {best_trial.user_attrs['mean_rmse']:.3f}({best_trial.user_attrs['std_rmse']:.3f})"
+                f"Best CV {tune_metric.upper()}: {best_trial.user_attrs[f'mean_{tune_metric}']:.3f}({best_trial.user_attrs[f'std_{tune_metric}']:.3f})"
             )
             print("\nPerformance on holdout validation set:")
             final_results = final_model.evaluate(
@@ -831,14 +849,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 print("\nHyperparameter Parallel Coordinate Plot:")
                 # Use appropriate target based on task
                 target_name = (
-                    "Penalized AUC"
+                    f"Penalized {tune_metric.upper()}"
                     if task == "classification"
-                    else "Negative Penalized RMSE"
+                    else f"Negative Penalized {tune_metric.upper()}"
                 )
                 target_attr = (
-                    "penalized_auc"
+                    f"penalized_{tune_metric}"
                     if task == "classification"
-                    else "negative_penalized_rmse"
+                    else f"negative_penalized_{tune_metric}"
                 )
 
                 fig_parallel = plot_parallel_coordinate(
@@ -879,25 +897,35 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 {
                     "beta": beta,  # beta for f_beta
                     "optimal_threshold": optimal_threshold,  # optimal threshold to maximize f_beta
+                    f"test_{tune_metric}": final_results[tune_metric],
                     "test_auc": final_results["auc"],
                     "test_Fbeta": final_results["f_beta"],
                     "test_precision": final_results["precision"],
                     "test_recall": final_results["recall"],
-                    "cv_auc_mean": best_trial.user_attrs["mean_auc"],
-                    "cv_auc_std": best_trial.user_attrs["std_auc"],
+                    f"cv_{tune_metric}_mean": best_trial.user_attrs[
+                        f"mean_{tune_metric}"
+                    ],
+                    f"cv_{tune_metric}_std": best_trial.user_attrs[
+                        f"std_{tune_metric}"
+                    ],
                 }
             )
         elif task == "regression":
             results.update(
                 {
+                    f"test_{tune_metric}": final_results[tune_metric],
                     "test_rmse": final_results["rmse"],
                     "test_nrmse": final_results["nrmse"],
                     "test_mape": final_results["mape"],
                     "test_r2": final_results["r2"],
                     "test_adj_r2": final_results["adj_r2"],
                     "test_rmse_improvement": final_results["rmse_improvement"],
-                    "cv_rmse_mean": best_trial.user_attrs["mean_rmse"],
-                    "cv_rmse_std": best_trial.user_attrs["std_rmse"],
+                    f"cv_{tune_metric}_mean": best_trial.user_attrs[
+                        f"mean_{tune_metric}"
+                    ],
+                    f"cv_{tune_metric}_std": best_trial.user_attrs[
+                        f"std_{tune_metric}"
+                    ],
                 }
             )
 

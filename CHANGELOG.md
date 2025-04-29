@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatically detects whether the algorithm is a classifier or regressor based on its capabilities
   - Removes the need for users to explicitly specify task type
   - Maintains backward compatibility by allowing manual task specification
+- Customizable metric selection in `tune` function
+  - Added `tune_metric` parameter to specify which metric to optimize
+  - Defaults to 'auc' for classification and 'rmse' for regression
+  - Supports multiple metrics:
+    - Classification: 'auc', 'f1', 'accuracy'
+    - Regression: 'rmse', 'nrmse', 'mape'
+  - Maintains all other metrics in results for reference
 
 ## [0.2.0] - 2025-04-26
 

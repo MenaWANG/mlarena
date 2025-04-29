@@ -32,11 +32,11 @@ If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0]
 ```bash
 %pip install mlarena==0.2.0 --no-deps
 ```
-If you are using earlier DBR runtimes, simply install `optuna` in addition. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
+If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
 %pip install mlarena==0.2.0 --no-deps
-%pip install optuna>=3.6.1
+%pip install optuna==3.6.1
 ```
 
 ## Usage Example
@@ -90,6 +90,9 @@ Parallel coordinates plot for hyperparameter search space diagnostics.
 - Cross-validation with variance penalty to prevent overfitting
 - Parallel coordinates visualization for search history tracking and parameter space diagnostics
 - Automated threshold optimization with business-focused F-beta scoring
+- Flexible metric selection for optimization
+  - Classification: AUC (default), F1, accuracy
+  - Regression: RMSE (default), NRMSE, MAPE
 
 **Performance Analysis**
 - Comprehensive metric tracking

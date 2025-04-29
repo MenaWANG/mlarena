@@ -17,13 +17,16 @@ def boxplot_scatter_overlay(
     data,
     x,
     y,
-    title,
+    title: str = "Box Plot with Scatter Overlay",
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
     box_alpha=0.3,
     dot_size=50,
     dot_alpha=0.8,
     jitter=0.08,
     figsize=(10, 6),
     palette=None,
+    return_summary=False,
 ):
     """
     Draws a box plot with semi-transparent boxes and overlays colored dots matching the box colors.
@@ -32,15 +35,19 @@ def boxplot_scatter_overlay(
     - data: pandas DataFrame containing the data.
     - x: str, the column name for categorical items.
     - y: str, the column name for numerical values.
-    - title: str, the title of the plot.
+    - title: str, the title of the plot. Default is "Box Plot with Scatter Overlay".
+    - xlabel: str, optional, label for x-axis. If None, uses the x column name.
+    - ylabel: str, optional, label for y-axis. If None, uses the y column name.
     - box_alpha: float, transparency level for box fill (default 0.3).
     - dot_size: int, size of the overlaid dots (default 50).
     - jitter: float, amount of horizontal jitter for dots (default 0.08).
     - figsize: tuple, size of the figure (default (10, 6)).
     - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
+    - return_summary: bool, whether to return a DataFrame of summary stats (default False).
 
     Returns:
     - fig, ax: The figure and axis objects for further customization.
+    - (Optional) summary_df: DataFrame with count, mean, median, std per category if return_summary=True.
     """
     # Prepare data
     categories = sorted(data[x].unique())
@@ -87,15 +94,23 @@ def boxplot_scatter_overlay(
 
     # Customize axes
     ax.set_xticks(range(1, num_categories + 1))
-    ax.set_xticklabels(categories, rotation=45, fontsize=12)
-    ax.set_xlabel(x, fontsize=14)
-    ax.set_ylabel(y, fontsize=14)
-    ax.set_title(title, fontsize=16)
-    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.set_xticklabels(categories, rotation=45)
+    ax.set_xlabel(xlabel or x)
+    ax.set_ylabel(ylabel or y)
+    ax.set_title(title)
+    ax.grid(True)
 
     plt.tight_layout()
 
-    return fig, ax
+    if return_summary:
+        summary_df = (
+            data.groupby(x)[y]
+            .agg(n="count", mean="mean", median="median", sd="std")
+            .reset_index()
+        )
+        return fig, ax, summary_df
+    else:
+        return fig, ax
 
 
 def plot_medical_timeseries(
@@ -103,7 +118,9 @@ def plot_medical_timeseries(
     date_col: str,
     metrics: dict,
     treatment_dates: dict = None,
-    title: str = None,
+    title: str = "Medical Time Series with Treatments",
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
     show_minmax: bool = True,
     alternate_years: bool = True,
@@ -119,7 +136,9 @@ def plot_medical_timeseries(
                        'Ferritin': {'values': 'ferritin', 'color': 'red'}}
         treatment_dates: Dictionary of treatment dates
                        e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
-        title: Plot title
+        title: Plot title. Default is "Medical Time Series with Treatments"
+        xlabel: str, optional, label for x-axis. If None, uses "Date".
+        ylabel: str, optional, label for y-axis. If None, uses metric names.
         figsize: Figure size as (width, height)
         show_minmax: Whether to show min/max annotations
         alternate_years: Whether to show alternating year backgrounds
@@ -224,7 +243,6 @@ def plot_medical_timeseries(
                     xytext=(date, ax.get_ylim()[1] * 0.1),
                     rotation=90,
                     color="green",
-                    fontweight="bold",
                 )
 
     # Format x-axis
@@ -236,29 +254,39 @@ def plot_medical_timeseries(
     date_max = data[date_col].max() + pd.Timedelta(days=30)
     ax.set_xlim([date_min, date_max])
     for axis in axes:
-        axis.grid(True, axis="x", linestyle="--", alpha=0.2)
+        axis.grid(True, axis="x")
 
-    # Add title
+    # Add title and labels
     if title:
         plt.title(title)
+    ax.set_xlabel(xlabel or "Date")
+
+    # Handle ylabels for multiple metrics
+    if len(metrics) == 1:
+        ax.set_ylabel(ylabel or list(metrics.keys())[0])
+    else:
+        # For multiple metrics, use their names as labels
+        for axis, (metric_name, _) in zip(axes, metrics.items()):
+            axis.set_ylabel(metric_name)
 
     # Adjust layout
     fig.autofmt_xdate(rotation=45, ha="right")
     plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)
-    ax.grid(True, axis="x", linestyle="--", alpha=0.2, zorder=10)
+    ax.grid(True, axis="x", zorder=10)
 
     return fig, axes
 
 
 def plot_stacked_bar_over_time(
     data: pd.DataFrame,
-    date_col: str,
-    cat_col: str,
+    x: str,
+    y: str,
+    freq: str = "ME",  # 'm'=minute, 'h'=hour, 'D'=day, 'ME'=month end, 'YE'=year end
     label_dict: Optional[Dict[str, str]] = None,
     is_pct: bool = True,
     title: str = "Time Series Stacked Bar Chart",
-    xlabel: str = "Date",
+    xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
     color_palette: Optional[List[str]] = None,
@@ -269,19 +297,20 @@ def plot_stacked_bar_over_time(
 
     Parameters:
         data (pd.DataFrame): Input DataFrame.
-        date_col (str): Name of the date column.
-        cat_col (str): Name of the categorical column.
+        x (str): Name of the datetime column.
+        y (str): Name of the categorical column.
+        freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'ME'=month end, 'YE'=year end).
         label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
         is_pct (bool): Whether to display percentage (True) or actual count (False).
         title (str): Title of the plot.
-        xlabel (str): Label for the x-axis.
-        ylabel (str): Label for the y-axis (default is auto-set based on is_pct).
-        figsize (tuple): Figure size.
+        xlabel (str, optional): Label for the x-axis. If None, will be set based on frequency.
+        ylabel (str, optional): Label for the y-axis (default is auto-set based on is_pct).
+        figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
         color_palette (List[str], optional): List of colors for the bars.
     """
 
     # Use provided color palette or fallback to matplotlib's default color cycle
-    num_categories = data[cat_col].nunique()
+    num_categories = data[y].nunique()
     if label_dict:
         num_categories = len(label_dict)
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
@@ -289,12 +318,13 @@ def plot_stacked_bar_over_time(
         color_palette if color_palette is not None else color_cycle[:num_categories]
     )
 
-    # Convert date column to datetime
+    # Convert x column to datetime and set as index for resampling
     df = data.copy()
-    df[date_col] = pd.to_datetime(df[date_col])
+    df[x] = pd.to_datetime(df[x])
+    df = df.set_index(x)
 
-    # Aggregate data
-    class_agg = df.groupby([date_col, cat_col]).size().unstack(fill_value=0)
+    # Aggregate data with specified frequency
+    class_agg = df.groupby([pd.Grouper(freq=freq), y]).size().unstack(fill_value=0)
 
     # Sort index for time order
     class_agg = class_agg.sort_index()
@@ -307,12 +337,37 @@ def plot_stacked_bar_over_time(
         data_to_plot = class_agg
         y_label = ylabel or "Count"
 
+    # Set default xlabel based on frequency
+    if xlabel is None:
+        if freq == "h":
+            x_label = "Hour"
+        elif freq == "D":
+            x_label = "Date"
+        elif freq in ["ME", "MS"]:
+            x_label = "Month"
+        elif freq in ["YE", "YS"]:
+            x_label = "Year"
+        else:
+            x_label = "Time"
+    else:
+        x_label = xlabel
+
     # Apply label mapping if provided
     if label_dict:
         data_to_plot.rename(columns=label_dict, inplace=True)
 
-    # Format x-axis labels
-    date_labels = data_to_plot.index.strftime("%Y-%m")
+    # Format x-axis labels based on frequency
+    if freq == "h":
+        date_format = "%Y-%m-%d %H:00"
+    elif freq == "D":
+        date_format = "%Y-%m-%d"
+    elif freq in ["ME", "MS"]:
+        date_format = "%Y-%m"
+    elif freq in ["YE", "YS"]:
+        date_format = "%Y"
+    else:  # other frequencies
+        date_format = "%Y-%m-%d %H:%M"
+    date_labels = data_to_plot.index.strftime(date_format)
 
     # Plotting
     fig, ax = plt.subplots(figsize=figsize)
@@ -321,15 +376,11 @@ def plot_stacked_bar_over_time(
     )
 
     ax.set_xticks(range(len(date_labels)))
-    ax.set_xticklabels(date_labels, rotation=45)
+    ax.set_xticklabels(date_labels, rotation=45, ha="right")
     ax.set_title(title)
-    ax.set_xlabel(xlabel)
+    ax.set_xlabel(x_label)
     ax.set_ylabel(y_label)
-    ax.legend(
-        title=cat_col if not label_dict else "",
-        bbox_to_anchor=(1.05, 1),
-        loc="upper left",
-    )
+    ax.legend(title=y if not label_dict else "")
     ax.grid(True, axis="y")
     plt.tight_layout()
 

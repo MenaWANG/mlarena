@@ -5,13 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.1] - 
+## [0.2.1] - 2025-04-30
 
 ### Added
-- Auto-detection of task type (classification/regression) in `tune` function
-  - Automatically detects whether the algorithm is a classifier or regressor based on its capabilities
-  - Removes the need for users to explicitly specify task type
-  - Maintains backward compatibility by allowing manual task specification
 - Customizable metric selection in `tune` function
   - Added `tune_metric` parameter to specify which metric to optimize
   - Defaults to 'auc' for classification and 'rmse' for regression
@@ -19,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Classification: 'auc', 'f1', 'accuracy'
     - Regression: 'rmse', 'nrmse', 'mape'
   - Maintains all other metrics in results for reference
+- Auto-detection of task type (classification/regression) in `tune` function
+  - Automatically detects whether the algorithm is a classifier or regressor based on its capabilities
+  - Maintains backward compatibility by allowing manual task specification
 - Enhanced `boxplot_scatter_overlay` function
   - Added `return_summary` parameter to optionally return summary statistics
   - Returns DataFrame with count, mean, median, and standard deviation per category
@@ -38,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added customizable xlabel and ylabel parameters to all plotting functions
   - Removed hardcoded styling elements to align with matplotlib practices
   - Enhanced documentation for all plotting functions
+- Added some data utility functions for common data manipulation tasks
+  - `clean_dollar_cols`: Clean dollar amount columns by removing '$' and commas
+  - `value_counts_with_pct`: Calculate value counts with percentages
+  - `transform_date_cols`: Convert string dates to datetime format
+  - Added tests for data utility functions
 
 ## [0.2.0] - 2025-04-26
 

@@ -617,7 +617,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         cv=5,
         cv_variance_penalty=0.1,
         visualize=True,
-        task="classification",
+        task=None,
         log_best_model=True,
         disable_optuna_logging=True,
     ):
@@ -643,7 +643,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             cv: number of splits for cross-validation
             cv_variance_penalty: Weight for penalizing high variance in cross-validation scores (default=0.1)
             visualize: If True, displays relevant visualization plots
-            task: classification or regression
+            task: Optional task type ('classification' or 'regression'). If None, will be automatically detected.
             log_best_model: If True, logs the best model to MLflow (default=True)
             disable_optuna_logging: If True, suppresses Optuna's verbose logging (default=True)
 
@@ -661,6 +661,16 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         X_train_full, X_test, y_train_full, y_test = train_test_split(
             X, y, test_size=0.2, random_state=random_state
         )
+
+        # Auto-detect task type if not specified
+        if task is None:
+            # Create a temporary instance to check the type
+            temp_model = algorithm()
+            if hasattr(temp_model, "predict_proba"):
+                task = "classification"
+            else:
+                task = "regression"
+            del temp_model
 
         def objective(trial):
             # Create parameters dict from param_ranges

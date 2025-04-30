@@ -26,6 +26,7 @@ def boxplot_scatter_overlay(
     jitter=0.08,
     figsize=(10, 6),
     palette=None,
+    use_single_color=False,
     return_summary=False,
 ):
     """
@@ -43,6 +44,7 @@ def boxplot_scatter_overlay(
     - jitter: float, amount of horizontal jitter for dots (default 0.08).
     - figsize: tuple, size of the figure (default (10, 6)).
     - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
+    - use_single_color: bool, whether to use a single color for all boxes (default False).
     - return_summary: bool, whether to return a DataFrame of summary stats (default False).
 
     Returns:
@@ -55,12 +57,23 @@ def boxplot_scatter_overlay(
     data_per_category = [data[data[x] == cat][y].values for cat in categories]
 
     # Define color palette
-    if palette is None:
-        # Use Matplotlib's default color cycle with 10 distinct colors at most
-        color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-        colors = color_cycle[:num_categories]
+    if use_single_color:
+        # Use a single color for all boxes and dots
+        if palette is None:
+            color = plt.rcParams["axes.prop_cycle"].by_key()["color"][
+                0
+            ]  # Use first color from default cycle
+        else:
+            color = palette[0] if isinstance(palette, list) else palette
+        colors = [color] * num_categories
     else:
-        colors = palette[:num_categories]
+        # Use multiple colors from the palette
+        if palette is None:
+            # Use Matplotlib's default color cycle with 10 distinct colors at most
+            color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+            colors = color_cycle[:num_categories]
+        else:
+            colors = palette[:num_categories]
 
     # Create the figure and axis
     fig, ax = plt.subplots(figsize=figsize)
@@ -94,7 +107,7 @@ def boxplot_scatter_overlay(
 
     # Customize axes
     ax.set_xticks(range(1, num_categories + 1))
-    ax.set_xticklabels(categories, rotation=45)
+    ax.set_xticklabels(categories)
     ax.set_xlabel(xlabel or x)
     ax.set_ylabel(ylabel or y)
     ax.set_title(title)
@@ -278,11 +291,39 @@ def plot_medical_timeseries(
     return fig, axes
 
 
+def _get_date_format_for_freq(freq):
+    """Helper function to get date format string based on frequency."""
+    if freq == "h":
+        return "%Y-%m-%d %H:00"
+    elif freq == "D":
+        return "%Y-%m-%d"
+    elif freq in ["ME", "MS"]:
+        return "%Y-%m"
+    elif freq in ["YE", "YS"]:
+        return "%Y"
+    else:  # other frequencies
+        return "%Y-%m-%d %H:%M"
+
+
+def _get_label_for_freq(freq):
+    """Helper function to get default axis label based on frequency."""
+    if freq == "h":
+        return "Hour"
+    elif freq == "D":
+        return "Date"
+    elif freq in ["ME", "MS"]:
+        return "Month"
+    elif freq in ["YE", "YS"]:
+        return "Year"
+    else:
+        return "Time"
+
+
 def plot_stacked_bar_over_time(
     data: pd.DataFrame,
     x: str,
     y: str,
-    freq: str = "ME",  # 'm'=minute, 'h'=hour, 'D'=day, 'ME'=month end, 'YE'=year end
+    freq: str = "MS",  # 'm'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start
     label_dict: Optional[Dict[str, str]] = None,
     is_pct: bool = True,
     title: str = "Time Series Stacked Bar Chart",
@@ -290,7 +331,7 @@ def plot_stacked_bar_over_time(
     ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
     color_palette: Optional[List[str]] = None,
-) -> None:
+):
     """
     Plot a stacked bar chart showing the distribution of a categorical variable over time,
     either in percentage or actual counts.
@@ -299,7 +340,7 @@ def plot_stacked_bar_over_time(
         data (pd.DataFrame): Input DataFrame.
         x (str): Name of the datetime column.
         y (str): Name of the categorical column.
-        freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'ME'=month end, 'YE'=year end).
+        freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start).
         label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
         is_pct (bool): Whether to display percentage (True) or actual count (False).
         title (str): Title of the plot.
@@ -338,35 +379,14 @@ def plot_stacked_bar_over_time(
         y_label = ylabel or "Count"
 
     # Set default xlabel based on frequency
-    if xlabel is None:
-        if freq == "h":
-            x_label = "Hour"
-        elif freq == "D":
-            x_label = "Date"
-        elif freq in ["ME", "MS"]:
-            x_label = "Month"
-        elif freq in ["YE", "YS"]:
-            x_label = "Year"
-        else:
-            x_label = "Time"
-    else:
-        x_label = xlabel
+    x_label = xlabel or _get_label_for_freq(freq)
 
     # Apply label mapping if provided
     if label_dict:
         data_to_plot.rename(columns=label_dict, inplace=True)
 
     # Format x-axis labels based on frequency
-    if freq == "h":
-        date_format = "%Y-%m-%d %H:00"
-    elif freq == "D":
-        date_format = "%Y-%m-%d"
-    elif freq in ["ME", "MS"]:
-        date_format = "%Y-%m"
-    elif freq in ["YE", "YS"]:
-        date_format = "%Y"
-    else:  # other frequencies
-        date_format = "%Y-%m-%d %H:%M"
+    date_format = _get_date_format_for_freq(freq)
     date_labels = data_to_plot.index.strftime(date_format)
 
     # Plotting
@@ -385,3 +405,126 @@ def plot_stacked_bar_over_time(
     plt.tight_layout()
 
     return fig, ax
+
+
+def plot_distribution_over_time(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    freq: str = "MS",  # 'm'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start
+    title: str = "Distribution Over Time",
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: tuple = (12, 6),
+    box_alpha: float = 0.3,
+    dot_size: int = 50,
+    dot_alpha: float = 0.8,
+    jitter: float = 0.08,
+    color_palette: Optional[List[str]] = None,
+    return_summary: bool = False,
+):
+    """
+    Plot the distribution of a continuous variable over time, showing box plots with scatter overlay.
+
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        x (str): Name of the datetime column.
+        y (str): Name of the continuous column.
+        freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start).
+        title (str): Title of the plot.
+        xlabel (str, optional): Label for the x-axis. If None, will be set based on frequency.
+        ylabel (str, optional): Label for the y-axis. If None, uses the y column name.
+        figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
+        box_alpha (float): Transparency level for box fill (default 0.3).
+        dot_size (int): Size of the overlaid dots (default 50).
+        dot_alpha (float): Transparency level for dots (default 0.8).
+        jitter (float): Amount of horizontal jitter for dots (default 0.08).
+        color_palette (List[str], optional): List of colors for the boxes and dots.
+        return_summary (bool): Whether to return a DataFrame of summary statistics (default False).
+
+    Returns:
+        Tuple[plt.Figure, plt.Axes] or Tuple[plt.Figure, plt.Axes, pd.DataFrame]:
+            - Figure and axis objects for further customization
+            - (Optional) DataFrame with count, mean, median, std per time period if return_summary=True
+    """
+    # Convert x column to datetime
+    df = data.copy()
+    df[x] = pd.to_datetime(df[x])
+
+    # Create a DataFrame with time periods as index
+    period_df = pd.DataFrame({y: df[y].values}, index=df[x])
+
+    # Get date format for the specified frequency
+    date_format = _get_date_format_for_freq(freq)
+
+    # Group by time period
+    grouped = period_df.groupby(pd.Grouper(freq=freq))
+
+    # Create a new DataFrame for plotting
+    plot_data = []
+    time_periods = []
+
+    # Process each time group and collect time periods
+    for name, group in grouped:
+        if not group.empty:
+            time_periods.append(name)
+            formatted_name = name.strftime(date_format)
+            for val in group[y]:
+                plot_data.append({"time_period": formatted_name, y: val})
+
+    # Convert to DataFrame
+    plot_df = pd.DataFrame(plot_data)
+
+    # Sort time periods chronologically
+    sorted_time_periods = sorted(time_periods)
+    formatted_sorted_periods = [
+        period.strftime(date_format) for period in sorted_time_periods
+    ]
+
+    # Create a categorical type with the correct order
+    plot_df["time_period"] = pd.Categorical(
+        plot_df["time_period"], categories=formatted_sorted_periods, ordered=True
+    )
+
+    # Sort the dataframe
+    plot_df = plot_df.sort_values("time_period")
+
+    # Set default xlabel based on frequency
+    x_label = xlabel or _get_label_for_freq(freq)
+
+    # Use boxplot_scatter_overlay for visualization
+    if return_summary:
+        fig, ax, summary_df = boxplot_scatter_overlay(
+            data=plot_df,
+            x="time_period",
+            y=y,
+            title=title,
+            xlabel=x_label,
+            ylabel=ylabel,
+            box_alpha=box_alpha,
+            dot_size=dot_size,
+            dot_alpha=dot_alpha,
+            jitter=jitter,
+            figsize=figsize,
+            return_summary=True,
+            use_single_color=True,
+        )
+        ax.tick_params(axis="x", labelrotation=90)
+        return fig, ax, summary_df
+    else:
+        fig, ax = boxplot_scatter_overlay(
+            data=plot_df,
+            x="time_period",
+            y=y,
+            title=title,
+            xlabel=x_label,
+            ylabel=ylabel,
+            box_alpha=box_alpha,
+            dot_size=dot_size,
+            dot_alpha=dot_alpha,
+            jitter=jitter,
+            figsize=figsize,
+            use_single_color=True,
+        )
+        ax.tick_params(axis="x", labelrotation=90)
+        return fig, ax

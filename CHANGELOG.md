@@ -12,17 +12,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added `plot_distribution_over_time` function for visualizing continuous variable distributions over time
-  - Implements boxplots with scatter overlay visualization to display both central tendency and dispersion of the distribution
-  - Supports flexible time frequencies (minutes to years)
+  - Implements boxplots with scatter overlay visualization to display both central tendency and dispersion
+  - Supports flexible time frequencies (minutes to years) with automatic formatting
+  - Allows coloring points by category with the `point_hue` parameter for pattern identification
   - Ensures chronological ordering for accurate trend visualization
   - Provides optional summary statistics (count, mean, median, std)
+  - Uses helper functions `_get_date_format_for_freq` and `_get_label_for_freq` for code reusability
   - Maintains consistent parameter naming with matplotlib/seaborn
-  - Added utility functions `_get_date_format_for_freq` and `_get_label_for_freq` to improve code reusability
+- Enhanced `boxplot_scatter_overlay` function with point coloring capabilities
+  - Added `point_hue` parameter to color points by categorical or numerical variables
+  - Maintained backward compatibility with single-color visualization
+  - Improved visualization flexibility for multivariate analysis
 - Enhanced `transform_date_cols` function with improved usability
   - Added flexible input handling for single or multiple columns
   - Implemented format customization with standard Python strftime directives
   - Added smart case handling for month abbreviations
-- Doc: Added example notebook `3.data_utils.ipynb` demonstrating data utility functions
+- Doc: Added example notebooks demonstrating new functionality
+  - `3.utils_plot.ipynb`: Examples of enhanced plotting capabilities including time-based distributions with single-color and hue-based visualizations
+  - `3.utils_data.ipynb`: Demonstrations of data utility functions and their applications
 
 
 ## [0.2.1] - 2025-04-30

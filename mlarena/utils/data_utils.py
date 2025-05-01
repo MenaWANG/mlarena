@@ -70,9 +70,7 @@ def value_counts_with_pct(
 
 
 def transform_date_cols(
-    df: pd.DataFrame,
-    date_cols: Union[str, List[str]],
-    str_date_format: str = "%Y%m%d"
+    df: pd.DataFrame, date_cols: Union[str, List[str]], str_date_format: str = "%Y%m%d"
 ) -> pd.DataFrame:
     """
     Transforms specified columns in a Pandas DataFrame to datetime format.
@@ -113,15 +111,13 @@ def transform_date_cols(
         if not pd.api.types.is_datetime64_any_dtype(df_[date_col]):
             if "%b" in str_date_format:
                 df_[date_col] = pd.to_datetime(
-                    df_[date_col].astype(str).str.title(),  
+                    df_[date_col].astype(str).str.title(),
                     format=str_date_format,
-                    errors="coerce"
+                    errors="coerce",
                 )
             else:
                 df_[date_col] = pd.to_datetime(
-                    df_[date_col],
-                    format=str_date_format,
-                    errors="coerce"
+                    df_[date_col], format=str_date_format, errors="coerce"
                 )
 
     return df_

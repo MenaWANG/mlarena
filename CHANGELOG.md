@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Provides optional summary statistics (count, mean, median, std)
   - Maintains consistent parameter naming with matplotlib/seaborn
   - Added utility functions `_get_date_format_for_freq` and `_get_label_for_freq` to improve code reusability
+- Enhanced `transform_date_cols` function with improved usability
+  - Added flexible input handling for single or multiple columns
+  - Implemented format customization with standard Python strftime directives
+  - Added smart case handling for month abbreviations
+- Doc: Added example notebook `3.data_utils.ipynb` demonstrating data utility functions
 
 
 ## [0.2.1] - 2025-04-30

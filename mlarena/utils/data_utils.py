@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 
 import pandas as pd
 
@@ -70,27 +70,54 @@ def value_counts_with_pct(
 
 
 def transform_date_cols(
-    df: pd.DataFrame, date_cols: List[str], str_date_format: str = "%Y%m%d"
+    df: pd.DataFrame, date_cols: Union[str, List[str]], str_date_format: str = "%Y%m%d"
 ) -> pd.DataFrame:
     """
     Transforms specified columns in a Pandas DataFrame to datetime format.
 
     Parameters:
         df (pd.DataFrame): The input DataFrame.
-        date_cols (List[str]): A list of column names to be transformed to dates.
-        str_date_format (str, optional): The string format of the dates. Defaults to "%Y%m%d".
+        date_cols (Union[str, List[str]]): A column name or list of column names to be transformed to dates.
+        str_date_format (str, optional): The string format of the dates, using Python's
+            `strftime`/`strptime` directives. Common directives include:
+                %d: Day of the month as a zero-padded decimal (e.g., 25)
+                %m: Month as a zero-padded decimal number (e.g., 08)
+                %b: Abbreviated month name (e.g., Aug)
+                %Y: Four-digit year (e.g., 2024)
+
+            Example formats:
+                "%Y%m%d"   → '20240825'
+                "%d-%m-%Y" → '25-08-2024'
+                "%d%b%Y"   → '25Aug2024'
+
+            Note:
+                If the format uses %b (abbreviated month), strings like '25AUG2024'
+                will be handled automatically by converting to title case before parsing.
 
     Returns:
         pd.DataFrame: The DataFrame with specified columns transformed to datetime format.
+
+    Raises:
+        ValueError: If date_cols is empty.
     """
+    if isinstance(date_cols, str):
+        date_cols = [date_cols]
+
     if not date_cols:
         raise ValueError("date_cols list cannot be empty")
 
     df_ = df.copy()
     for date_col in date_cols:
         if not pd.api.types.is_datetime64_any_dtype(df_[date_col]):
-            df_[date_col] = pd.to_datetime(
-                df_[date_col], format=str_date_format, errors="coerce"
-            )
+            if "%b" in str_date_format:
+                df_[date_col] = pd.to_datetime(
+                    df_[date_col].astype(str).str.title(),
+                    format=str_date_format,
+                    errors="coerce",
+                )
+            else:
+                df_[date_col] = pd.to_datetime(
+                    df_[date_col], format=str_date_format, errors="coerce"
+                )
 
     return df_

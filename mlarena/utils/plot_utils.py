@@ -10,6 +10,7 @@ __all__ = [
     "boxplot_scatter_overlay",
     "plot_medical_timeseries",
     "plot_stacked_bar_over_time",
+    "plot_distribution_over_time",
 ]
 
 
@@ -26,11 +27,12 @@ def boxplot_scatter_overlay(
     jitter=0.08,
     figsize=(10, 6),
     palette=None,
-    use_single_color=False,
+    single_color_box=False,
+    point_hue: Optional[str] = None,
     return_summary=False,
 ):
     """
-    Draws a box plot with semi-transparent boxes and overlays colored dots matching the box colors.
+    Draws a box plot with optional scatter overlay and customizable coloring behavior.
 
     Parameters:
     - data: pandas DataFrame containing the data.
@@ -44,75 +46,116 @@ def boxplot_scatter_overlay(
     - jitter: float, amount of horizontal jitter for dots (default 0.08).
     - figsize: tuple, size of the figure (default (10, 6)).
     - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
-    - use_single_color: bool, whether to use a single color for all boxes (default False).
+    - single_color_box: bool, whether to use a single color for all boxes and points (if point_hue is None).
+    - point_hue: str or None, column name to color points by. If set, overrides color-by-x behavior.
     - return_summary: bool, whether to return a DataFrame of summary stats (default False).
 
     Returns:
     - fig, ax: The figure and axis objects for further customization.
     - (Optional) summary_df: DataFrame with count, mean, median, std per category if return_summary=True.
     """
-    # Prepare data
+
+    fig, ax = plt.subplots(figsize=figsize)
+
     categories = sorted(data[x].unique())
     num_categories = len(categories)
     data_per_category = [data[data[x] == cat][y].values for cat in categories]
 
-    # Define color palette
-    if use_single_color:
-        # Use a single color for all boxes and dots
-        if palette is None:
-            color = plt.rcParams["axes.prop_cycle"].by_key()["color"][
-                0
-            ]  # Use first color from default cycle
-        else:
-            color = palette[0] if isinstance(palette, list) else palette
-        colors = [color] * num_categories
+    # Determine color palette
+    default_colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    if point_hue:
+        # Boxes are transparent with black outlines
+        box_colors = ["white"] * num_categories
+        edge_colors = ["black"] * num_categories
+
+        hue_levels = sorted(data[point_hue].dropna().unique())
+        hue_colors = (
+            palette if palette is not None else default_colors[: len(hue_levels)]
+        )
+        hue_color_map = dict(zip(hue_levels, hue_colors))
+    elif single_color_box:
+        color = (
+            palette[0]
+            if (palette and isinstance(palette, list))
+            else (palette or default_colors[0])
+        )
+        box_colors = [mcolors.to_rgba(color, alpha=box_alpha)] * num_categories
+        edge_colors = [color] * num_categories
     else:
-        # Use multiple colors from the palette
-        if palette is None:
-            # Use Matplotlib's default color cycle with 10 distinct colors at most
-            color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-            colors = color_cycle[:num_categories]
-        else:
-            colors = palette[:num_categories]
+        # Default: color by x, ensure boxes are semi-transparent
+        box_colors = [
+            mcolors.to_rgba(c, alpha=box_alpha)
+            for c in (palette or default_colors[:num_categories])
+        ]
+        edge_colors = [c for c in (palette or default_colors[:num_categories])]
 
-    # Create the figure and axis
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # Plot boxplots
-    boxprops = dict(linewidth=1)
-    medianprops = dict(color="black", linewidth=1)
+    # Boxplot
     bp = ax.boxplot(
         data_per_category,
         patch_artist=True,
         showfliers=False,
-        boxprops=boxprops,
-        medianprops=medianprops,
+        boxprops=dict(linewidth=1),
+        medianprops=dict(color="black", linewidth=1),
     )
 
-    # Set box colors and transparency
-    for patch, color in zip(bp["boxes"], colors):
-        patch.set_facecolor(mcolors.to_rgba(color, alpha=box_alpha))
+    for patch, face_color, edge_color in zip(bp["boxes"], box_colors, edge_colors):
+        patch.set_facecolor(face_color)
+        patch.set_edgecolor(edge_color)
 
-    # Overlay scatter dots
-    for idx, (cat, y_values) in enumerate(zip(categories, data_per_category)):
+    # Scatter overlay
+    for idx, cat in enumerate(categories):
+        y_values = data[data[x] == cat][y].values
         x_jittered = np.random.normal(loc=idx + 1, scale=jitter, size=len(y_values))
-        ax.scatter(
-            x_jittered,
-            y_values,
-            color=colors[idx],
-            s=dot_size,
-            alpha=dot_alpha,
-            edgecolor="none",
+
+        if point_hue:
+            hue_vals = data[data[x] == cat][point_hue].values
+            for xv, yv, hv in zip(x_jittered, y_values, hue_vals):
+                if pd.isna(hv):
+                    continue
+                ax.scatter(
+                    xv,
+                    yv,
+                    color=hue_color_map.get(hv, "grey"),
+                    s=dot_size,
+                    alpha=dot_alpha,
+                    edgecolor="none",
+                    label=hv if hv not in ax.get_legend_handles_labels()[1] else None,
+                    zorder=3,
+                )
+        else:
+            ax.scatter(
+                x_jittered,
+                y_values,
+                color=edge_colors[idx],
+                s=dot_size,
+                alpha=dot_alpha,
+                edgecolor="none",
+            )
+
+    # Legend only for point_hue
+    if point_hue:
+        handles, labels = ax.get_legend_handles_labels()
+        # Remove duplicates while preserving order
+        seen = set()
+        filtered = [
+            (h, l) for h, l in zip(handles, labels) if not (l in seen or seen.add(l))
+        ]
+        if filtered:
+            ax.legend(*zip(*filtered), title=point_hue, loc="best")
+        ax.legend(
+            bbox_to_anchor=(1.02, 1),  # (x, y) position outside the axes
+            loc="upper left",  # anchor point of the legend box
+            borderaxespad=0.0,  # padding between axes and legend box
         )
 
-    # Customize axes
+    # Axis labels and title
     ax.set_xticks(range(1, num_categories + 1))
     ax.set_xticklabels(categories)
     ax.set_xlabel(xlabel or x)
     ax.set_ylabel(ylabel or y)
     ax.set_title(title)
     ax.grid(True)
-
     plt.tight_layout()
 
     if return_summary:
@@ -412,6 +455,7 @@ def plot_distribution_over_time(
     x: str,
     y: str,
     freq: str = "MS",  # 'm'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start
+    point_hue: Optional[str] = None,
     title: str = "Distribution Over Time",
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -420,17 +464,19 @@ def plot_distribution_over_time(
     dot_size: int = 50,
     dot_alpha: float = 0.8,
     jitter: float = 0.08,
-    color_palette: Optional[List[str]] = None,
     return_summary: bool = False,
 ):
     """
     Plot the distribution of a continuous variable over time, showing box plots with scatter overlay.
+    Users can optionally color the points with point_hue, otherwise all the boxes and points will be in one color.
 
     Parameters:
         data (pd.DataFrame): Input DataFrame.
         x (str): Name of the datetime column.
         y (str): Name of the continuous column.
         freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start).
+        point_hue (str, optional): Column name to use for coloring the scatter points. If provided, points will be colored
+                                  according to this variable.
         title (str): Title of the plot.
         xlabel (str, optional): Label for the x-axis. If None, will be set based on frequency.
         ylabel (str, optional): Label for the y-axis. If None, uses the y column name.
@@ -439,7 +485,6 @@ def plot_distribution_over_time(
         dot_size (int): Size of the overlaid dots (default 50).
         dot_alpha (float): Transparency level for dots (default 0.8).
         jitter (float): Amount of horizontal jitter for dots (default 0.08).
-        color_palette (List[str], optional): List of colors for the boxes and dots.
         return_summary (bool): Whether to return a DataFrame of summary statistics (default False).
 
     Returns:
@@ -452,7 +497,12 @@ def plot_distribution_over_time(
     df[x] = pd.to_datetime(df[x])
 
     # Create a DataFrame with time periods as index
-    period_df = pd.DataFrame({y: df[y].values}, index=df[x])
+    if point_hue is not None and point_hue in df.columns:
+        period_df = pd.DataFrame(
+            {y: df[y].values, point_hue: df[point_hue].values}, index=df[x]
+        )
+    else:
+        period_df = pd.DataFrame({y: df[y].values}, index=df[x])
 
     # Get date format for the specified frequency
     date_format = _get_date_format_for_freq(freq)
@@ -469,8 +519,14 @@ def plot_distribution_over_time(
         if not group.empty:
             time_periods.append(name)
             formatted_name = name.strftime(date_format)
-            for val in group[y]:
-                plot_data.append({"time_period": formatted_name, y: val})
+            if point_hue is not None and point_hue in group.columns:
+                for val, hue_val in zip(group[y], group[point_hue]):
+                    plot_data.append(
+                        {"time_period": formatted_name, y: val, point_hue: hue_val}
+                    )
+            else:
+                for val in group[y]:
+                    plot_data.append({"time_period": formatted_name, y: val})
 
     # Convert to DataFrame
     plot_df = pd.DataFrame(plot_data)
@@ -498,6 +554,7 @@ def plot_distribution_over_time(
             data=plot_df,
             x="time_period",
             y=y,
+            point_hue=point_hue if point_hue in plot_df.columns else None,
             title=title,
             xlabel=x_label,
             ylabel=ylabel,
@@ -507,7 +564,7 @@ def plot_distribution_over_time(
             jitter=jitter,
             figsize=figsize,
             return_summary=True,
-            use_single_color=True,
+            single_color_box=True,
         )
         ax.tick_params(axis="x", labelrotation=90)
         return fig, ax, summary_df
@@ -516,6 +573,7 @@ def plot_distribution_over_time(
             data=plot_df,
             x="time_period",
             y=y,
+            point_hue=point_hue if point_hue in plot_df.columns else None,
             title=title,
             xlabel=x_label,
             ylabel=ylabel,
@@ -524,7 +582,7 @@ def plot_distribution_over_time(
             dot_alpha=dot_alpha,
             jitter=jitter,
             figsize=figsize,
-            use_single_color=True,
+            single_color_box=True,
         )
         ax.tick_params(axis="x", labelrotation=90)
         return fig, ax

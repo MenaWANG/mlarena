@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Provides optional summary statistics (count, mean, median, std)
   - Uses helper functions `_get_date_format_for_freq` and `_get_label_for_freq` for code reusability
   - Maintains consistent parameter naming with matplotlib/seaborn
-- Enhanced `boxplot_scatter_overlay` function with point coloring capabilities
+- Enhanced `plot_box_scatter` function with point coloring capabilities
   - Added `point_hue` parameter to color points by categorical or numerical variables
   - Maintained backward compatibility with single-color visualization
   - Improved visualization flexibility for multivariate analysis
@@ -27,7 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added flexible input handling for single or multiple columns
   - Implemented format customization with standard Python strftime directives
   - Added smart case handling for month abbreviations
-- Doc: Added example notebooks demonstrating new functionality
+
+### Changed
+- Standardized parameter naming in visualization functions
+  - Renamed parameters from "dot" to "point" for consistency with matplotlib/seaborn conventions
+  - Renamed `date_col` to `x` in `plot_medical_timeseries` for consistency with other time-series functions
+  - Renamed `boxplot_scatter_overlay` to `plot_box_scatter` for consistent function naming pattern
+  - Reordered parameters to group related options together
+  - Added proper type annotations to all function parameters
+  - Standardized docstring format across all functions using numpy/scipy style
+  - Added comprehensive return value documentation
+  - Improved API consistency across all plotting functions for better usability
+
+### Documentation
+- Added example notebooks demonstrating new functionality
   - `3.utils_plot.ipynb`: Examples of enhanced plotting capabilities including time-based distributions with single-color and hue-based visualizations
   - `3.utils_data.ipynb`: Demonstrations of data utility functions and their applications
 

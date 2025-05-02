@@ -7,48 +7,49 @@ import numpy as np
 import pandas as pd
 
 __all__ = [
-    "boxplot_scatter_overlay",
+    "plot_box_scatter",
     "plot_medical_timeseries",
     "plot_stacked_bar_over_time",
     "plot_distribution_over_time",
 ]
 
 
-def boxplot_scatter_overlay(
-    data,
-    x,
-    y,
+def plot_box_scatter(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
     title: str = "Box Plot with Scatter Overlay",
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
-    box_alpha=0.3,
-    dot_size=50,
-    dot_alpha=0.8,
-    jitter=0.08,
-    figsize=(10, 6),
-    palette=None,
-    single_color_box=False,
     point_hue: Optional[str] = None,
-    return_summary=False,
+    point_size: int = 50,
+    point_alpha: float = 0.8,
+    jitter: float = 0.08,
+    box_alpha: float = 0.3,
+    single_color_box: bool = False,
+    figsize: tuple = (10, 6),
+    palette: Optional[List[str]] = None,
+    return_summary: bool = False,
 ):
     """
     Draws a box plot with optional scatter overlay and customizable coloring behavior.
 
     Parameters:
-    - data: pandas DataFrame containing the data.
-    - x: str, the column name for categorical items.
-    - y: str, the column name for numerical values.
-    - title: str, the title of the plot. Default is "Box Plot with Scatter Overlay".
-    - xlabel: str, optional, label for x-axis. If None, uses the x column name.
-    - ylabel: str, optional, label for y-axis. If None, uses the y column name.
-    - box_alpha: float, transparency level for box fill (default 0.3).
-    - dot_size: int, size of the overlaid dots (default 50).
-    - jitter: float, amount of horizontal jitter for dots (default 0.08).
-    - figsize: tuple, size of the figure (default (10, 6)).
-    - palette: list of colors or None. If None, uses Matplotlib's default color cycle.
-    - single_color_box: bool, whether to use a single color for all boxes and points (if point_hue is None).
-    - point_hue: str or None, column name to color points by. If set, overrides color-by-x behavior.
-    - return_summary: bool, whether to return a DataFrame of summary stats (default False).
+    - data (pd.DataFrame): DataFrame containing the data.
+    - x (str): Column name for categorical items.
+    - y (str): Column name for numerical values.
+    - title (str): Title of the plot. Default is "Box Plot with Scatter Overlay".
+    - xlabel (str, optional): Label for x-axis. If None, uses the x column name.
+    - ylabel (str, optional): Label for y-axis. If None, uses the y column name.
+    - point_hue (str, optional): Column name to color points by. If set, overrides color-by-x behavior.
+    - point_size (int): Size of the overlaid scatter points (default 50).
+    - point_alpha (float): Transparency level for points (default 0.8).
+    - jitter (float): Amount of horizontal jitter for points (default 0.08).
+    - box_alpha (float): Transparency level for box fill (default 0.3).
+    - single_color_box (bool): Whether to use a single color for all boxes and points (if point_hue is None).
+    - figsize (tuple): Size of the figure (default (10, 6)).
+    - palette (List[str], optional): List of colors. If None, uses Matplotlib's default color cycle.
+    - return_summary (bool): Whether to return a DataFrame of summary stats (default False).
 
     Returns:
     - fig, ax: The figure and axis objects for further customization.
@@ -117,8 +118,8 @@ def boxplot_scatter_overlay(
                     xv,
                     yv,
                     color=hue_color_map.get(hv, "grey"),
-                    s=dot_size,
-                    alpha=dot_alpha,
+                    s=point_size,
+                    alpha=point_alpha,
                     edgecolor="none",
                     label=hv if hv not in ax.get_legend_handles_labels()[1] else None,
                     zorder=3,
@@ -128,8 +129,8 @@ def boxplot_scatter_overlay(
                 x_jittered,
                 y_values,
                 color=edge_colors[idx],
-                s=dot_size,
-                alpha=dot_alpha,
+                s=point_size,
+                alpha=point_alpha,
                 edgecolor="none",
             )
 
@@ -171,9 +172,9 @@ def boxplot_scatter_overlay(
 
 def plot_medical_timeseries(
     data: pd.DataFrame,
-    date_col: str,
-    metrics: dict,
-    treatment_dates: dict = None,
+    x: str,
+    metrics: Dict[str, Dict[str, str]],
+    treatment_dates: Optional[Dict[str, List[str]]] = None,
     title: str = "Medical Time Series with Treatments",
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
@@ -185,19 +186,24 @@ def plot_medical_timeseries(
     Plot 1-2 medical metrics over time with treatments and annotations.
 
     Parameters:
-        data: DataFrame containing the time series data
-        date_col: Name of the date column
-        metrics: Dictionary of metrics to plot, each with values and color (optional)
+        data (pd.DataFrame): DataFrame containing the time series data
+        x (str): Name of the datetime column
+        metrics (Dict[str, Dict[str, str]]): Dictionary of metrics to plot, each with values and color (optional)
                 e.g., {'Iron': {'values': 'iron', 'color': 'blue'},
                        'Ferritin': {'values': 'ferritin', 'color': 'red'}}
-        treatment_dates: Dictionary of treatment dates
+        treatment_dates (Dict[str, List[str]], optional): Dictionary of treatment dates
                        e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
-        title: Plot title. Default is "Medical Time Series with Treatments"
-        xlabel: str, optional, label for x-axis. If None, uses "Date".
-        ylabel: str, optional, label for y-axis. If None, uses metric names.
-        figsize: Figure size as (width, height)
-        show_minmax: Whether to show min/max annotations
-        alternate_years: Whether to show alternating year backgrounds
+        title (str): Plot title. Default is "Medical Time Series with Treatments"
+        xlabel (str, optional): Label for x-axis. If None, uses "Date".
+        ylabel (str, optional): Label for y-axis. If None, uses metric names.
+        figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
+        show_minmax (bool): Whether to show min/max annotations. Default is True.
+        alternate_years (bool): Whether to show alternating year backgrounds. Default is True.
+
+    Returns:
+        Tuple[plt.Figure, List[plt.Axes]]:
+            - Figure object for further customization
+            - List of Axes objects (1-2 axes depending on number of metrics)
     """
 
     # Validate and set default colors for metrics (max 2 supported)
@@ -212,7 +218,7 @@ def plot_medical_timeseries(
 
     # Convert dates if needed
     data = data.copy()
-    data[date_col] = pd.to_datetime(data[date_col])
+    data[x] = pd.to_datetime(data[x])
 
     # Create figure
     fig, ax = plt.subplots(figsize=figsize)
@@ -225,8 +231,8 @@ def plot_medical_timeseries(
 
     # Add alternating year backgrounds if requested
     if alternate_years:
-        start_year = data[date_col].min().year
-        end_year = data[date_col].max().year
+        start_year = data[x].min().year
+        end_year = data[x].max().year
         for year in range(start_year, end_year + 1):
             if year % 2 == 0:
                 start = pd.Timestamp(f"{year}-01-01")
@@ -239,7 +245,7 @@ def plot_medical_timeseries(
         color = metric_info["color"]
 
         # Plot the metric (corrected line)
-        ax.plot(data[date_col], values, "o-", color=color, label=metric_name)
+        ax.plot(data[x], values, "o-", color=color, label=metric_name)
         ax.set_ylabel(metric_name, color=color)
         ax.tick_params(axis="y", labelcolor=color)
 
@@ -252,7 +258,7 @@ def plot_medical_timeseries(
             # If points are close, stack annotations vertically
             for idx, label in [(min_idx, "Min"), (max_idx, "Max")]:
                 # Check if this point is close to any previous annotations
-                point_date = data[date_col][idx]
+                point_date = data[x][idx]
                 point_value = values[idx]
 
                 # Default offsets
@@ -263,9 +269,7 @@ def plot_medical_timeseries(
                 for other_metric, other_info in metrics.items():
                     if other_metric != metric_name:
                         other_values = data[other_info["values"]]
-                        date_diff = abs(
-                            (point_date - data[date_col]).dt.total_seconds()
-                        )
+                        date_diff = abs((point_date - data[x]).dt.total_seconds())
                         closest_idx = date_diff.idxmin()
 
                         # If points are close in time, adjust vertical position
@@ -280,7 +284,7 @@ def plot_medical_timeseries(
 
                 ax.annotate(
                     f"{label} {metric_name}: {values[idx]}",
-                    xy=(data[date_col][idx], values[idx]),
+                    xy=(data[x][idx], values[idx]),
                     xytext=(x_offset, y_offset),
                     textcoords="offset points",
                     color=color,
@@ -306,8 +310,8 @@ def plot_medical_timeseries(
     ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
 
     # Set x-axis range with padding
-    date_min = data[date_col].min() - pd.Timedelta(days=30)
-    date_max = data[date_col].max() + pd.Timedelta(days=30)
+    date_min = data[x].min() - pd.Timedelta(days=30)
+    date_max = data[x].max() + pd.Timedelta(days=30)
     ax.set_xlim([date_min, date_max])
     for axis in axes:
         axis.grid(True, axis="x")
@@ -334,8 +338,15 @@ def plot_medical_timeseries(
     return fig, axes
 
 
-def _get_date_format_for_freq(freq):
-    """Helper function to get date format string based on frequency."""
+def _get_date_format_for_freq(freq: str) -> str:
+    """Helper function to get date format string based on frequency.
+
+    Parameters:
+        freq (str): Frequency identifier ('h', 'D', 'MS', 'ME', 'YS', 'YE', etc.)
+
+    Returns:
+        str: Date format string suitable for the specified frequency
+    """
     if freq == "h":
         return "%Y-%m-%d %H:00"
     elif freq == "D":
@@ -348,8 +359,15 @@ def _get_date_format_for_freq(freq):
         return "%Y-%m-%d %H:%M"
 
 
-def _get_label_for_freq(freq):
-    """Helper function to get default axis label based on frequency."""
+def _get_label_for_freq(freq: str) -> str:
+    """Helper function to get default axis label based on frequency.
+
+    Parameters:
+        freq (str): Frequency identifier ('h', 'D', 'MS', 'ME', 'YS', 'YE', etc.)
+
+    Returns:
+        str: Appropriate axis label for the specified frequency
+    """
     if freq == "h":
         return "Hour"
     elif freq == "D":
@@ -461,8 +479,8 @@ def plot_distribution_over_time(
     ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
     box_alpha: float = 0.3,
-    dot_size: int = 50,
-    dot_alpha: float = 0.8,
+    point_size: int = 50,
+    point_alpha: float = 0.8,
     jitter: float = 0.08,
     return_summary: bool = False,
 ):
@@ -482,9 +500,9 @@ def plot_distribution_over_time(
         ylabel (str, optional): Label for the y-axis. If None, uses the y column name.
         figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
         box_alpha (float): Transparency level for box fill (default 0.3).
-        dot_size (int): Size of the overlaid dots (default 50).
-        dot_alpha (float): Transparency level for dots (default 0.8).
-        jitter (float): Amount of horizontal jitter for dots (default 0.08).
+        point_size (int): Size of the overlaid scatter points (default 50).
+        point_alpha (float): Transparency level for points (default 0.8).
+        jitter (float): Amount of horizontal jitter for points (default 0.08).
         return_summary (bool): Whether to return a DataFrame of summary statistics (default False).
 
     Returns:
@@ -550,7 +568,7 @@ def plot_distribution_over_time(
 
     # Use boxplot_scatter_overlay for visualization
     if return_summary:
-        fig, ax, summary_df = boxplot_scatter_overlay(
+        fig, ax, summary_df = plot_box_scatter(
             data=plot_df,
             x="time_period",
             y=y,
@@ -559,8 +577,8 @@ def plot_distribution_over_time(
             xlabel=x_label,
             ylabel=ylabel,
             box_alpha=box_alpha,
-            dot_size=dot_size,
-            dot_alpha=dot_alpha,
+            point_size=point_size,
+            point_alpha=point_alpha,
             jitter=jitter,
             figsize=figsize,
             return_summary=True,
@@ -569,7 +587,7 @@ def plot_distribution_over_time(
         ax.tick_params(axis="x", labelrotation=90)
         return fig, ax, summary_df
     else:
-        fig, ax = boxplot_scatter_overlay(
+        fig, ax = plot_box_scatter(
             data=plot_df,
             x="time_period",
             y=y,
@@ -578,8 +596,8 @@ def plot_distribution_over_time(
             xlabel=x_label,
             ylabel=ylabel,
             box_alpha=box_alpha,
-            dot_size=dot_size,
-            dot_alpha=dot_alpha,
+            point_size=point_size,
+            point_alpha=point_alpha,
             jitter=jitter,
             figsize=figsize,
             single_color_box=True,

@@ -69,28 +69,39 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
     - Compatible with MLflow tracking
     - Supports MLflow deployment
 
-    Attributes:
-        model (BaseEstimator or None): A scikit-learn compatible model instance
-        preprocessor (Any or None): Data preprocessing pipeline
-        config (Any or None): Optional config for model settings
-        task(str): Type of ML task ('classification' or 'regression')
-        n_features (int): Number of features after preprocessing
-        both_class (bool): Whether SHAP values include both classes
-        shap_values (shap.Explanation): SHAP values for model explanation
-        X_explain (pd.DataFrame): Processed features for SHAP explanation
+    Attributes
+    ----------
+    model : BaseEstimator or None
+        A scikit-learn compatible model instance.
+    preprocessor : Any or None
+        Data preprocessing pipeline.
+    config : Any or None
+        Optional config for model settings.
+    task : str
+        Type of ML task ('classification' or 'regression').
+    n_features : int
+        Number of features after preprocessing.
+    both_class : bool
+        Whether SHAP values include both classes.
+    shap_values : shap.Explanation
+        SHAP values for model explanation.
+    X_explain : pd.DataFrame
+        Processed features for SHAP explanation.
     """
 
     def __init__(self, model: BaseEstimator = None, preprocessor=None, config=None):
         """
         Initialize the ML_PIPELINE with an optional model, preprocessor, and configuration.
 
-        Parameters:
-            model (BaseEstimator, optional): A scikit-learn compatible model, such as LightGBM
-                or XGBoost, for training and predictions. Defaults to None.
-            preprocessor (Any, optional): A transformer or pipeline used to preprocess the input
-                data. Defaults to None.
-            config (Any, optional): Additional configuration settings for the model, if needed.
-                Defaults to None.
+        Parameters
+        ----------
+        model : BaseEstimator, optional
+            A scikit-learn compatible model, such as LightGBM or XGBoost,
+            for training and predictions.
+        preprocessor : Any, optional
+            A transformer or pipeline used to preprocess the input data.
+        config : Any, optional
+            Additional configuration settings for the model, if needed.
         """
         self.model = model
         self.preprocessor = preprocessor
@@ -110,9 +121,16 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Train the model using the provided training data, after applying preprocessing.
 
-        Parameters:
-            X_train (pd.DataFrame): A DataFrame containing feature columns for training.
-            y_train (pd.Series): A Series containing the target variable values.
+        Parameters
+        ----------
+        X_train : pd.DataFrame
+            A DataFrame containing feature columns for training.
+        y_train : pd.Series
+            A Series containing the target variable values.
+        eval_set : tuple, optional
+            Validation set (X_val, y_val) for early stopping.
+        early_stopping_rounds : int, optional
+            Number of rounds without improvement before early stopping.
         """
         if self.preprocessor is not None:
             X_train_preprocessed = self.preprocessor.fit_transform(
@@ -139,13 +157,18 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Make predictions using the pre-trained model, applying preprocessing to the input data.
 
-        Parameters:
-            context (Any): Optional context information provided by MLflow during the
-                prediction phase.
-            model_input (pd.DataFrame): The DataFrame containing input features for predictions.
+        Parameters
+        ----------
+        context : Any
+            Optional context information provided by MLflow during the
+            prediction phase.
+        model_input : pd.DataFrame
+            The DataFrame containing input features for predictions.
 
-        Returns:
-            Any: A NumPy array or DataFrame with the predicted probabilities or output values.
+        Returns
+        -------
+        np.ndarray
+            Model predictions (probabilities for classification, values for regression).
         """
 
         if self.preprocessor is not None:
@@ -169,21 +192,21 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         3. Calculates SHAP values for feature importance
         4. Generates a summary plot of feature importance
 
-        Parameters:
-            X : pd.DataFrame
-                Input features to generate explanations for. Should have the same
-                columns as the training data.
-            plot_size: tuple, default=(12,6)
-                Tuple specifying the width and height of the SHAP summary plot in inches.
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Input features to generate explanations for. Should have the same
+            columns as the training data.
+        plot_size : tuple, default=(8, 6)
+            Tuple specifying the width and height of the SHAP summary plot in inches.
 
-        Returns: None
+        Returns
+        -------
+        None
             The method stores the following attributes in the class:
-            - self.X_explain : pd.DataFrame
-                Transformed data with original numeric values for interpretation
-            - self.shap_values : shap.Explanation
-                SHAP values for each prediction
-            - self.both_class : bool
-                Whether the model outputs probabilities for both classes
+            - self.X_explain : Transformed data with original numeric values
+            - self.shap_values : SHAP values for each prediction
+            - self.both_class : Whether the model outputs probabilities for both classes
         """
         if self.preprocessor is not None:
             X_transformed = self.preprocessor.transform(X.copy())
@@ -233,16 +256,20 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         - Ends at final prediction
         - Shows original feature values for better interpretability
 
-        Parameters:
-            n (int): Case index (1-based)
-                     e.g., n=1 explains the first case.
+        Parameters
+        ----------
+        n : int
+            Case index (1-based), e.g., n=1 explains the first case.
 
-        Returns:
-            None: Displays SHAP waterfall plot
+        Returns
+        -------
+        None
+            Displays SHAP waterfall plot.
 
-        Notes:
-            - Requires explain_model() first
-            - Shows positive class for binary tasks
+        Notes
+        -----
+        - Requires explain_model() to be called first
+        - Shows positive class for binary classification tasks
         """
         if self.shap_values is None:
             print(
@@ -262,14 +289,25 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Calculate multiple regression metrics for better interpretability.
 
-        Parameters:
-            y_true: True target values
-            y_pred: Predicted target values
-            verbose: If True, prints detailed evaluation metrics and analysis.
-                    If False, returns metrics without printing (default=False)
+        Parameters
+        ----------
+        y_true : array-like
+            True target values.
+        y_pred : array-like
+            Predicted target values.
+        verbose : bool, default=False
+            If True, prints detailed evaluation metrics and analysis.
 
-        Returns:
-            dict: Dictionary of different metrics
+        Returns
+        -------
+        dict
+            Dictionary of metrics including:
+            - rmse: Root mean squared error
+            - nrmse: Normalized RMSE (as percentage of mean)
+            - mape: Mean absolute percentage error
+            - r2: R-squared score
+            - adj_r2: Adjusted R-squared
+            - rmse_improvement: Improvement over baseline model (%)
         """
         # Basic metrics
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
@@ -327,17 +365,32 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Calculate classification metrics at a given threshold.
 
-        Parameters:
-            y_true: True target values
-            y_pred_proba: Predicted probabilities
-            threshold: Classification threshold (default=0.5)
-            beta: Beta value for F-beta score (default=1.0)
-            verbose: If True, prints detailed evaluation metrics
+        Parameters
+        ----------
+        y_true : pd.Series
+            True target values.
+        y_pred_proba : np.ndarray
+            Predicted probabilities.
+        threshold : float, default=0.5
+            Classification threshold.
+        beta : float, default=1.0
+            Beta value for F-beta score.
+        verbose : bool, default=False
+            If True, prints detailed evaluation metrics.
 
-        Returns:
-            dict: Dictionary containing:
-                - evaluation parameters (threshold, beta)
-                - classification metrics
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - threshold: Classification threshold used
+            - beta: Beta value used for F-beta
+            - accuracy: Classification accuracy
+            - precision: Precision score
+            - recall: Recall score
+            - f1: F1 score
+            - f_beta: F-beta score
+            - auc: Area under ROC curve
+            - positive_rate: Percentage of positive predictions
         """
         # Get predictions at specified threshold
         y_pred = (y_pred_proba >= threshold).astype(int)
@@ -387,11 +440,21 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Create visualization for classification metrics including ROC curve and Metrics vs Threshold.
 
-        Parameters:
-            y_true: True labels
-            y_pred_proba: Predicted probabilities
-            threshold: Classification threshold
-            beta: Beta value for F-beta score
+        Parameters
+        ----------
+        y_true : np.ndarray
+            True labels.
+        y_pred_proba : np.ndarray
+            Predicted probabilities.
+        threshold : float, default=0.5
+            Classification threshold.
+        beta : float, default=1.0
+            Beta value for F-beta score.
+
+        Returns
+        -------
+        None
+            Displays plots for ROC curve and metrics vs threshold.
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
 
@@ -473,14 +536,25 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
     @staticmethod
     def _plot_regression_metrics(X_test, y_test, y_pred):
         """
-        Create side-by-side diagnostic plots for regression models:
+        Create side-by-side diagnostic plots for regression models.
+
+        Creates two plots:
         - Left: Residual analysis (residuals vs predicted)
         - Right: Prediction error plot (actual vs predicted with error bands)
 
-        Parameters:
-            X_test: test features
-            y_test: true target values
-            y_pred: model predictions
+        Parameters
+        ----------
+        X_test : pd.DataFrame
+            Test features.
+        y_test : pd.Series or np.ndarray
+            True target values.
+        y_pred : np.ndarray
+            Model predictions.
+
+        Returns
+        -------
+        None
+            Displays diagnostic plots.
         """
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
@@ -557,17 +631,29 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Evaluate model performance using appropriate metrics.
 
-        Parameters:
-            X_test: Test features DataFrame
-            y_test: True target values
-            threshold: Classification threshold (default=0.5)
-            beta: Beta value for F-beta score (default=1.0)
-            verbose: If True, prints detailed evaluation metrics
-            visualize: If True, displays relevant visualization plots
-            log_model: If True, logs model to MLflow (default=False)
+        Parameters
+        ----------
+        X_test : pd.DataFrame
+            Test features DataFrame.
+        y_test : pd.Series
+            True target values.
+        threshold : float, default=0.5
+            Classification threshold.
+        beta : float, default=1.0
+            Beta value for F-beta score.
+        verbose : bool, default=True
+            If True, prints detailed evaluation metrics.
+        visualize : bool, default=True
+            If True, displays relevant visualization plots.
+        log_model : bool, default=False
+            If True, logs model to MLflow.
 
-        Returns:
-            dict: Dictionary containing evaluation metrics
+        Returns
+        -------
+        dict
+            Dictionary containing evaluation metrics. For classification, includes
+            threshold, precision, recall, F-scores, and AUC. For regression, includes
+            RMSE, R², and other regression metrics.
         """
         if self.task == "classification":
             y_pred_proba = self.predict(context=None, model_input=X_test)
@@ -625,39 +711,64 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Static method to tune hyperparameters using Optuna.
 
-        Parameters:
-            X: Features
-            y: Target
-            algorithm: ML algorithm class (e.g., lgb.LGBMClassifier)
-            preprocessor (Any or None): Data preprocessing pipeline
-            param_ranges: Dictionary of parameter ranges for Optuna
-                        e.g., {'n_estimators': (50, 500), 'max_depth': (3, 10)}
-                        Specify as tuple (min, max) for int/float or list for categorical
-            max_evals: Maximum number of evaluations
-            random_state: Random seed for reproducibility
-            beta: Beta value for F-beta score optimization (default=1.0)
-                beta > 1 gives more weight to recall
-                beta < 1 gives more weight to precision
-            patience: Number of trials without improvement before stopping (default=100)
-            n_startup_trials: Number of trials to run before pruning starts (default=10)
-            n_warmup_steps: Number of steps per trial to run before pruning (default=0)
-            cv: number of splits for cross-validation
-            cv_variance_penalty: Weight for penalizing high variance in cross-validation scores (default=0.1)
-            visualize: If True, displays relevant visualization plots
-            task: Optional task type ('classification' or 'regression'). If None, will be automatically detected.
-            tune_metric: Metric to optimize during hyperparameter tuning.
-                   If None, defaults to 'auc' for classification and 'rmse' for regression.
-                   All metrics supported:
-                    - For classification: 'auc', 'f1', 'accuracy'
-                    - For regression: 'rmse', 'nrmse', 'mape'
-            log_best_model: If True, logs the best model to MLflow (default=True)
-            disable_optuna_logging: If True, suppresses Optuna's verbose logging (default=True)
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Features.
+        y : pd.Series
+            Target.
+        algorithm : class
+            ML algorithm class (e.g., lgb.LGBMClassifier).
+        preprocessor : Any or None
+            Data preprocessing pipeline.
+        param_ranges : dict
+            Dictionary of parameter ranges for Optuna.
+            e.g., {'n_estimators': (50, 500), 'max_depth': (3, 10)}
+            Specify as tuple (min, max) for int/float or list for categorical.
+        max_evals : int, default=500
+            Maximum number of evaluations.
+        random_state : int, default=42
+            Random seed for reproducibility.
+        beta : float, default=1.0
+            Beta value for F-beta score optimization.
+            beta > 1 gives more weight to recall.
+            beta < 1 gives more weight to precision.
+        patience : int, default=100
+            Number of trials without improvement before stopping.
+        n_startup_trials : int, default=10
+            Number of trials to run before pruning starts.
+        n_warmup_steps : int, default=0
+            Number of steps per trial to run before pruning.
+        verbose : int, default=0
+            Verbosity level.
+        cv : int, default=5
+            Number of splits for cross-validation.
+        cv_variance_penalty : float, default=0.1
+            Weight for penalizing high variance in cross-validation scores.
+        visualize : bool, default=True
+            If True, displays relevant visualization plots.
+        task : str, optional
+            Task type ('classification' or 'regression').
+            If None, will be automatically detected.
+        tune_metric : str, optional
+            Metric to optimize during hyperparameter tuning.
+            If None, defaults to 'auc' for classification and 'rmse' for regression.
+            Classification metrics: 'auc', 'f1', 'accuracy'
+            Regression metrics: 'rmse', 'nrmse', 'mape'
+        log_best_model : bool, default=True
+            If True, logs the best model to MLflow.
+        disable_optuna_logging : bool, default=True
+            If True, suppresses Optuna's verbose logging.
 
-        Returns:
-            dict: Contains:
-                - best_params: Best hyperparameters found
-                - best_pipeline: Best pipeline model
-                - other metrics and results
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - best_params: Best hyperparameters found
+            - best_pipeline: Best pipeline model
+            - study: Optuna study object
+            - model_info: MLflow model info (if logged)
+            - Various test and CV metrics based on task type
         """
         # Configure optuna logging to suppress outputs
         if disable_optuna_logging:
@@ -939,13 +1050,26 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         n_splits: int = 5,
     ):
         """
-        Identify the optimal threshold that maximize thresholds using cross-validation.
+        Identify the optimal threshold that maximizes F-beta score using cross-validation.
 
-        Args:
-            y_true: True labels
-            y_pred_proba: Predicted probabilities
-            beta: F-beta score parameter
-            n_splits: Number of CV splits
+        Parameters
+        ----------
+        y_true : pd.Series
+            True labels.
+        y_pred_proba : np.ndarray
+            Predicted probabilities.
+        beta : float, default=1.0
+            F-beta score parameter.
+        n_splits : int, default=5
+            Number of cross-validation splits.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - optimal_threshold: The threshold that maximizes F-beta score
+            - threshold_std: Standard deviation of optimal thresholds across CV folds
+            - threshold_cv_values: List of optimal thresholds for each CV fold
         """
         # Initialize CV
         cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
@@ -988,13 +1112,23 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         """
         Log model, metrics, parameters and additional artifacts to MLflow.
 
-        Args:
-            metrics (dict, optional): Metrics to log
-            params (dict, optional): Parameters to log
-            additional_artifacts (dict, optional): Additional artifacts to log
-                e.g., {"parallel_coords_plot": plot_path}
-            sample_input (pd.DataFrame, optional): Sample input for signature inference
-            sample_output (np.ndarray, optional): Sample output for signature inference
+        Parameters
+        ----------
+        metrics : dict, optional
+            Metrics to log.
+        params : dict, optional
+            Parameters to log.
+        additional_artifacts : dict, optional
+            Additional artifacts to log, e.g., {"parallel_coords_plot": plot_path}.
+        sample_input : pd.DataFrame, optional
+            Sample input for signature inference.
+        sample_output : np.ndarray, optional
+            Sample output for signature inference.
+
+        Returns
+        -------
+        mlflow.models.ModelInfo
+            Information about the logged model.
         """
         # Log metrics and parameters
         if metrics:

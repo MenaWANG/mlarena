@@ -6,9 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-
-
-## [0.2.2] -
+## [0.2.2] - 2025-05-03
 
 ### Added
 - Added `plot_distribution_over_time` function for visualizing continuous variable distributions over time
@@ -22,22 +20,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `plot_box_scatter` function with point coloring capabilities
   - Added `point_hue` parameter to color points by categorical or numerical variables
   - Maintained backward compatibility with single-color visualization
-  - Improved visualization flexibility for multivariate analysis
 - Enhanced `transform_date_cols` function with improved usability
   - Added flexible input handling for single or multiple columns
   - Implemented format customization with standard Python strftime directives
   - Added smart case handling for month abbreviations
 
 ### Changed
+- Improved code quality and documentation:
+  - Standardized docstring format across all functions using numpy/scipy style, with consistent parameter descriptions and return value documentation
+  - Added proper type annotations to all function parameters and return values, following Python typing conventions
 - Standardized parameter naming in visualization functions
-  - Renamed parameters from "dot" to "point" for consistency with matplotlib/seaborn conventions
+  - Renamed parameters from "dot" to "point" for consistency with matplotlib/seaborn conventions (e.g., `dot_size` → `point_size`, `dot_alpha` → `point_alpha`)
+  - Renamed `boxplot_scatter_overlay` to `plot_box_scatter` to follow a consistent naming pattern with other functions like `plot_distribution_over_time`
   - Renamed `date_col` to `x` in `plot_medical_timeseries` for consistency with other time-series functions
-  - Renamed `boxplot_scatter_overlay` to `plot_box_scatter` for consistent function naming pattern
-  - Reordered parameters to group related options together
-  - Added proper type annotations to all function parameters
-  - Standardized docstring format across all functions using numpy/scipy style
-  - Added comprehensive return value documentation
+  - Reordered parameters to group related options together, improving readability and usability
   - Improved API consistency across all plotting functions for better usability
+
 
 ### Documentation
 - Added example notebooks demonstrating new functionality

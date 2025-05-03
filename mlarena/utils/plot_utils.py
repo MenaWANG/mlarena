@@ -34,26 +34,47 @@ def plot_box_scatter(
     """
     Draws a box plot with optional scatter overlay and customizable coloring behavior.
 
-    Parameters:
-    - data (pd.DataFrame): DataFrame containing the data.
-    - x (str): Column name for categorical items.
-    - y (str): Column name for numerical values.
-    - title (str): Title of the plot. Default is "Box Plot with Scatter Overlay".
-    - xlabel (str, optional): Label for x-axis. If None, uses the x column name.
-    - ylabel (str, optional): Label for y-axis. If None, uses the y column name.
-    - point_hue (str, optional): Column name to color points by. If set, overrides color-by-x behavior.
-    - point_size (int): Size of the overlaid scatter points (default 50).
-    - point_alpha (float): Transparency level for points (default 0.8).
-    - jitter (float): Amount of horizontal jitter for points (default 0.08).
-    - box_alpha (float): Transparency level for box fill (default 0.3).
-    - single_color_box (bool): Whether to use a single color for all boxes and points (if point_hue is None).
-    - figsize (tuple): Size of the figure (default (10, 6)).
-    - palette (List[str], optional): List of colors. If None, uses Matplotlib's default color cycle.
-    - return_summary (bool): Whether to return a DataFrame of summary stats (default False).
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame containing the data.
+    x : str
+        Column name for categorical items.
+    y : str
+        Column name for numerical values.
+    title : str, default="Box Plot with Scatter Overlay"
+        Title of the plot.
+    xlabel : str, optional
+        Label for x-axis. If None, uses the x column name.
+    ylabel : str, optional
+        Label for y-axis. If None, uses the y column name.
+    point_hue : str, optional
+        Column name to color points by. If set, overrides color-by-x behavior.
+    point_size : int, default=50
+        Size of the overlaid scatter points.
+    point_alpha : float, default=0.8
+        Transparency level for points.
+    jitter : float, default=0.08
+        Amount of horizontal jitter for points.
+    box_alpha : float, default=0.3
+        Transparency level for box fill.
+    single_color_box : bool, default=False
+        Whether to use a single color for all boxes and points (if point_hue is None).
+    figsize : tuple, default=(10, 6)
+        Size of the figure as (width, height) in inches.
+    palette : List[str], optional
+        List of colors. If None, uses Matplotlib's default color cycle.
+    return_summary : bool, default=False
+        Whether to return a DataFrame of summary stats.
 
-    Returns:
-    - fig, ax: The figure and axis objects for further customization.
-    - (Optional) summary_df: DataFrame with count, mean, median, std per category if return_summary=True.
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object for further customization.
+    ax : matplotlib.axes.Axes
+        The axes object for further customization.
+    summary_df : pd.DataFrame, optional
+        DataFrame with count, mean, median, std per category if return_summary=True.
     """
 
     fig, ax = plt.subplots(figsize=figsize)

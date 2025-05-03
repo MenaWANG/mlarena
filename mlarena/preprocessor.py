@@ -18,7 +18,7 @@ from sklearn.preprocessing import OneHotEncoder, StandardScaler, TargetEncoder
 
 class PreProcessor(BaseEstimator, TransformerMixin):
     """
-    Custom transformer for data preprocessing.
+    Custom transformer for data preprocessing with scikit-learn compatibility.
 
     - preprocessing strategy support
         - feature analysis and filter feature selection recommendations
@@ -31,19 +31,45 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         - Handles missing values via user specified imputation strategy for numeric and categorical features
     - Compatible with scikit-learn pipelines and models
 
-    Attributes:
-        num_impute_strategy (str): Numeric imputation strategy
-        cat_impute_strategy (str): Categorical imputation strategy
-        num_transformer (Pipeline): Numeric preprocessing pipeline
-        cat_transformer (Pipeline): Categorical preprocessing pipeline
-        target_transformer (Pipeline): Target encoding preprocessing pipeline
-        transformed_cat_cols (List[str]): One-hot encoded column names
-        num_features (List[str]): Numeric feature names
-        cat_features (List[str]): Categorical feature names
-        target_encode_cols (List[str]): Columns for target encoding
-        target_encode_smooth (Union[str, float]): Smoothing parameter for target encoding
-        drop (str): Strategy for dropping categories in OneHotEncoder
-                   Options: 'if_binary', 'first', None
+    Parameters
+    ----------
+    num_impute_strategy : str, default="median"
+        Strategy for numeric missing values.
+    cat_impute_strategy : str, default="most_frequent"
+        Strategy for categorical missing values.
+    target_encode_cols : List[str], optional
+        Columns to apply mean encoding.
+    target_encode_smooth : Union[str, float], default="auto"
+        Smoothing parameter for target encoding.
+    drop : str, default="if_binary"
+        Strategy for dropping categories in OneHotEncoder.
+        Options: 'if_binary', 'first', None.
+
+    Attributes
+    ----------
+    num_impute_strategy : str
+        Numeric imputation strategy.
+    cat_impute_strategy : str
+        Categorical imputation strategy.
+    num_transformer : Pipeline
+        Numeric preprocessing pipeline.
+    cat_transformer : Pipeline
+        Categorical preprocessing pipeline.
+    target_transformer : Pipeline
+        Target encoding preprocessing pipeline.
+    transformed_cat_cols : List[str]
+        One-hot encoded column names.
+    num_features : List[str]
+        Numeric feature names.
+    cat_features : List[str]
+        Categorical feature names.
+    target_encode_cols : List[str]
+        Columns for target encoding.
+    target_encode_smooth : Union[str, float]
+        Smoothing parameter for target encoding.
+    drop : str
+        Strategy for dropping categories in OneHotEncoder.
+
     """
 
     def __init__(
@@ -57,19 +83,19 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Initialize the transformer.
 
-        - Sets up numeric data transformer
-        - Sets up categorical data transformer
-        - Configures imputation strategies
-
-
-        Parameters:
-            num_impute_strategy (str): Strategy for numeric missing values
-            cat_impute_strategy (str): Strategy for categorical missing values
-            target_encode_cols (List[str]): Columns to apply mean encoding
-            target_encode_smooth (Union[str, float]): Smoothing parameter for target encoding,
-                                                      'auto' or float value (default='auto')
-            drop (str): Strategy for dropping categories in OneHotEncoder
-                       Options: 'if_binary', 'first', None
+        Parameters
+        ----------
+        num_impute_strategy : str, default="median"
+            Strategy for numeric missing values.
+        cat_impute_strategy : str, default="most_frequent"
+            Strategy for categorical missing values.
+        target_encode_cols : List[str], optional
+            Columns to apply mean encoding.
+        target_encode_smooth : Union[str, float], default="auto"
+            Smoothing parameter for target encoding.
+        drop : str, default="if_binary"
+            Strategy for dropping categories in OneHotEncoder.
+            Options: 'if_binary', 'first', None.
         """
         self.num_impute_strategy = num_impute_strategy
         self.cat_impute_strategy = cat_impute_strategy
@@ -81,18 +107,23 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Fit transformer on input data and transform it.
 
-        - Identifies feature types
-        - Configures feature scaling
-        - Sets up encoding
-        - Fits imputation strategies
-        - Transforms the input data
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Input features.
+        y : pd.Series, optional
+            Target variable, required when target_encode_cols is specified.
 
-        Parameters:
-            X (pd.DataFrame): Input features
-            y (pd.Series, optional): Target variable, not used
+        Returns
+        -------
+        pd.DataFrame
+            Transformed data.
 
-        Returns:
-            pd.DataFrame: Transformed data
+        Raises
+        ------
+        ValueError
+            If target variable y is not provided when target_encode_cols is specified,
+            or if specified columns are not found in input data.
         """
         if self.target_encode_cols and y is None:
             raise ValueError(
@@ -178,8 +209,10 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Get transformed categorical column names using sklearn's built-in method.
 
-        Returns:
-            List[str]: One-hot encoded column names
+        Returns
+        -------
+        List[str]
+            One-hot encoded column names.
         """
         if not hasattr(self, "cat_transformer"):
             return []
@@ -194,15 +227,20 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Transform input data.
 
-        - Applies fitted scaling
-        - Applies fitted encoding
-        - Handles numeric and categorical features
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Input features.
 
-        Parameters:
-            X (pd.DataFrame): Input features
+        Returns
+        -------
+        pd.DataFrame
+            Transformed data.
 
-        Returns:
-            pd.DataFrame: Transformed data
+        Raises
+        ------
+        ValueError
+            If transformer is not fitted.
         """
         if not hasattr(self, "num_features"):
             raise ValueError("Transformer not fitted. Call 'fit' before 'transform'.")
@@ -247,15 +285,23 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Plot target encoding comparison with different smoothing parameters.
 
-        Parameters:
-            X_train (pd.DataFrame): Training features
-            y_train (pd.Series): Target variable
-            smooth_params (List[Union[str, float]]): List of smoothing parameters to compare
-            target_encode_col (str): Column name for target encoding
-            figsize (tuple): Figure size (default=(15, 6))
+        Parameters
+        ----------
+        X_train : pd.DataFrame
+            Training features.
+        y_train : pd.Series
+            Target variable.
+        smooth_params : List[Union[str, float]]
+            List of smoothing parameters to compare.
+        target_encode_col : str
+            Column name for target encoding.
+        figsize : tuple, default=(15, 6)
+            Figure size.
 
-        Returns:
-            dict: Dictionary containing the results for each smoothing parameter
+        Returns
+        -------
+        dict
+            Dictionary containing the results for each smoothing parameter.
         """
         # Create subplots
         fig, axes = plt.subplots(1, len(smooth_params), figsize=figsize)
@@ -335,25 +381,27 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         prefer_target: bool = True,
     ) -> dict:
         """
-        Analyze each categorical features based on cardinalityy and rare category to recommend either
-        one-hot encoding or target encoding. Recommend running filter_feature_selection first before doing this
-        analysis.
+        Analyze categorical features based on cardinality and rare category to recommend encoding strategy.
 
-        Parameters:
-            X (pd.DataFrame): Features
-            high_cardinality_threshold (int): Number of unique values above which a column
-                                            is considered high cardinality (default: 10)
-            rare_category_threshold (int): Minimum samples per category, below which a
-                                           category is considered rare (default: 30)
-            prefer_target (bool): Do users prefer to add the feature into target_encode_cols
-                                  if both encoding strategy are suitable
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Features.
+        high_cardinality_threshold : int, default=10
+            Number of unique values above which a column is considered high cardinality.
+        rare_category_threshold : int, default=30
+            Minimum samples per category, below which a category is considered rare.
+        prefer_target : bool, default=True
+            Whether to prefer target encoding when both encoding strategies are suitable.
 
-        Returns:
-            dict: Dictionary containing:
-                - 'high_cardinality_cols': List of high cardinality columns
-                - 'target_encode_cols': List of columns suitable for target encoding
-                - 'onehot_encode_cols': List of columns suitable for one-hot encoding
-                - 'analysis': DataFrame showing detailed analysis for each categorical column
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'high_cardinality_cols': List of high cardinality columns
+            - 'target_encode_cols': List of columns suitable for target encoding
+            - 'onehot_encode_cols': List of columns suitable for one-hot encoding
+            - 'analysis': DataFrame showing detailed analysis for each categorical column
         """
         categorical_cols = X.select_dtypes(include=["object", "category"]).columns
 
@@ -471,6 +519,35 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         """
         Analyzes features and recommends which ones to keep or drop based on data quality metrics.
 
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Features to analyze.
+        y : pd.Series
+            Target variable.
+        task : str, default="classification"
+            Type of ML task - 'classification' or 'regression'.
+        missing_threshold : float, default=0.2
+            Maximum acceptable proportion of missing values.
+        mi_threshold : float, default=0.1
+            Minimum acceptable normalized mutual information score.
+        random_state : int, default=42
+            Random seed for mutual information calculation.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'columns_to_drop': List of all columns recommended for dropping
+            - 'selected_cols': List of columns recommended to keep
+            - 'drop_by_missing': List of columns with too many missing values
+            - 'drop_by_unique': List of columns with only one unique value
+            - 'drop_by_low_mi': List of columns with low mutual information
+            - 'analysis': DataFrame with detailed analysis for each feature
+            - 'thresholds': Dictionary with the thresholds used for filtering
+
+        Notes
+        -----
         This method evaluates features based on three main criteria:
         1. Missing values: Features with missing values exceeding the threshold are recommended for dropping
         2. Unique values: Features with only one unique value (no variance) are recommended for dropping
@@ -478,24 +555,6 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         Mutual information is calculated with either `mutual_info_classif` or `mutual_info_regression` based on
         user specified task.
-
-        Parameters:
-            X (pd.DataFrame): Features to analyze
-            y (pd.Series): Target variable
-            task (str): Type of ML task - 'classification' or 'regression'
-            missing_threshold (float): Maximum acceptable proportion of missing values (default: 0.2 or 20%)
-            mi_threshold (float): Minimum acceptable normalized mutual information score (default: 0.1 or 10%)
-            random_state (int): Random seed for mutual information calculation (default: 42)
-
-        Returns:
-            dict: Dictionary containing:
-                - 'columns_to_drop': List of all columns recommended for dropping
-                - 'selected_cols': List of columns recommended to keep
-                - 'drop_by_missing': List of columns with too many missing values
-                - 'drop_by_unique': List of columns with only one unique value
-                - 'drop_by_low_mi': List of columns with low mutual information
-                - 'analysis': DataFrame with detailed analysis for each feature
-                - 'thresholds': Dictionary with the thresholds used for filtering
         """
         # Create copy to avoid modifying original
         X_proc = X.copy()
@@ -611,18 +670,23 @@ class PreProcessor(BaseEstimator, TransformerMixin):
     @staticmethod
     def mlflow_input_prep(data: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepare data for MLflow compatibility by converting category dtypes to object
-        and integer dtypes to float64.
+        Prepare data for MLflow compatibility by converting data types.
 
+        Parameters
+        ----------
+        data : pd.DataFrame
+            Input data possibly containing category columns.
+
+        Returns
+        -------
+        pd.DataFrame
+            Data with category columns converted to object dtype and integer columns to float64.
+
+        Notes
+        -----
         This function addresses two MLflow compatibility issues:
         1. MLflow doesn't support pandas category dtype, so we convert them to object
         2. MLflow doesn't handle missing values in integer columns, so we convert them to float64
-
-        Parameters:
-            data (pd.DataFrame): Input data possibly containing category columns
-
-        Returns:
-            pd.DataFrame: Data with category columns converted to object dtype
         """
         if not isinstance(data, pd.DataFrame):
             return data

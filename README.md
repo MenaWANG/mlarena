@@ -44,6 +44,7 @@ If you are using earlier DBR runtimes, simply install `optuna` in addition like 
 * For quick start with a basic example, see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb).   
 * For more advanced examples on model optimization, see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb).   
 * For visualization utilities, see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb).
+* For data cleaning and manipulation utilities, see [3.utils_data.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_data.ipynb).
 * For handling common challenges in machine learning, see [4.ml_discussions.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/4.ml_discussions.ipynb).
 
 ## Visual Examples:
@@ -105,6 +106,16 @@ Parallel coordinates plot for hyperparameter search space diagnostics.
   - Global feature importance
   - Local prediction explanations
 
+**Utils**
+- Advanced plotting utilities
+  - Box plots with scatter overlay for detailed distribution analysis
+  - Time series metrics visualization with optional event markers
+  - Stacked bar for categorical distributions over time with flexible aggregation
+  - Numeric distribution tracking over time with flexible aggregation
+- Data manipulation tools
+  - Standardized dollar amount cleaning for financial analysis
+  - Value counts with percentage calculation for categorical analysis
+  - Smart date column transformation with flexible format handling
 
 ## Contributing
 

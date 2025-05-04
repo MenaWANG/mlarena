@@ -1047,10 +1047,13 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         y_true: pd.Series,
         y_pred_proba: np.ndarray,
         beta: float = 1.0,
-        n_splits: int = 5,
+        method: str = "cv",
+        cv_splits: int = 5,
+        bootstrap_iterations: int = 100,
+        random_state: int = 42,
     ):
         """
-        Identify the optimal threshold that maximizes F-beta score using cross-validation.
+        Identify the optimal threshold that maximizes F-beta score using CV or bootstrap.
 
         Parameters
         ----------
@@ -1060,46 +1063,108 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             Predicted probabilities.
         beta : float, default=1.0
             F-beta score parameter.
-        n_splits : int, default=5
-            Number of cross-validation splits.
+        method : str, default='cv'
+            Method to use for threshold selection:
+            - 'cv': Cross-validation (faster, deterministic splits)
+            - 'bootstrap': Bootstrap resampling (more robust, with confidence intervals)
+        cv_splits : int, default=5
+            Number of folds for cross-validation when method='cv'.
+        bootstrap_iterations : int, default=100
+            Number of bootstrap samples when method='bootstrap'.
+        random_state : int, default=42
+            Random state for reproducibility.
 
         Returns
         -------
         dict
             Dictionary containing:
-            - optimal_threshold: The threshold that maximizes F-beta score
-            - threshold_std: Standard deviation of optimal thresholds across CV folds
-            - threshold_cv_values: List of optimal thresholds for each CV fold
+            - optimal_threshold: Mean of thresholds across iterations/splits
+            - threshold_std: Standard deviation of thresholds
+            - threshold_values: List of individual thresholds
+            For bootstrap method, also includes:
+            - ci_lower: Lower bound of 95% confidence interval
+            - ci_upper: Upper bound of 95% confidence interval
         """
-        # Initialize CV
-        cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
-        thresholds_cv = []
+        np.random.seed(random_state)
+        thresholds_values = []
 
-        for train_idx, val_idx in cv.split(y_true, y_true):
-            y_true_val = y_true.iloc[val_idx]
-            y_pred_proba_val = y_pred_proba[val_idx]
-            precisions, recalls, pr_thresholds = precision_recall_curve(
-                y_true_val, y_pred_proba_val
-            )
-            fpr, tpr, roc_thresholds = roc_curve(y_true_val, y_pred_proba_val)
-            # Find optimal threshold for this fold
-            f_beta_scores = (
-                (1 + beta**2)
-                * (precisions * recalls)
-                / (beta**2 * precisions + recalls + 1e-10)
-            )
-            optimal_idx = np.argmax(f_beta_scores)
-            optimal_threshold = (
-                pr_thresholds[optimal_idx] if len(pr_thresholds) > optimal_idx else 0.5
+        if method == "cv":
+            # Efficient CV implementation
+            cv = StratifiedKFold(
+                n_splits=cv_splits, shuffle=True, random_state=random_state
             )
 
-            thresholds_cv.append(optimal_threshold)
+            for train_idx, val_idx in cv.split(y_true, y_true):
+                y_true_val = y_true.iloc[val_idx]
+                y_pred_proba_val = y_pred_proba[val_idx]
 
-        return {
-            "optimal_threshold": np.mean(thresholds_cv),
-            "threshold_std": np.std(thresholds_cv),
-            "threshold_cv_values": thresholds_cv,
+                precisions, recalls, pr_thresholds = precision_recall_curve(
+                    y_true_val, y_pred_proba_val
+                )
+
+                f_beta_scores = (
+                    (1 + beta**2)
+                    * (precisions * recalls)
+                    / (beta**2 * precisions + recalls + 1e-10)
+                )
+                optimal_idx = np.argmax(f_beta_scores)
+
+                if optimal_idx < len(pr_thresholds):
+                    optimal_threshold = pr_thresholds[optimal_idx]
+                else:
+                    # use 0.5 when optimal F-beta occured at the end of the precision-recall curve
+                    optimal_threshold = 0.5
+
+                thresholds_values.append(optimal_threshold)
+
+        elif method == "bootstrap":
+            n_samples = len(y_true)
+
+            for _ in range(bootstrap_iterations):
+                # Bootstrap sampling
+                indices = np.random.choice(n_samples, size=n_samples, replace=True)
+                y_true_boot = y_true.iloc[indices]
+                y_pred_proba_boot = y_pred_proba[indices]
+
+                precisions, recalls, pr_thresholds = precision_recall_curve(
+                    y_true_boot, y_pred_proba_boot
+                )
+
+                f_beta_scores = (
+                    (1 + beta**2)
+                    * (precisions * recalls)
+                    / (beta**2 * precisions + recalls + 1e-10)
+                )
+                optimal_idx = np.argmax(f_beta_scores)
+
+                if optimal_idx < len(pr_thresholds):
+                    optimal_threshold = pr_thresholds[optimal_idx]
+                else:
+                    optimal_threshold = 0.5
+
+                thresholds_values.append(optimal_threshold)
+
+        else:
+            raise ValueError(
+                f"Method must be either 'cv' or 'bootstrap', got: {method}"
+            )
+
+        results = {
+            "optimal_threshold": np.mean(thresholds_values),
+            "threshold_std": np.std(thresholds_values),
+            "threshold_values": thresholds_values,
         }
+
+        # Add confidence intervals only for bootstrap method
+        if method == "bootstrap":
+            results.update(
+                {
+                    "ci_lower": np.percentile(thresholds_values, 2.5),
+                    "ci_upper": np.percentile(thresholds_values, 97.5),
+                }
+            )
+
+        return results
 
     def _log_model(
         self,

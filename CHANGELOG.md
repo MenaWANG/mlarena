@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.2.3] - 
+## [0.2.3] - 2025-05-04
+
+### Added
+- Enhanced `threshold_analysis` function with bootstrap resampling capabilities
+  - Added bootstrap method as alternative to cross-validation for more robust threshold estimation
+  - Introduced separate `cv_splits` and `bootstrap_iterations` parameters for better method control
+  - Returns 95% confidence intervals when using bootstrap method
+  - Maintains backward compatibility with existing cross-validation implementation
+  - Default values optimized for each method (5 splits for CV, 100 iterations for bootstrap)
 
 ### Changed
 - Renamed `plot_medical_timeseries` to `plot_metric_event_over_time` for more generic naming

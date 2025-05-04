@@ -11,10 +11,10 @@ try:
 
     __version__ = version("mlarena")
 except ImportError:
-    __version__ = "0.2.2"
+    __version__ = "0.2.3"
 
 from . import utils
 from .pipeline import ML_PIPELINE
 from .preprocessor import PreProcessor
 
-__all__ = ["PreProcessor", "ML_PIPELINE"]
+__all__ = ["PreProcessor", "ML_PIPELINE", "utils"]

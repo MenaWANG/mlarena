@@ -8,7 +8,7 @@ import pandas as pd
 
 __all__ = [
     "plot_box_scatter",
-    "plot_medical_timeseries",
+    "plot_metric_event_over_time",
     "plot_stacked_bar_over_time",
     "plot_distribution_over_time",
 ]
@@ -191,20 +191,29 @@ def plot_box_scatter(
         return fig, ax
 
 
-def plot_medical_timeseries(
+def plot_metric_event_over_time(
     data: pd.DataFrame,
     x: str,
     metrics: Dict[str, Dict[str, str]],
-    treatment_dates: Optional[Dict[str, List[str]]] = None,
-    title: str = "Medical Time Series with Treatments",
+    event_dates: Optional[Dict[str, List[str]]] = None,
+    title: str = "Metric(s) Time Series with Events",
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
     show_minmax: bool = True,
     alternate_years: bool = True,
+    event_line_color: str = "green",
+    event_line_style: str = "--",
+    event_line_alpha: float = 0.7,
+    event_label_color: str = "green",
+    event_label_y_pos: float = 0.85,
+    event_label_x_offset: float = 0.01,
+    event_label_fontsize: int = 8,
+    event_label_background: bool = True,
+    date_format: Optional[str] = None,
 ):
     """
-    Plot 1-2 medical metrics over time with treatments and annotations.
+    Plot 1-2 metrics over time with event markers and annotations.
 
     Parameters:
         data (pd.DataFrame): DataFrame containing the time series data
@@ -212,14 +221,29 @@ def plot_medical_timeseries(
         metrics (Dict[str, Dict[str, str]]): Dictionary of metrics to plot, each with values and color (optional)
                 e.g., {'Iron': {'values': 'iron', 'color': 'blue'},
                        'Ferritin': {'values': 'ferritin', 'color': 'red'}}
-        treatment_dates (Dict[str, List[str]], optional): Dictionary of treatment dates
+        event_dates (Dict[str, List[str]], optional): Dictionary of event dates
                        e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
-        title (str): Plot title. Default is "Medical Time Series with Treatments"
+        title (str): Plot title. Default is "Metric(s) Time Series with Events"
         xlabel (str, optional): Label for x-axis. If None, uses "Date".
         ylabel (str, optional): Label for y-axis. If None, uses metric names.
         figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
         show_minmax (bool): Whether to show min/max annotations. Default is True.
         alternate_years (bool): Whether to show alternating year backgrounds. Default is True.
+        event_line_color (str): Color of the event marker lines. Default is "green".
+        event_line_style (str): Style of the event marker lines. Default is "--".
+        event_line_alpha (float): Alpha/transparency of event lines. Default is 0.7.
+        event_label_color (str): Color of the event labels. Default is "green".
+        event_label_y_pos (float): Vertical position of event labels as fraction of y-axis (0-1). Default is 0.85.
+        event_label_x_offset (float): Horizontal offset from event line, as fraction of x-axis width. Default is 0.01 (1% of plot width).
+        event_label_fontsize (int): Font size for event labels. Default is 8.
+        event_label_background (bool): Whether to add a background to event labels. Default is True.
+        date_format (str, optional): Format for date labels. If None, format is auto-detected based on date range.
+                       Auto-detection thresholds:
+                       - ≤ 3 days: Hourly format ("%Y-%m-%d %H:%M")
+                       - ≤ 60 days: Daily format ("%Y-%m-%d")
+                       - ≤ 1 year: Monthly format ("%Y-%m")
+                       - ≤ 3 years: Quarterly format ("%Y-%m")
+                       - > 3 years: Yearly format ("%Y")
 
     Returns:
         Tuple[plt.Figure, List[plt.Axes]]:
@@ -312,28 +336,124 @@ def plot_medical_timeseries(
                     fontsize=8,
                 )
 
-    # Add treatment markers if provided
-    if treatment_dates:
-        for treatment, dates in treatment_dates.items():
+    # Add event markers if provided
+    if event_dates:
+        # Set x-axis range with padding for annotation positioning
+        date_min = data[x].min()
+        date_max = data[x].max()
+        data_range = date_max - date_min
+
+        # Calculate padding as 5% of the data range, with a minimum of 1 day
+        padding = max(pd.Timedelta(days=1), data_range * 0.05)
+        date_min = date_min - padding
+        date_max = date_max + padding
+
+        axes[0].set_xlim([date_min, date_max])
+
+        # Get the x-axis range in data coordinates for calculating offset
+        x_range = mdates.date2num(date_max) - mdates.date2num(date_min)
+        x_offset_data = (
+            x_range * event_label_x_offset
+        )  # Convert percentage to data units
+
+        for event, dates in event_dates.items():
             dates = pd.to_datetime(dates)
             for i, date in enumerate(dates):
-                ax.axvline(x=date, color="green", linestyle="--", alpha=0.7)
-                ax.annotate(
-                    f"{treatment} {i + 1}",
-                    xy=(date, 0),
-                    xytext=(date, ax.get_ylim()[1] * 0.1),
-                    rotation=90,
-                    color="green",
+                # Add vertical line to all axes
+                for axis in axes:
+                    axis.axvline(
+                        x=date,
+                        color=event_line_color,
+                        linestyle=event_line_style,
+                        alpha=event_line_alpha,
+                    )
+
+                # Calculate a good position for labels that works across different scales
+                # Uses the primary axis for reference
+                y_range = axes[0].get_ylim()
+                y_pos = y_range[0] + (y_range[1] - y_range[0]) * event_label_y_pos
+
+                # Prepare label annotation
+                annotation_kwargs = {
+                    "textcoords": "offset points",
+                    "rotation": 90,
+                    "color": event_label_color,
+                    "fontsize": event_label_fontsize,
+                    "ha": "left",
+                    "va": "center",
+                    "xytext": (0, 0),  # No additional offset in points
+                }
+
+                # Add background if requested
+                if event_label_background:
+                    annotation_kwargs["bbox"] = dict(
+                        facecolor="white", alpha=0.7, edgecolor="none", pad=1
+                    )
+
+                # Calculate the offset in date coordinates based on the data range
+                # This makes the offset adapt to the data scale
+                x_with_offset = mdates.date2num(date) + x_offset_data
+                date_with_offset = mdates.num2date(x_with_offset)
+
+                # Add annotation with calculated offset
+                axes[0].annotate(
+                    f"{event} {i + 1}",
+                    xy=(date_with_offset, y_pos),
+                    **annotation_kwargs,
                 )
 
-    # Format x-axis
-    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
-    ax.xaxis.set_major_locator(mdates.MonthLocator(interval=2))
+    # Set x-axis range with padding (if not already set in the event section)
+    if event_dates is None:
+        date_min = data[x].min()
+        date_max = data[x].max()
+        data_range = date_max - date_min
 
-    # Set x-axis range with padding
-    date_min = data[x].min() - pd.Timedelta(days=30)
-    date_max = data[x].max() + pd.Timedelta(days=30)
-    ax.set_xlim([date_min, date_max])
+        # Calculate padding as 5% of the data range, with a minimum of 1 day
+        padding = max(pd.Timedelta(days=1), data_range * 0.05)
+        date_min = date_min - padding
+        date_max = date_max + padding
+
+        ax.set_xlim([date_min, date_max])
+
+    # Determine appropriate date formatting and tick locator based on the actual data range, not the padded range
+    actual_date_range = data[x].max() - data[x].min()
+
+    if date_format:
+        # Use user-specified format
+        formatter = mdates.DateFormatter(date_format)
+    else:
+        # Auto-detect appropriate format based on actual date range (not the padded view)
+        if actual_date_range <= pd.Timedelta(days=3):
+            # Hours
+            formatter = mdates.DateFormatter("%Y-%m-%d %H:%M")
+            locator = mdates.HourLocator(interval=1)
+        elif actual_date_range <= pd.Timedelta(days=60):
+            # Days
+            formatter = mdates.DateFormatter("%Y-%m-%d")
+            locator = mdates.DayLocator(
+                interval=max(1, int(actual_date_range.days / 10))
+            )
+        elif actual_date_range <= pd.Timedelta(days=365):
+            # Months
+            formatter = mdates.DateFormatter("%Y-%m")
+            locator = mdates.MonthLocator(
+                interval=max(1, int(actual_date_range.days / 30 / 6))
+            )
+        elif actual_date_range <= pd.Timedelta(days=365 * 3):
+            # Quarters
+            formatter = mdates.DateFormatter("%Y-%m")
+            locator = mdates.MonthLocator(interval=3)
+        else:
+            # Years
+            formatter = mdates.DateFormatter("%Y")
+            locator = mdates.YearLocator()
+
+    # Apply the formatter and locator
+    ax.xaxis.set_major_formatter(formatter)
+    if not date_format:  # Only set locator if we're auto-detecting
+        ax.xaxis.set_major_locator(locator)
+
+    # Add grids
     for axis in axes:
         axis.grid(True, axis="x")
 

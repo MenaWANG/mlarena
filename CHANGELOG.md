@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.2.4] -
+
+### Fixed
+- Enhanced `plot_metric_event_over_time` function for better event label handling
+  - Fixed event label positioning to ensure visibility with dual axes
+  - Improved label placement using axes fraction coordinates
+  - Better support for different data scales between metrics
+  - Ensured event labels always appear on top of plot elements
+
+### Documentation
+- Enhanced example notebook (3.utils_plot.ipynb)
+  - Added explanations for each plotting utility function
+  - Improved clarity and understanding of function purposes and use cases
+
+
 ## [0.2.3] - 2025-05-04
 
 ### Added

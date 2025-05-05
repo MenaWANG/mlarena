@@ -369,20 +369,38 @@ def plot_metric_event_over_time(
                     )
 
                 # Calculate a good position for labels that works across different scales
-                # Uses the primary axis for reference
-                y_range = axes[0].get_ylim()
-                y_pos = y_range[0] + (y_range[1] - y_range[0]) * event_label_y_pos
-
-                # Prepare label annotation
-                annotation_kwargs = {
-                    "textcoords": "offset points",
-                    "rotation": 90,
-                    "color": event_label_color,
-                    "fontsize": event_label_fontsize,
-                    "ha": "left",
-                    "va": "center",
-                    "xytext": (0, 0),  # No additional offset in points
-                }
+                if len(axes) > 1:
+                    # For dual axes, use axes coordinates for consistent positioning
+                    annotation_kwargs = {
+                        "xycoords": (
+                            "data",
+                            "axes fraction",
+                        ),  # x in data coords, y in axes fraction
+                        "textcoords": "offset points",
+                        "rotation": 90,
+                        "color": event_label_color,
+                        "fontsize": event_label_fontsize,
+                        "ha": "left",
+                        "va": "center",
+                        "xytext": (0, 0),  # No additional offset in points
+                        "zorder": 10,  # ensure labels are on top
+                    }
+                    y_pos = event_label_y_pos  # Use directly as axes fraction
+                else:
+                    # For single axis, use data coordinates
+                    annotation_kwargs = {
+                        "xycoords": "data",
+                        "textcoords": "offset points",
+                        "rotation": 90,
+                        "color": event_label_color,
+                        "fontsize": event_label_fontsize,
+                        "ha": "left",
+                        "va": "center",
+                        "xytext": (0, 0),  # No additional offset in points
+                        "zorder": 10,  # ensure labels are on top
+                    }
+                    y_range = axes[0].get_ylim()
+                    y_pos = y_range[0] + (y_range[1] - y_range[0]) * event_label_y_pos
 
                 # Add background if requested
                 if event_label_background:
@@ -390,13 +408,12 @@ def plot_metric_event_over_time(
                         facecolor="white", alpha=0.7, edgecolor="none", pad=1
                     )
 
-                # Calculate the offset in date coordinates based on the data range
-                # This makes the offset adapt to the data scale
+                # Calculate the offset in date coordinates
                 x_with_offset = mdates.date2num(date) + x_offset_data
                 date_with_offset = mdates.num2date(x_with_offset)
 
-                # Add annotation with calculated offset
-                axes[0].annotate(
+                # Add annotation with calculated offset using the last axis (topmost layer)
+                axes[-1].annotate(
                     f"{event} {i + 1}",
                     xy=(date_with_offset, y_pos),
                     **annotation_kwargs,

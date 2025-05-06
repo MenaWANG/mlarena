@@ -24,18 +24,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.2.3
+%pip install mlarena==0.2.4
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.2.3 --no-deps
+%pip install mlarena==0.2.4 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.2.3 --no-deps
+%pip install mlarena==0.2.4 --no-deps
 %pip install optuna==3.6.1
 ```
 

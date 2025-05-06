@@ -6,17 +6,38 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.2.4] -
+## [0.2.4] - 2025-05-06
 
 ### Added
 - Added log_loss as optimization metric in tune function
   - Supports minimization of log_loss with proper variance penalty
   - Maintains consistent visualization where red indicates better performance
+
+### Changed
 - Enhanced `plot_metric_event_over_time` function for better event label handling
   - Fixed event label positioning to ensure visibility with dual axes
   - Improved label placement using axes fraction coordinates
   - Better support for different data scales between metrics
   - Ensured event labels always appear on top of plot elements
+- Enhanced regression metrics in evaluation and tuning:
+  - Renamed metrics for clarity:
+    - `nrmse` → `nrmse_mean` (RMSE normalized by mean)
+    - `rmse_improvement` → `rmse_improvement_over_mean`
+  - Added new normalization variants for RMSE:
+    - `nrmse_std`: RMSE normalized by standard deviation
+    - `nrmse_iqr`: RMSE normalized by interquartile range
+  - Added new error metrics:
+    - `mae`: Mean Absolute Error
+    - `median_ae`: Median Absolute Error
+    - `smape`: Symmetric Mean Absolute Percentage Error
+    - `rmse_improvement_over_median`: RMSE improvement over median baseline
+  - Improved MAPE calculation:
+    - Now handles zero values in target variable
+    - Returns nan when all target values are zero
+    - Clearly indicates when zeros are excluded from calculation
+  - Updated tune function to support new metrics:
+    - Added support for `nrmse_iqr`, `nrmse_std`, `mae`, `smape` as optimization targets
+    - All regression metrics properly handled as minimization objectives
 
 ### Documentation
 - Enhanced example notebook (3.utils_plot.ipynb)

@@ -34,9 +34,9 @@ from sklearn.metrics import (
     f1_score,
     fbeta_score,
     log_loss,
-    make_scorer,
     mean_absolute_error,
     mean_squared_error,
+    median_absolute_error,
     precision_recall_curve,
     precision_score,
     r2_score,
@@ -304,41 +304,114 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         dict
             Dictionary of metrics including:
             - rmse: Root mean squared error
-            - nrmse: Normalized RMSE (as percentage of mean)
-            - mape: Mean absolute percentage error
+            - mae: Mean absolute error
+            - median_ae: Median absolute error
+            - nrmse_mean: RMSE normalized by mean (%)
+            - nrmse_std: RMSE normalized by standard deviation (%)
+            - nrmse_iqr: RMSE normalized by interquartile range (%)
+            - mape: Mean absolute percentage error (%), excluding zero values
+            - smape: Symmetric mean absolute percentage error (%)
             - r2: R-squared score
             - adj_r2: Adjusted R-squared
-            - rmse_improvement: Improvement over baseline model (%)
+            - rmse_improvement_over_mean: Improvement over mean baseline (%)
+            - rmse_improvement_over_median: Improvement over median baseline (%)
         """
         # Basic metrics
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+        mae = mean_absolute_error(y_true, y_pred)
+        median_ae = median_absolute_error(y_true, y_pred)
         r2 = r2_score(y_true, y_pred)
+
         n_samples = len(y_true)
         if n_samples > self.n_features + 1:
             adj_r2 = 1 - (1 - r2) * (n_samples - 1) / (n_samples - self.n_features - 1)
         else:
             adj_r2 = float("nan")
 
-        # Scale-independent metrics: mean absolute percentage error
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+        # Scale-independent metrics using different normalizations
+        y_true_mean = np.mean(y_true)
+        y_true_std = np.std(y_true)
+        y_true_median = np.median(y_true)
+        q75, q25 = np.percentile(y_true, [75, 25])
+        iqr = q75 - q25
 
-        # Normalized RMSE
-        nrmse = rmse / np.mean(y_true) * 100
+        nrmse_mean = rmse / y_true_mean * 100  # Normalized by mean
+        nrmse_std = rmse / y_true_std * 100  # Normalized by standard deviation
+        nrmse_iqr = rmse / iqr * 100  # Normalized by interquartile range
 
-        # Compare to baseline (using mean)
-        baseline_pred = np.full_like(y_true, np.mean(y_true))
-        baseline_rmse = np.sqrt(mean_squared_error(y_true, baseline_pred))
-        rmse_improvement = (baseline_rmse - rmse) / baseline_rmse * 100
+        # MAPE (excluding observations where y_true is zero)
+        non_zero = y_true != 0
+        if np.any(non_zero):
+            mape = (
+                np.mean(
+                    np.abs((y_true[non_zero] - y_pred[non_zero]) / y_true[non_zero])
+                )
+                * 100
+            )
+        else:
+            mape = float("nan")
+
+        # SMAPE (handles zeros gracefully)
+        smape = (
+            np.mean(
+                2
+                * np.abs(y_pred - y_true)
+                / (np.abs(y_true) + np.abs(y_pred) + np.finfo(float).eps)
+            )
+            * 100
+        )
+
+        # Compare to different baselines
+        mean_baseline_pred = np.full_like(y_true, y_true_mean)
+        median_baseline_pred = np.full_like(y_true, y_true_median)
+
+        rmse_mean_baseline = np.sqrt(mean_squared_error(y_true, mean_baseline_pred))
+        rmse_median_baseline = np.sqrt(mean_squared_error(y_true, median_baseline_pred))
+
+        rmse_improvement_over_mean = (
+            (rmse_mean_baseline - rmse) / rmse_mean_baseline * 100
+        )
+        rmse_improvement_over_median = (
+            (rmse_median_baseline - rmse) / rmse_median_baseline * 100
+        )
+
+        metrics = {
+            "rmse": rmse,
+            "mae": mae,
+            "median_ae": median_ae,
+            "nrmse_mean": nrmse_mean,
+            "nrmse_std": nrmse_std,
+            "nrmse_iqr": nrmse_iqr,
+            "mape": mape,
+            "smape": smape,
+            "r2": r2,
+            "adj_r2": adj_r2,
+            "rmse_improvement_over_mean": rmse_improvement_over_mean,
+            "rmse_improvement_over_median": rmse_improvement_over_median,
+        }
 
         if verbose:
             print("Regression Model Evaluation:")
-            print("-" * 40)
+            print("=" * 40)
             print(f"RMSE: {rmse:.3f}")
-            print(f"Normalized RMSE: {nrmse:.1f}% of target mean")
-            print(f"MAPE: {mape:.1f}%")
+            print(f"MAE: {mae:.3f}")
+            print(f"Median AE: {median_ae:.3f}")
             print(f"R² Score: {r2:.3f}")
             print(f"Adjusted R² Score: {adj_r2:.3f}")
-            print(f"Improvement over baseline: {rmse_improvement:.1f}%")
+            print("\nNormalized RMSE Variants:")
+            print(f"- NRMSE (mean): {nrmse_mean:.1f}%")
+            print(f"- NRMSE (std): {nrmse_std:.1f}%")
+            print(f"- NRMSE (IQR): {nrmse_iqr:.1f}%")
+            print("\nPercentage Errors:")
+            if not np.isnan(mape):
+                print(f"- MAPE: {mape:.1f}% (excluding zeros)")
+            else:
+                print("- MAPE: not available (all zeros in true values)")
+            print(f"- SMAPE: {smape:.1f}%")
+            print("\nRMSE Improvements over Baselines:")
+            print(f"- vs Mean: {rmse_improvement_over_mean:.1f}%")
+            print(f"- vs Median: {rmse_improvement_over_median:.1f}%")
+
             if r2 - adj_r2 > 0.1:
                 print(
                     "\nWarning: Large difference between R² and Adjusted R² suggests possible overfitting"
@@ -346,14 +419,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 print(f"- R² dropped by {(r2 - adj_r2):.3f} after adjustment")
                 print("- Consider feature selection or regularization")
 
-        return {
-            "rmse": rmse,
-            "nrmse": nrmse,
-            "mape": mape,
-            "r2": r2,
-            "adj_r2": adj_r2,
-            "rmse_improvement": rmse_improvement,
-        }
+        return metrics
 
     def _evaluate_classification_model(
         self,
@@ -758,7 +824,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             Metric to optimize during hyperparameter tuning.
             If None, defaults to 'auc' for classification and 'rmse' for regression.
             Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss'
-            Regression metrics: 'rmse', 'nrmse', 'mape'
+            Regression metrics: 'rmse', 'mae', 'median_ae', 'smape', 'nrmse_mean', 'nrmse_iqr', 'nrmse_std'
         log_best_model : bool, default=True
             If True, logs the best model to MLflow.
         disable_optuna_logging : bool, default=True
@@ -854,7 +920,15 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                         )
                     cv_scores.append(results[tune_metric])  # maximize metric
                 elif task == "regression":
-                    if tune_metric not in ["rmse", "nrmse", "mape"]:
+                    if tune_metric not in [
+                        "rmse",
+                        "mae",
+                        "median_ae",
+                        "smape",
+                        "nrmse_mean",
+                        "nrmse_iqr",
+                        "nrmse_std",
+                    ]:
                         raise ValueError(
                             f"Unsupported metric for regression: {tune_metric}"
                         )
@@ -1029,6 +1103,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                     "test_Fbeta": final_results["f_beta"],
                     "test_precision": final_results["precision"],
                     "test_recall": final_results["recall"],
+                    "test_log_loss": final_results["log_loss"],
                     f"cv_{tune_metric}_mean": best_trial.user_attrs[
                         f"mean_{tune_metric}"
                     ],
@@ -1042,11 +1117,21 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 {
                     f"test_{tune_metric}": final_results[tune_metric],
                     "test_rmse": final_results["rmse"],
-                    "test_nrmse": final_results["nrmse"],
+                    "test_mae": final_results["mae"],
+                    "test_median_ae": final_results["median_ae"],
+                    "test_nrmse_mean": final_results["nrmse_mean"],
+                    "test_nrmse_std": final_results["nrmse_std"],
+                    "test_nrmse_iqr": final_results["nrmse_iqr"],
                     "test_mape": final_results["mape"],
+                    "test_smape": final_results["smape"],
                     "test_r2": final_results["r2"],
                     "test_adj_r2": final_results["adj_r2"],
-                    "test_rmse_improvement": final_results["rmse_improvement"],
+                    "test_rmse_improvement_over_mean": final_results[
+                        "rmse_improvement_over_mean"
+                    ],  # renamed
+                    "test_rmse_improvement_over_median": final_results[
+                        "rmse_improvement_over_median"
+                    ],  # new
                     f"cv_{tune_metric}_mean": best_trial.user_attrs[
                         f"mean_{tune_metric}"
                     ],

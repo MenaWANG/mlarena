@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.2.4] -
 
-### Fixed
+### Added
+- Added log_loss as optimization metric in tune function
+  - Supports minimization of log_loss with proper variance penalty
+  - Maintains consistent visualization where red indicates better performance
 - Enhanced `plot_metric_event_over_time` function for better event label handling
   - Fixed event label positioning to ensure visibility with dual axes
   - Improved label placement using axes fraction coordinates

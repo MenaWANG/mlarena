@@ -33,6 +33,7 @@ from sklearn.metrics import (
     accuracy_score,
     f1_score,
     fbeta_score,
+    log_loss,
     make_scorer,
     mean_absolute_error,
     mean_squared_error,
@@ -390,6 +391,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             - f1: F1 score
             - f_beta: F-beta score
             - auc: Area under ROC curve
+            - log_loss: Logarithmic loss
             - positive_rate: Percentage of positive predictions
         """
         # Get predictions at specified threshold
@@ -407,6 +409,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             "f1": f1_score(y_true, y_pred),
             "f_beta": fbeta_score(y_true, y_pred, beta=beta),
             "auc": roc_auc_score(y_true, y_pred_proba),
+            "log_loss": log_loss(y_true, y_pred_proba),
             # Additional context
             "positive_rate": np.mean(y_pred),  # % of positive predictions
         }
@@ -424,6 +427,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 print(f"F_beta:    {metrics['f_beta']:.3f}")
             print(f"Precision: {metrics['precision']:.3f}")
             print(f"Recall:    {metrics['recall']:.3f}")
+            print(f"Log Loss:  {metrics['log_loss']:.3f}")
             print(f"Pos Rate:  {metrics['positive_rate']:.3f}")
             print("\nAUC (threshold independent):")
             print(f"AUC:   {metrics['auc']:.3f}")
@@ -753,7 +757,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         tune_metric : str, optional
             Metric to optimize during hyperparameter tuning.
             If None, defaults to 'auc' for classification and 'rmse' for regression.
-            Classification metrics: 'auc', 'f1', 'accuracy'
+            Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss'
             Regression metrics: 'rmse', 'nrmse', 'mape'
         log_best_model : bool, default=True
             If True, logs the best model to MLflow.
@@ -844,7 +848,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 )
 
                 if task == "classification":
-                    if tune_metric not in ["auc", "f1", "accuracy"]:
+                    if tune_metric not in ["auc", "f1", "accuracy", "log_loss"]:
                         raise ValueError(
                             f"Unsupported metric for classification: {tune_metric}"
                         )
@@ -863,9 +867,16 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             if task == "classification":
                 trial.set_user_attr(f"mean_{tune_metric}", mean_score)
                 trial.set_user_attr(f"std_{tune_metric}", std_score)
-                # Apply penalty (still maximizing)
-                score = mean_score - cv_variance_penalty * std_score
+                if tune_metric == "log_loss":
+                    # For log_loss (minimizing), add penalty like regression metrics
+                    score = mean_score + cv_variance_penalty * std_score
+                else:
+                    # For other classification metrics (maximizing), subtract penalty
+                    score = mean_score - cv_variance_penalty * std_score
                 trial.set_user_attr(f"penalized_{tune_metric}", score)
+                # For log_loss, store negative for visualization like regression metrics
+                if tune_metric == "log_loss":
+                    trial.set_user_attr(f"negative_penalized_{tune_metric}", -score)
             else:  # regression
                 trial.set_user_attr(f"mean_{tune_metric}", mean_score)
                 trial.set_user_attr(f"std_{tune_metric}", std_score)
@@ -886,9 +897,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             patience=patience,
         )
 
-        # Create and run study with appropriate direction
+        # Create and run study with appropriate direction: minimize for log_loss and regression tasks
+        direction = (
+            "minimize"
+            if tune_metric == "log_loss"
+            else "maximize" if task == "classification" else "minimize"
+        )
         study = optuna.create_study(
-            direction="maximize" if task == "classification" else "minimize",
+            direction=direction,
             sampler=optuna.samplers.TPESampler(seed=random_state),
             pruner=pruner,
         )
@@ -958,17 +974,17 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         if visualize:
             try:
                 print("\nHyperparameter Parallel Coordinate Plot:")
-                # Use appropriate target based on task
-                target_name = (
-                    f"Penalized {tune_metric.upper()}"
-                    if task == "classification"
-                    else f"Negative Penalized {tune_metric.upper()}"
-                )
-                target_attr = (
-                    f"penalized_{tune_metric}"
-                    if task == "classification"
-                    else f"negative_penalized_{tune_metric}"
-                )
+                # Use appropriate target based on task and metric
+                if task == "classification":
+                    if tune_metric == "log_loss":
+                        target_name = f"Negative Penalized {tune_metric.upper()}"
+                        target_attr = f"negative_penalized_{tune_metric}"
+                    else:
+                        target_name = f"Penalized {tune_metric.upper()}"
+                        target_attr = f"penalized_{tune_metric}"
+                else:  # regression
+                    target_name = f"Negative Penalized {tune_metric.upper()}"
+                    target_attr = f"negative_penalized_{tune_metric}"
 
                 fig_parallel = plot_parallel_coordinate(
                     study,

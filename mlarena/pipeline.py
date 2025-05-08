@@ -24,6 +24,7 @@ import mlflow
 import numpy as np
 import optuna
 import pandas as pd
+import seaborn as sns
 import shap
 from mlflow.models.signature import infer_signature
 from optuna.pruners import MedianPruner, PatientPruner
@@ -31,6 +32,7 @@ from optuna.visualization import plot_parallel_coordinate
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
+    confusion_matrix,
     f1_score,
     fbeta_score,
     log_loss,
@@ -508,7 +510,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         beta: float = 1.0,
     ) -> None:
         """
-        Create visualization for classification metrics including ROC curve and Metrics vs Threshold.
+        Create visualization for classification metrics including:
+        - Metrics vs Threshold (top)
+        - ROC curve (bottom left)
+        - Confusion Matrix (bottom right)
 
         Parameters
         ----------
@@ -524,26 +529,29 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         Returns
         -------
         None
-            Displays plots for ROC curve and metrics vs threshold.
+            Displays plots for metrics vs threshold, ROC curve, and confusion matrix.
         """
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+        # Get matplotlib default colors
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
-        # ROC Curve (left plot)
-        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
-        roc_auc = roc_auc_score(y_true, y_pred_proba)
+        # Define color constants for better readability
+        MPL_BLUE = colors[0]  # Precision
+        MPL_ORANGE = colors[1]  # ROC curve
+        MPL_GREEN = colors[2]  # F-beta score
+        MPL_RED = colors[3]  # Recall
+        MPL_GRAY = "#666666"  # Reference lines
 
-        ax1.plot(
-            fpr, tpr, color="darkorange", lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})"
-        )
-        ax1.plot([0, 1], [0, 1], color="navy", lw=2, linestyle="--", label="Random")
+        fig = plt.figure(figsize=(15, 10))
+        gs = fig.add_gridspec(2, 2)
 
-        ax1.set_xlabel("False Positive Rate")
-        ax1.set_ylabel("True Positive Rate")
-        ax1.set_title("ROC Curve")
-        ax1.legend(loc="lower right")
-        ax1.grid(True)
+        # Top plot: Metrics vs Threshold
+        ax1 = fig.add_subplot(gs[0, :])
+        # Bottom left: ROC curve
+        ax2 = fig.add_subplot(gs[1, 0])
+        # Bottom right: Confusion matrix
+        ax3 = fig.add_subplot(gs[1, 1])
 
-        # Metrics vs Threshold (right plot)
+        # Metrics vs Threshold (top plot)
         thresholds = np.linspace(0, 1, 200)
         precisions = []
         recalls = []
@@ -565,27 +573,39 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         valid_thresholds = thresholds[: len(precisions)]
 
         # Current metrics at threshold
-        current_precision = precision_score(y_true, y_pred_proba >= threshold)
-        current_recall = recall_score(y_true, y_pred_proba >= threshold)
-        current_f = fbeta_score(y_true, y_pred_proba >= threshold, beta=beta)
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        current_precision = precision_score(y_true, y_pred)
+        current_recall = recall_score(y_true, y_pred)
+        current_f = fbeta_score(y_true, y_pred, beta=beta)
 
         # Plot metrics
-        ax2.plot(
-            valid_thresholds, np.array(precisions) * 100, "b-", label="Precision", lw=2
+        ax1.plot(
+            valid_thresholds,
+            np.array(precisions) * 100,
+            color=MPL_BLUE,
+            label="Precision",
+            lw=2,
         )
-        ax2.plot(valid_thresholds, np.array(recalls) * 100, "r-", label="Recall", lw=2)
-        ax2.plot(
+        ax1.plot(
+            valid_thresholds,
+            np.array(recalls) * 100,
+            color=MPL_RED,
+            label="Recall",
+            lw=2,
+        )
+        ax1.plot(
             valid_thresholds,
             np.array(f_scores) * 100,
-            "g--",
+            color=MPL_GREEN,
+            linestyle="--",
             label=f"F{beta:.1f} Score",
             lw=2,
         )
 
         # Add threshold line with metrics
-        ax2.axvline(
+        ax1.axvline(
             x=threshold,
-            color="gray",
+            color=MPL_GRAY,
             linestyle="--",
             label=f"Threshold = {threshold:.3f}\n"
             f"Precision = {current_precision:.3f}\n"
@@ -593,13 +613,59 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             f"F{beta:.1f} = {current_f:.3f}",
         )
 
-        ax2.set_xlabel("Threshold")
-        ax2.set_ylabel("Score (%)")
-        ax2.set_title("Metrics vs Threshold")
-        ax2.legend(loc="center right")
-        ax2.grid(True)
-        ax2.set_ylim(0, 100)
+        ax1.set_xlabel("Threshold")
+        ax1.set_ylabel("Metrics (%)")
+        ax1.set_title("Metrics vs Threshold")
+        ax1.legend(loc="lower left", bbox_to_anchor=(threshold + 0.01, 0.05))
+        ax1.grid(True)
+        ax1.set_ylim(0, 100)
 
+        # ROC Curve (bottom left)
+        fpr, tpr, _ = roc_curve(y_true, y_pred_proba)
+        roc_auc = roc_auc_score(y_true, y_pred_proba)
+
+        ax2.plot(
+            fpr, tpr, color=MPL_ORANGE, lw=2, label=f"ROC curve (AUC = {roc_auc:.3f})"
+        )
+        ax2.plot([0, 1], [0, 1], color=MPL_GRAY, lw=2, linestyle="--", label="Random")
+
+        ax2.set_xlabel("False Positive Rate")
+        ax2.set_ylabel("True Positive Rate")
+        ax2.set_title("ROC Curve")
+        ax2.legend(loc="lower right")
+        ax2.grid(True)
+
+        # Confusion Matrix (bottom right)
+        cm = confusion_matrix(y_true, y_pred)
+
+        # Create base heatmap with light colors
+        sns.heatmap(
+            cm,
+            annot=True,
+            fmt="d",
+            ax=ax3,
+            xticklabels=["Negative", "Positive"],
+            yticklabels=["Negative", "Positive"],
+            cmap="Blues",
+            cbar=False,
+            alpha=0.4,
+        )
+
+        # Overlay rectangles with specific colors and opacities
+        # True Negatives (0,0) - Blue with 60% opacity
+        ax3.add_patch(
+            plt.Rectangle((0, 0), 1, 1, fill=True, color=MPL_BLUE, alpha=0.6, zorder=2)
+        )
+        # True Positives (1,1) - Red with 60% opacity
+        ax3.add_patch(
+            plt.Rectangle((1, 1), 1, 1, fill=True, color=MPL_RED, alpha=0.6, zorder=2)
+        )
+
+        ax3.set_xlabel("Predicted")
+        ax3.set_ylabel("Actual")
+        ax3.set_title("Confusion Matrix")
+
+        # Adjust layout with specific padding
         plt.tight_layout()
         plt.show()
 
@@ -626,12 +692,20 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         None
             Displays diagnostic plots.
         """
+        # Get matplotlib default colors
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+        # Define color constants for better readability
+        MPL_BLUE = colors[0]  # Main color
+        MPL_RED = colors[3]  # Reference lines
+        MPL_GRAY = "#666666"  # Error bands
+
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
         # Left plot: Residual analysis
         residuals = y_test - y_pred
-        ax1.scatter(y_pred, residuals, alpha=0.5)
-        ax1.axhline(y=0, color="r", linestyle="--")
+        ax1.scatter(y_pred, residuals, alpha=0.5, color=MPL_BLUE)
+        ax1.axhline(y=0, color=MPL_RED, linestyle="--")
         ax1.set_xlabel("Predicted Values")
         ax1.set_ylabel("Residuals")
         ax1.set_title("Residuals vs Predicted")
@@ -643,13 +717,13 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             -2 * std_residuals,
             2 * std_residuals,
             alpha=0.2,
-            color="gray",
+            color=MPL_GRAY,
             label="95% Prediction Interval",
         )
         ax1.legend()
 
         # Right plot: Prediction Error Plot
-        ax2.scatter(y_test, y_pred, alpha=0.5)
+        ax2.scatter(y_test, y_pred, alpha=0.5, color=MPL_BLUE)
 
         # Add perfect prediction line
         min_val = min(y_test.min(), y_pred.min())
@@ -657,7 +731,8 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         ax2.plot(
             [min_val, max_val],
             [min_val, max_val],
-            "r--",
+            color=MPL_RED,
+            linestyle="--",
             lw=2,
             label="Perfect Prediction",
         )
@@ -676,7 +751,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             sorted_y_pred - 2 * std_residuals,
             sorted_y_pred + 2 * std_residuals,
             alpha=0.2,
-            color="gray",
+            color=MPL_GRAY,
             label="95% Prediction Interval",
         )
 

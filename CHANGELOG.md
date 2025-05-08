@@ -18,8 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Consolidated color scheme across all visualizations:
   - Standardized color constants (MPL_BLUE, MPL_RED, MPL_ORANGE, MPL_GREEN, MPL_GRAY)
   - Updated regression plots to use consistent colors
-
-
+- Enhanced `plot_metric_event_over_time` function for better usability:
+  - Simplified metrics parameter to accept either a single string or list of strings
+  - rename `metrics` parameter to be y 
+  - Standardized color handling using matplotlib's default color cycle
 
 ## [0.2.4] - 2025-05-06
 

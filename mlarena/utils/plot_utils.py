@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union
 
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
@@ -194,18 +194,18 @@ def plot_box_scatter(
 def plot_metric_event_over_time(
     data: pd.DataFrame,
     x: str,
-    metrics: Dict[str, Dict[str, str]],
+    y: Union[str, List[str]],
     event_dates: Optional[Dict[str, List[str]]] = None,
     title: str = "Metric(s) Time Series with Events",
     xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
+    ylabel: Optional[Union[str, List[str]]] = None,
     figsize: tuple = (12, 6),
     show_minmax: bool = True,
     alternate_years: bool = True,
-    event_line_color: str = "green",
+    event_line_color: Optional[str] = None,
     event_line_style: str = "--",
     event_line_alpha: float = 0.7,
-    event_label_color: str = "green",
+    event_label_color: Optional[str] = None,
     event_label_y_pos: float = 0.85,
     event_label_x_offset: float = 0.01,
     event_label_fontsize: int = 8,
@@ -218,21 +218,22 @@ def plot_metric_event_over_time(
     Parameters:
         data (pd.DataFrame): DataFrame containing the time series data
         x (str): Name of the datetime column
-        metrics (Dict[str, Dict[str, str]]): Dictionary of metrics to plot, each with values and color (optional)
-                e.g., {'Iron': {'values': 'iron', 'color': 'blue'},
-                       'Ferritin': {'values': 'ferritin', 'color': 'red'}}
+        y (Union[str, List[str]]): Single metric column name or list of up to 2 metric column names
+                e.g., 'iron' or ['iron', 'ferritin']
         event_dates (Dict[str, List[str]], optional): Dictionary of event dates
                        e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
         title (str): Plot title. Default is "Metric(s) Time Series with Events"
         xlabel (str, optional): Label for x-axis. If None, uses "Date".
-        ylabel (str, optional): Label for y-axis. If None, uses metric names.
+        ylabel (Union[str, List[str]], optional): Label for y-axis. If None, uses metric names.
+                Can be a single string for one metric or a list of up to 2 strings for two metrics.
+                e.g., 'Iron Level' or ['Iron Level', 'Ferritin Level']
         figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
         show_minmax (bool): Whether to show min/max annotations. Default is True.
         alternate_years (bool): Whether to show alternating year backgrounds. Default is True.
-        event_line_color (str): Color of the event marker lines. Default is "green".
+        event_line_color (str, optional): Color of the event lines. If None, uses MPL_GREEN.
         event_line_style (str): Style of the event marker lines. Default is "--".
         event_line_alpha (float): Alpha/transparency of event lines. Default is 0.7.
-        event_label_color (str): Color of the event labels. Default is "green".
+        event_label_color (str, optional): Color of the event labels. If None, uses MPL_GREEN.
         event_label_y_pos (float): Vertical position of event labels as fraction of y-axis (0-1). Default is 0.85.
         event_label_x_offset (float): Horizontal offset from event line, as fraction of x-axis width. Default is 0.01 (1% of plot width).
         event_label_fontsize (int): Font size for event labels. Default is 8.
@@ -251,15 +252,41 @@ def plot_metric_event_over_time(
             - List of Axes objects (1-2 axes depending on number of metrics)
     """
 
-    # Validate and set default colors for metrics (max 2 supported)
-    if len(metrics) > 2:
+    # Get matplotlib default colors
+    colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    # Define color constants for better readability
+    MPL_BLUE = colors[0]  # First metric
+    MPL_RED = colors[3]   # Second metric
+    MPL_GREEN = colors[2] # Events
+
+    # Convert single metric to list
+    if isinstance(y, str):
+        y = [y]
+
+    # Validate number of metrics
+    if len(y) > 2:
         raise ValueError("This function supports plotting of up to 2 metrics only")
-    default_colors = ["#000000", "#FF0000"]  # black, red
-    for (metric_name, metric_info), default_color in zip(
-        metrics.items(), default_colors
-    ):
-        if "color" not in metric_info:
-            metric_info["color"] = default_color
+    
+    # Convert single ylabel to list if provided
+    if isinstance(ylabel, str):
+        ylabel = [ylabel]
+    
+    # Validate ylabel length if provided
+    if ylabel is not None and len(ylabel) != len(y):
+        raise ValueError("Number of ylabels must match number of metrics")
+    
+    # Create metrics dictionary with default colors
+    metrics_dict = {}
+    default_metric_colors = [MPL_BLUE, MPL_RED]
+    for metric, color in zip(y, default_metric_colors):
+        metrics_dict[metric] = {"values": metric, "color": color}
+
+    # Set default colors for events if not provided
+    if event_line_color is None:
+        event_line_color = MPL_GREEN
+    if event_label_color is None:
+        event_label_color = MPL_GREEN
 
     # Convert dates if needed
     data = data.copy()
@@ -270,7 +297,7 @@ def plot_metric_event_over_time(
     axes = [ax]
 
     # Create additional y-axes if needed
-    for i in range(len(metrics) - 1):
+    for i in range(len(y) - 1):
         axes.append(ax.twinx())
         axes[-1].spines["right"].set_position(("outward", 60 * i))
 
@@ -285,11 +312,11 @@ def plot_metric_event_over_time(
                 ax.axvspan(start, end, color="gray", alpha=0.1)
 
     # Plot each metric
-    for (metric_name, metric_info), ax in zip(metrics.items(), axes):
+    for (metric_name, metric_info), ax in zip(metrics_dict.items(), axes):
         values = data[metric_info["values"]]
         color = metric_info["color"]
 
-        # Plot the metric (corrected line)
+        # Plot the metric
         ax.plot(data[x], values, "o-", color=color, label=metric_name)
         ax.set_ylabel(metric_name, color=color)
         ax.tick_params(axis="y", labelcolor=color)
@@ -311,17 +338,14 @@ def plot_metric_event_over_time(
                 y_offset = -5 if label == "Max" else 5
 
                 # Check proximity to other metric's points
-                for other_metric, other_info in metrics.items():
+                for other_metric in y:
                     if other_metric != metric_name:
-                        other_values = data[other_info["values"]]
+                        other_values = data[other_metric]
                         date_diff = abs((point_date - data[x]).dt.total_seconds())
                         closest_idx = date_diff.idxmin()
 
                         # If points are close in time, adjust vertical position
-                        if (
-                            date_diff[closest_idx]
-                            < pd.Timedelta(days=60).total_seconds()
-                        ):
+                        if date_diff[closest_idx] < pd.Timedelta(days=60).total_seconds():
                             if point_value > other_values[closest_idx]:
                                 y_offset += 10  # Move annotation higher
                             else:
@@ -480,12 +504,12 @@ def plot_metric_event_over_time(
     ax.set_xlabel(xlabel or "Date")
 
     # Handle ylabels for multiple metrics
-    if len(metrics) == 1:
-        ax.set_ylabel(ylabel or list(metrics.keys())[0])
+    if len(y) == 1:
+        ax.set_ylabel(ylabel[0] if ylabel else list(metrics_dict.keys())[0])
     else:
-        # For multiple metrics, use their names as labels
-        for axis, (metric_name, _) in zip(axes, metrics.items()):
-            axis.set_ylabel(metric_name)
+        # For multiple metrics, use provided labels or metric names
+        for axis, (metric_name, _), label in zip(axes, metrics_dict.items(), ylabel or y):
+            axis.set_ylabel(label)
 
     # Adjust layout
     fig.autofmt_xdate(rotation=45, ha="right")
@@ -549,7 +573,7 @@ def plot_stacked_bar_over_time(
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     figsize: tuple = (12, 6),
-    color_palette: Optional[List[str]] = None,
+    palette: Optional[List[str]] = None,
 ):
     """
     Plot a stacked bar chart showing the distribution of a categorical variable over time,
@@ -566,7 +590,7 @@ def plot_stacked_bar_over_time(
         xlabel (str, optional): Label for the x-axis. If None, will be set based on frequency.
         ylabel (str, optional): Label for the y-axis (default is auto-set based on is_pct).
         figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
-        color_palette (List[str], optional): List of colors for the bars.
+        palette (List[str], optional): List of colors for the bars. If None, uses matplotlib's default color cycle.
     """
 
     # Use provided color palette or fallback to matplotlib's default color cycle
@@ -575,7 +599,7 @@ def plot_stacked_bar_over_time(
         num_categories = len(label_dict)
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
     colors = (
-        color_palette if color_palette is not None else color_cycle[:num_categories]
+        palette if palette is not None else color_cycle[:num_categories]
     )
 
     # Convert x column to datetime and set as index for resampling

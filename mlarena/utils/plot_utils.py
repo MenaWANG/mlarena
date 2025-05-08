@@ -194,11 +194,11 @@ def plot_box_scatter(
 def plot_metric_event_over_time(
     data: pd.DataFrame,
     x: str,
-    metrics: Union[str, List[str]],
+    y: Union[str, List[str]],
     event_dates: Optional[Dict[str, List[str]]] = None,
     title: str = "Metric(s) Time Series with Events",
     xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
+    ylabel: Optional[Union[str, List[str]]] = None,
     figsize: tuple = (12, 6),
     show_minmax: bool = True,
     alternate_years: bool = True,
@@ -218,13 +218,15 @@ def plot_metric_event_over_time(
     Parameters:
         data (pd.DataFrame): DataFrame containing the time series data
         x (str): Name of the datetime column
-        metrics (Union[str, List[str]]): Single metric column name or list of up to 2 metric column names
+        y (Union[str, List[str]]): Single metric column name or list of up to 2 metric column names
                 e.g., 'iron' or ['iron', 'ferritin']
         event_dates (Dict[str, List[str]], optional): Dictionary of event dates
                        e.g., {'Iron Infusion': ['2022-09-01', '2024-03-28']}
         title (str): Plot title. Default is "Metric(s) Time Series with Events"
         xlabel (str, optional): Label for x-axis. If None, uses "Date".
-        ylabel (str, optional): Label for y-axis. If None, uses metric names.
+        ylabel (Union[str, List[str]], optional): Label for y-axis. If None, uses metric names.
+                Can be a single string for one metric or a list of up to 2 strings for two metrics.
+                e.g., 'Iron Level' or ['Iron Level', 'Ferritin Level']
         figsize (tuple): Figure size as (width, height) in inches. Default is (12, 6).
         show_minmax (bool): Whether to show min/max annotations. Default is True.
         alternate_years (bool): Whether to show alternating year backgrounds. Default is True.
@@ -259,17 +261,25 @@ def plot_metric_event_over_time(
     MPL_GREEN = colors[2] # Events
 
     # Convert single metric to list
-    if isinstance(metrics, str):
-        metrics = [metrics]
+    if isinstance(y, str):
+        y = [y]
 
     # Validate number of metrics
-    if len(metrics) > 2:
+    if len(y) > 2:
         raise ValueError("This function supports plotting of up to 2 metrics only")
+    
+    # Convert single ylabel to list if provided
+    if isinstance(ylabel, str):
+        ylabel = [ylabel]
+    
+    # Validate ylabel length if provided
+    if ylabel is not None and len(ylabel) != len(y):
+        raise ValueError("Number of ylabels must match number of metrics")
     
     # Create metrics dictionary with default colors
     metrics_dict = {}
     default_metric_colors = [MPL_BLUE, MPL_RED]
-    for metric, color in zip(metrics, default_metric_colors):
+    for metric, color in zip(y, default_metric_colors):
         metrics_dict[metric] = {"values": metric, "color": color}
 
     # Set default colors for events if not provided
@@ -287,7 +297,7 @@ def plot_metric_event_over_time(
     axes = [ax]
 
     # Create additional y-axes if needed
-    for i in range(len(metrics) - 1):
+    for i in range(len(y) - 1):
         axes.append(ax.twinx())
         axes[-1].spines["right"].set_position(("outward", 60 * i))
 
@@ -328,7 +338,7 @@ def plot_metric_event_over_time(
                 y_offset = -5 if label == "Max" else 5
 
                 # Check proximity to other metric's points
-                for other_metric in metrics:
+                for other_metric in y:
                     if other_metric != metric_name:
                         other_values = data[other_metric]
                         date_diff = abs((point_date - data[x]).dt.total_seconds())
@@ -494,12 +504,12 @@ def plot_metric_event_over_time(
     ax.set_xlabel(xlabel or "Date")
 
     # Handle ylabels for multiple metrics
-    if len(metrics) == 1:
-        ax.set_ylabel(ylabel or list(metrics_dict.keys())[0])
+    if len(y) == 1:
+        ax.set_ylabel(ylabel[0] if ylabel else list(metrics_dict.keys())[0])
     else:
-        # For multiple metrics, use their names as labels
-        for axis, (metric_name, _) in zip(axes, metrics_dict.items()):
-            axis.set_ylabel(metric_name)
+        # For multiple metrics, use provided labels or metric names
+        for axis, (metric_name, _), label in zip(axes, metrics_dict.items(), ylabel or y):
+            axis.set_ylabel(label)
 
     # Adjust layout
     fig.autofmt_xdate(rotation=45, ha="right")

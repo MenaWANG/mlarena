@@ -257,8 +257,8 @@ def plot_metric_event_over_time(
 
     # Define color constants for better readability
     MPL_BLUE = colors[0]  # First metric
-    MPL_RED = colors[3]   # Second metric
-    MPL_GREEN = colors[2] # Events
+    MPL_RED = colors[3]  # Second metric
+    MPL_GREEN = colors[2]  # Events
 
     # Convert single metric to list
     if isinstance(y, str):
@@ -267,15 +267,15 @@ def plot_metric_event_over_time(
     # Validate number of metrics
     if len(y) > 2:
         raise ValueError("This function supports plotting of up to 2 metrics only")
-    
+
     # Convert single ylabel to list if provided
     if isinstance(ylabel, str):
         ylabel = [ylabel]
-    
+
     # Validate ylabel length if provided
     if ylabel is not None and len(ylabel) != len(y):
         raise ValueError("Number of ylabels must match number of metrics")
-    
+
     # Create metrics dictionary with default colors
     metrics_dict = {}
     default_metric_colors = [MPL_BLUE, MPL_RED]
@@ -345,7 +345,10 @@ def plot_metric_event_over_time(
                         closest_idx = date_diff.idxmin()
 
                         # If points are close in time, adjust vertical position
-                        if date_diff[closest_idx] < pd.Timedelta(days=60).total_seconds():
+                        if (
+                            date_diff[closest_idx]
+                            < pd.Timedelta(days=60).total_seconds()
+                        ):
                             if point_value > other_values[closest_idx]:
                                 y_offset += 10  # Move annotation higher
                             else:
@@ -508,7 +511,9 @@ def plot_metric_event_over_time(
         ax.set_ylabel(ylabel[0] if ylabel else list(metrics_dict.keys())[0])
     else:
         # For multiple metrics, use provided labels or metric names
-        for axis, (metric_name, _), label in zip(axes, metrics_dict.items(), ylabel or y):
+        for axis, (metric_name, _), label in zip(
+            axes, metrics_dict.items(), ylabel or y
+        ):
             axis.set_ylabel(label)
 
     # Adjust layout
@@ -598,9 +603,7 @@ def plot_stacked_bar_over_time(
     if label_dict:
         num_categories = len(label_dict)
     color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    colors = (
-        palette if palette is not None else color_cycle[:num_categories]
-    )
+    colors = palette if palette is not None else color_cycle[:num_categories]
 
     # Convert x column to datetime and set as index for resampling
     df = data.copy()

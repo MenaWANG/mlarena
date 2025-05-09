@@ -393,33 +393,42 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         }
 
         if verbose:
-            print("Regression Model Evaluation:")
-            print("=" * 40)
-            print(f"RMSE: {rmse:.3f}")
-            print(f"MAE: {mae:.3f}")
-            print(f"Median AE: {median_ae:.3f}")
-            print(f"R² Score: {r2:.3f}")
-            print(f"Adjusted R² Score: {adj_r2:.3f}")
-            print("\nNormalized RMSE Variants:")
-            print(f"- NRMSE (mean): {nrmse_mean:.1f}%")
-            print(f"- NRMSE (std): {nrmse_std:.1f}%")
-            print(f"- NRMSE (IQR): {nrmse_iqr:.1f}%")
-            print("\nPercentage Errors:")
-            if not np.isnan(mape):
-                print(f"- MAPE: {mape:.1f}% (excluding zeros)")
-            else:
-                print("- MAPE: not available (all zeros in true values)")
-            print(f"- SMAPE: {smape:.1f}%")
-            print("\nRMSE Improvements over Baselines:")
-            print(f"- vs Mean: {rmse_improvement_over_mean:.1f}%")
-            print(f"- vs Median: {rmse_improvement_over_median:.1f}%")
+            print("\n=== Regression Model Evaluation ===")
+
+            print("\n1. Error Metrics")
+            print("-" * 40)
+            print(f"• RMSE:         {rmse:.3f}      (Root Mean Squared Error)")
+            print(f"• MAE:          {mae:.3f}      (Mean Absolute Error)")
+            print(f"• Median AE:    {median_ae:.3f}      (Median Absolute Error)")
+            print(f"• NRMSE Mean:   {nrmse_mean:.1f}%      (RMSE/mean)")
+            print(f"• NRMSE Std:    {nrmse_std:.1f}%      (RMSE/std)")
+            print(f"• NRMSE IQR:    {nrmse_iqr:.1f}%      (RMSE/IQR)")
+            print(
+                f"• MAPE:         {mape:.1f}%      (Mean Abs % Error, excl. zeros)"
+                if not np.isnan(mape)
+                else "• MAPE:         N/A      (not available - zeros in true values)"
+            )
+            print(f"• SMAPE:        {smape:.1f}%      (Symmetric Mean Abs % Error)")
+
+            print("\n2. Goodness of Fit")
+            print("-" * 40)
+            print(f"• R²:           {r2:.3f}      (Coefficient of Determination)")
+            print(f"• Adj. R²:      {adj_r2:.3f}      (Adjusted for # of features)")
+
+            print("\n3. Improvement over Baseline")
+            print("-" * 40)
+            print(
+                f"• vs Mean:      {rmse_improvement_over_mean:.1f}%      (RMSE improvement)"
+            )
+            print(
+                f"• vs Median:    {rmse_improvement_over_median:.1f}%      (RMSE improvement)"
+            )
 
             if r2 - adj_r2 > 0.1:
-                print(
-                    "\nWarning: Large difference between R² and Adjusted R² suggests possible overfitting"
-                )
-                print(f"- R² dropped by {(r2 - adj_r2):.3f} after adjustment")
-                print("- Consider feature selection or regularization")
+                print("\n⚠️ Model Complexity Warning:")
+                print("-" * 40)
+                print(f"• R² dropped by {(r2 - adj_r2):.3f} after adjustment")
+                print("• Consider feature selection or regularization")
 
         return metrics
 
@@ -480,25 +489,46 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             "log_loss": log_loss(y_true, y_pred_proba),
             # Additional context
             "positive_rate": np.mean(y_pred),  # % of positive predictions
+            "base_rate": np.mean(y_true),
         }
 
         if verbose:
-            print("Classification Metrics Report")
-            print("=" * 50)
-            print("\nEvaluation Parameters:")
-            print(f"Threshold: {metrics['threshold']:.3f}")
-            print(f"Beta:      {metrics['beta']:.3f}")
-            print("\nMetrics:")
-            print(f"Accuracy:  {metrics['accuracy']:.3f}")
-            print(f"F1:        {metrics['f1']:.3f}")
+            print("\n=== Classification Model Evaluation ===")
+
+            print("\n1. Evaluation Parameters")
+            print("-" * 40)
+            print(f"• Threshold: {metrics['threshold']:.3f}    (Classification cutoff)")
+            print(f"• Beta:      {metrics['beta']:.3f}    (F-beta weight parameter)")
+
+            print("\n2. Core Performance Metrics")
+            print("-" * 40)
+            print(
+                f"• Accuracy:  {metrics['accuracy']:.3f}    (Overall correct predictions)"
+            )
+            print(f"• AUC:       {metrics['auc']:.3f}    (Ranking quality)")
+            print(f"• Log Loss:  {metrics['log_loss']:.3f}    (Prediction confidence)")
+            print(
+                f"• Precision: {metrics['precision']:.3f}    (True positives / Predicted positives)"
+            )
+            print(
+                f"• Recall:    {metrics['recall']:.3f}    (True positives / Actual positives)"
+            )
+            print(
+                f"• F1 Score:  {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
+            )
             if beta != 1:
-                print(f"F_beta:    {metrics['f_beta']:.3f}")
-            print(f"Precision: {metrics['precision']:.3f}")
-            print(f"Recall:    {metrics['recall']:.3f}")
-            print(f"Log Loss:  {metrics['log_loss']:.3f}")
-            print(f"Pos Rate:  {metrics['positive_rate']:.3f}")
-            print("\nAUC (threshold independent):")
-            print(f"AUC:   {metrics['auc']:.3f}")
+                print(
+                    f"• F{beta:.1f} Score: {metrics['f_beta']:.3f}    (Weighted harmonic mean)"
+                )
+
+            print("\n3. Prediction Distribution")
+            print("-" * 40)
+            print(
+                f"• Pos Rate:  {metrics['positive_rate']:.3f}    (Fraction of positive predictions)"
+            )
+            print(
+                f"• Base Rate: {metrics['base_rate']:.3f}    (Actual positive class rate)"
+            )
 
         return metrics
 

@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added color highlighting in confusion matrix to highlight True Positives and True Negatives
 
 ### Changed
+- Improved metrics reporting organization and readability:
+  - Regression metrics now grouped into three logical sections:
+    - Error Metrics (RMSE, MAE, NRMSE variants, MAPE, SMAPE)
+    - Goodness of Fit (R², Adjusted R²)
+    - Improvement over Baseline (vs mean, vs median)
+  - Classification metrics reorganized into three sections:
+    - Evaluation Parameters (threshold, beta)
+    - Core Performance Metrics (accuracy, AUC, precision, recall, F-scores)
+    - Prediction Distribution (positive rate, base rate)
 - Consolidated color scheme across all visualizations:
   - Standardized color constants (MPL_BLUE, MPL_RED, MPL_ORANGE, MPL_GREEN, MPL_GRAY)
   - Updated regression plots to use consistent colors

@@ -185,7 +185,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             prediction = self.model.predict(processed_model_input)
         return prediction
 
-    def explain_model(self, X, plot_size=(8, 6)):
+    def explain_model(self, X, plot_size="auto", plot_type="auto"):
         """
         Generate SHAP values and plots for model interpretation.
 
@@ -198,11 +198,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         Parameters
         ----------
         X : pd.DataFrame
-            Input features to generate explanations for. Should have the same
-            columns as the training data.
-        plot_size : tuple, default=(8, 6)
-            Tuple specifying the width and height of the SHAP summary plot in inches.
-
+            Input features to explain.
+        plot_size : tuple
+            Size of the summary plot (width, height).
+        plot_type : str
+            Options: "auto", "static", or "interactive"
+            - "auto": tries interactive Plotly, falls back to matplotlib if needed
+            - "static": always uses matplotlib
+            - "interactive": tries Plotly, errors if not supported
         Returns
         -------
         None
@@ -217,38 +220,66 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             X_transformed = X.copy()
 
         self.X_explain = X_transformed.copy()
-        # if trained preprocessor is available, get pre-transformed values for numeric features
-        # else, users see the transformed values at the moment
         if self.preprocessor is not None:
             self.X_explain[self.preprocessor.num_features] = X[
                 self.preprocessor.num_features
             ]
 
-        self.X_explain.reset_index(drop=True)
         try:
-            # Attempt to create an explainer that directly supports the model
             explainer = shap.Explainer(self.model)
         except:
-            # Fallback for models or shap versions where direct support may be limited
             explainer = shap.Explainer(self.model.predict, X_transformed)
-        self.shap_values = explainer(X_transformed)
 
-        # get the shape of shap values and extract accordingly
+        self.shap_values = explainer(X_transformed)
         self.both_class = len(self.shap_values.values.shape) == 3
+
         try:
-            if self.both_class:
-                rng = np.random.RandomState(42)
-                shap.summary_plot(
-                    self.shap_values[:, :, 1], plot_size=plot_size, rng=rng
-                )
-            elif self.both_class == False:
-                rng = np.random.RandomState(42)
-                shap.summary_plot(self.shap_values, plot_size=plot_size, rng=rng)
+            # Use Plotly or fallback to legacy matplotlib depending on plot_type
+            if plot_type == "interactive":
+                if self.both_class:
+                    shap.plots.beeswarm(
+                        self.shap_values[:, :, 1], max_display=20, plot_size=plot_size
+                    )
+                else:
+                    shap.plots.beeswarm(
+                        self.shap_values, max_display=20, plot_size=plot_size
+                    )
+
+            elif plot_type == "static":  # the legacy display
+                if self.both_class:
+                    shap.summary_plot(
+                        self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                    )
+                else:
+                    shap.summary_plot(self.shap_values, plot_size=plot_size, show=True)
+                plt.show()
+
+            elif plot_type == "auto":
+                try:
+                    if self.both_class:
+                        shap.plots.beeswarm(
+                            self.shap_values[:, :, 1],
+                            max_display=20,
+                            plot_size=plot_size,
+                        )
+                    else:
+                        shap.plots.beeswarm(
+                            self.shap_values, max_display=20, plot_size=plot_size
+                        )
+                except Exception:
+                    if self.both_class:
+                        shap.summary_plot(
+                            self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                        )
+                    else:
+                        shap.summary_plot(
+                            self.shap_values, plot_size=plot_size, show=True
+                        )
+                    plt.show()
+
         except Exception as e:
-            print(
-                "warnings: Could not display SHAP plot. This might be due to display configuration."
-            )
-            print("SHAP values are still calculated and available in self.shap_values")
+            print("⚠️ Could not display SHAP summary plot.")
+            print("SHAP values are still available in self.shap_values.")
 
     def explain_case(self, n):
         """
@@ -882,6 +913,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         tune_metric=None,
         log_best_model=True,
         disable_optuna_logging=True,
+        configure_plotly=True,
     ):
         """
         Static method to tune hyperparameters using Optuna.
@@ -934,6 +966,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             If True, logs the best model to MLflow.
         disable_optuna_logging : bool, default=True
             If True, suppresses Optuna's verbose logging.
+        configure_plotly : bool, default=True
+            If True, automatically configures Plotly renderer for optimal display
+            across different environments including GitHub.
 
         Returns
         -------
@@ -1179,14 +1214,28 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                         trace.line.colorbar = dict(
                             title=target_name, title_side="right"
                         )
+                fig_parallel.update_layout(width=1200)  # match width=15
+                # Try to display the plot
+                try:
+                    fig_parallel.show()
+                except Exception:
+                    # If display fails, try to find a working renderer
+                    if configure_plotly:
+                        from .utils.plot_utils import set_plotly_renderer
 
-                fig_parallel.show()
+                        selected_renderer = set_plotly_renderer()
+
+                        try:
+                            if selected_renderer:
+                                fig_parallel.show()
+                        except Exception:
+                            # Just print a single simple message
+                            print(
+                                "Note: Visualization will display when running this code in VS Code, JupyterLab or other IDEs."
+                            )
 
             except ImportError:
                 print("Plotly is not installed. Skipping parallel coordinate plot.")
-                print(
-                    "To enable this visualization, install Plotly with: pip install plotly"
-                )
 
         # Prepare return values, similar to current function
         results = {

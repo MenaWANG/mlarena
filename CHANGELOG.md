@@ -21,8 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Updated SHAP plot implementation to use modern beeswarm with legacy fallback
   - Fixed NumPy random generator warnings while maintaining compatibility
 
-
-
 ### Changed
 - Improved metrics reporting organization and readability:
   - Regression metrics now grouped into three logical sections:

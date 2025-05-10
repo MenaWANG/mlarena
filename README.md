@@ -7,7 +7,7 @@
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![CI/CD](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml/badge.svg)](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml)
 
-An algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization.
+`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With unified interfaces, intelligent preprocessing, robust hyperparameter tuning and handy visualization utilities, `mlarena` streamlines both experimentation and production deployment for data scientists and ML engineers.
 
 ## Publications
 
@@ -49,43 +49,44 @@ If you are using earlier DBR runtimes, simply install `optuna` in addition like 
 
 ## Visual Examples:
 
-### Model Performance Analysis
+### Quick Start
 Pls see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb) for more.
 
 #### Classification Models
 
-![Classification Model Performance](docs/images/model_performance_classification.png)    
+![Classification Model Performance](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/model_performance_classification.png)    
 
 #### Regression Models
 
-![Regression Model Performance](docs/images/model_performance_regression.png)    
+![Regression Model Performance](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/model_performance_regression.png)    
 
 ### Explainable ML
 One liner to create global and local explanation based on SHAP that will work across various classification and regression algorithms.     
 
-![Global Explanation](docs/images/global_explanation.png)    
+![Global Explanation](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/global_explanation.png)    
 
-![Local Explanation](docs/images/local_explanation.png)    
+![Local Explanation](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/local_explanation.png)    
 
 ### Hyperparameter Optimization
-Parallel coordinates plot for hyperparameter search space diagnostics. Pls see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb) for more.
-![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
+Parallel coordinates plot for hyperparameter search space diagnostics. Pls see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb) for more.   
+
+![Hyperparameter Search Space](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/parallel_coordinates.png)
 
 ### Plotting Utility Functions 
 
 pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb) for more.
 
 #### `plot_box_scatter` for comparing numerical distributions across categories
-![plot_box_scatter](docs/images/plot_box_scatter.png)
+![plot_box_scatter](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_box_scatter.png)
 
 #### `plot_distribution_over_time` for comparing numerical distributions over time
-![plot_distribution_over_time](docs/images/plot_distribution_over_time.png)
+![plot_distribution_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_distribution_over_time.png)
 
 #### `plot_stacked_bar_over_time` for comparing categorical distributions over time
-![plot_stacked_bar_over_time](docs/images/plot_stacked_bar_over_time.png)
+![plot_stacked_bar_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_stacked_bar_over_time.png)
 
 #### `plot_metric_event_over_time` for timeseries trends and events
-![plot_metric_event_over_time](docs/images/plot_metric_event_over_time.png)
+![plot_metric_event_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_metric_event_over_time.png)
 
 
 ## Features

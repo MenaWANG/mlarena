@@ -528,37 +528,39 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
             print("\n1. Evaluation Parameters")
             print("-" * 40)
-            print(f"• Threshold: {metrics['threshold']:.3f}    (Classification cutoff)")
-            print(f"• Beta:      {metrics['beta']:.3f}    (F-beta weight parameter)")
+            print(
+                f"• Threshold:  {metrics['threshold']:.3f}    (Classification cutoff)"
+            )
+            print(f"• Beta:       {metrics['beta']:.3f}    (F-beta weight parameter)")
 
             print("\n2. Core Performance Metrics")
             print("-" * 40)
             print(
-                f"• Accuracy:  {metrics['accuracy']:.3f}    (Overall correct predictions)"
+                f"• Accuracy:   {metrics['accuracy']:.3f}    (Overall correct predictions)"
             )
-            print(f"• AUC:       {metrics['auc']:.3f}    (Ranking quality)")
-            print(f"• Log Loss:  {metrics['log_loss']:.3f}    (Prediction confidence)")
+            print(f"• AUC:        {metrics['auc']:.3f}    (Ranking quality)")
+            print(f"• Log Loss:   {metrics['log_loss']:.3f}    (Prediction confidence)")
             print(
-                f"• Precision: {metrics['precision']:.3f}    (True positives / Predicted positives)"
-            )
-            print(
-                f"• Recall:    {metrics['recall']:.3f}    (True positives / Actual positives)"
+                f"• Precision:  {metrics['precision']:.3f}    (True positives / Predicted positives)"
             )
             print(
-                f"• F1 Score:  {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
+                f"• Recall:     {metrics['recall']:.3f}    (True positives / Actual positives)"
+            )
+            print(
+                f"• F1 Score:   {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
             )
             if beta != 1:
                 print(
-                    f"• F{beta:.1f} Score: {metrics['f_beta']:.3f}    (Weighted harmonic mean)"
+                    f"• F{beta:.1f} Score:  {metrics['f_beta']:.3f}    (Weighted harmonic mean)"
                 )
 
             print("\n3. Prediction Distribution")
             print("-" * 40)
             print(
-                f"• Pos Rate:  {metrics['positive_rate']:.3f}    (Fraction of positive predictions)"
+                f"• Pos Rate:   {metrics['positive_rate']:.3f}    (Fraction of positive predictions)"
             )
             print(
-                f"• Base Rate: {metrics['base_rate']:.3f}    (Actual positive class rate)"
+                f"• Base Rate:  {metrics['base_rate']:.3f}    (Actual positive class rate)"
             )
 
         return metrics
@@ -1234,8 +1236,8 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                                 "Note: Visualization will display when running this code in VS Code, JupyterLab or other IDEs."
                             )
 
-            except ImportError:
-                print("Plotly is not installed. Skipping parallel coordinate plot.")
+            except Exception as e:
+                print("Error with parallel coordinate plot:", e)
 
         # Prepare return values, similar to current function
         results = {

@@ -24,18 +24,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.2.4
+%pip install mlarena==0.2.5
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.2.4 --no-deps
+%pip install mlarena==0.2.5 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.2.4 --no-deps
+%pip install mlarena==0.2.5 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -50,8 +50,13 @@ If you are using earlier DBR runtimes, simply install `optuna` in addition like 
 ## Visual Examples:
 
 ### Model Performance Analysis
+Pls see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb) for more.
+
+#### Classification Models
 
 ![Classification Model Performance](docs/images/model_performance_classification.png)    
+
+#### Regression Models
 
 ![Regression Model Performance](docs/images/model_performance_regression.png)    
 
@@ -63,8 +68,24 @@ One liner to create global and local explanation based on SHAP that will work ac
 ![Local Explanation](docs/images/local_explanation.png)    
 
 ### Hyperparameter Optimization
-Parallel coordinates plot for hyperparameter search space diagnostics.    
+Parallel coordinates plot for hyperparameter search space diagnostics. Pls see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb) for more.
 ![Hyperparameter Search Space](docs/images/parallel_coordinates.png)
+
+### Plotting Utility Functions 
+
+pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb) for more.
+
+#### `plot_box_scatter` for comparing numerical distributions across categories
+![plot_box_scatter](docs/images/plot_box_scatter.png)
+
+#### `plot_distribution_over_time` for comparing numerical distributions over time
+![plot_distribution_over_time](docs/images/plot_distribution_over_time.png)
+
+#### `plot_stacked_bar_over_time` for comparing categorical distributions over time
+![plot_stacked_bar_over_time](docs/images/plot_stacked_bar_over_time.png)
+
+#### `plot_metric_event_over_time` for timeseries trends and events
+![plot_metric_event_over_time](docs/images/plot_metric_event_over_time.png)
 
 
 ## Features

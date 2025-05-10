@@ -6,17 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.2.5] -
+## [0.2.5] - 2025-05-10
 
 ### Added
 - Enhanced classification metrics visualization:
   - Added confusion matrix to complement existing metrics vs threshold and ROC curve plots
   - Implemented new layout with metrics vs threshold at top, ROC curve and confusion matrix at bottom
-  - Added color highlighting in confusion matrix to highlight True Positives and True Negatives
-- Improved Optuna visualization display:
-  - Added automatic plotly renderer detection and fallback options
-  - Enhanced display compatibility across environments (VS Code, JupyterLab, GitHub)
-  - Added fixed width (1200px) setting for parallel coordinate plots
+  - Color highlighting in confusion matrix to highlight True Positives and True Negatives
 - Enhanced SHAP visualization reliability:
   - Updated SHAP plot implementation to use modern beeswarm with legacy fallback
   - Fixed NumPy random generator warnings while maintaining compatibility
@@ -32,7 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Core Performance Metrics (accuracy, AUC, precision, recall, F-scores)
     - Prediction Distribution (positive rate, base rate)
 - Consolidated color scheme across all visualizations:
-  - Standardized color constants (MPL_BLUE, MPL_RED, MPL_ORANGE, MPL_GREEN, MPL_GRAY)
+  - Standardized color constants based on matplotlib's default color cycle   
+    (MPL_BLUE, MPL_RED, MPL_ORANGE, MPL_GREEN, MPL_GRAY)
   - Updated regression plots to use consistent colors
 - Enhanced `plot_metric_event_over_time` function for better usability:
   - Simplified metrics parameter to accept either a single string or list of strings

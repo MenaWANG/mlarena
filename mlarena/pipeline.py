@@ -1221,20 +1221,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 try:
                     fig_parallel.show()
                 except Exception:
-                    # If display fails, try to find a working renderer
-                    if configure_plotly:
-                        from .utils.plot_utils import set_plotly_renderer
-
-                        selected_renderer = set_plotly_renderer()
-
-                        try:
-                            if selected_renderer:
-                                fig_parallel.show()
-                        except Exception:
-                            # Just print a single simple message
-                            print(
-                                "Note: Visualization will display when running this code in VS Code, JupyterLab or other IDEs."
-                            )
+                    # Just print a simple message about the plotly display
+                    print(
+                        "Note: Plotly figures may not display in all environments. The figure will display correctly when running in an IDE like VS Code, JupyterLab, or Jupyter Notebook."
+                    )
 
             except Exception as e:
                 print("Error with parallel coordinate plot:", e)

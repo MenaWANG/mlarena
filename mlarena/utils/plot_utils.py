@@ -12,63 +12,7 @@ __all__ = [
     "plot_metric_event_over_time",
     "plot_stacked_bar_over_time",
     "plot_distribution_over_time",
-    "set_plotly_renderer",
 ]
-
-
-def set_plotly_renderer(renderer_list=None):
-    """
-    Configure Plotly renderer by trying several renderers until one works.
-
-    This function attempts to find a working renderer from a provided list or
-    default options, without making assumptions about the execution environment.
-
-    Parameters
-    ----------
-    renderer_list : list, optional
-        List of renderer names to try, in order of preference.
-        If None, uses a default list of commonly working renderers.
-
-    Returns
-    -------
-    str
-        Name of the selected renderer or None if none could be set
-    """
-    try:
-        import plotly.io as pio
-
-        # Use provided list or default to common renderers in priority order
-        if renderer_list is None:
-            renderer_list = [
-                "notebook_connected",  # Works well in Jupyter
-                "notebook",  # Basic notebook support
-                "browser",  # Opens in browser window
-                "svg",  # Static but works almost everywhere
-                "png",  # Static fallback
-            ]
-
-        # Get current renderer
-        current = pio.renderers.default
-        if current is not None and current != "default":
-            # If a specific renderer is already set, keep it
-            return current
-
-        # Otherwise try each renderer in sequence
-        for renderer in renderer_list:
-            try:
-                pio.renderers.default = renderer
-                return renderer
-            except Exception:
-                # If this renderer fails, try the next one
-                continue
-
-        # If we get here, none of the renderers worked
-        print("Warning: Could not set a working Plotly renderer")
-        return None
-
-    except Exception as e:
-        print(f"Warning: Unable to configure Plotly renderer: {e}")
-        return None
 
 
 def plot_box_scatter(

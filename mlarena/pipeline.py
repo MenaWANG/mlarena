@@ -529,25 +529,27 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             print("\n1. Evaluation Parameters")
             print("-" * 40)
             print(
-                f"• Threshold:  {metrics['threshold']:.3f}    (Classification cutoff)"
+                f"• Threshold:   {metrics['threshold']:.3f}    (Classification cutoff)"
             )
-            print(f"• Beta:       {metrics['beta']:.3f}    (F-beta weight parameter)")
+            print(f"• Beta:        {metrics['beta']:.3f}    (F-beta weight parameter)")
 
             print("\n2. Core Performance Metrics")
             print("-" * 40)
             print(
-                f"• Accuracy:   {metrics['accuracy']:.3f}    (Overall correct predictions)"
+                f"• Accuracy:    {metrics['accuracy']:.3f}    (Overall correct predictions)"
             )
-            print(f"• AUC:        {metrics['auc']:.3f}    (Ranking quality)")
-            print(f"• Log Loss:   {metrics['log_loss']:.3f}    (Prediction confidence)")
+            print(f"• AUC:         {metrics['auc']:.3f}    (Ranking quality)")
             print(
-                f"• Precision:  {metrics['precision']:.3f}    (True positives / Predicted positives)"
-            )
-            print(
-                f"• Recall:     {metrics['recall']:.3f}    (True positives / Actual positives)"
+                f"• Log Loss:    {metrics['log_loss']:.3f}    (Prediction confidence)"
             )
             print(
-                f"• F1 Score:   {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
+                f"• Precision:   {metrics['precision']:.3f}    (True positives / Predicted positives)"
+            )
+            print(
+                f"• Recall:      {metrics['recall']:.3f}    (True positives / Actual positives)"
+            )
+            print(
+                f"• F1 Score:    {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
             )
             if beta != 1:
                 print(
@@ -557,10 +559,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             print("\n3. Prediction Distribution")
             print("-" * 40)
             print(
-                f"• Pos Rate:   {metrics['positive_rate']:.3f}    (Fraction of positive predictions)"
+                f"• Pos Rate:    {metrics['positive_rate']:.3f}    (Fraction of positive predictions)"
             )
             print(
-                f"• Base Rate:  {metrics['base_rate']:.3f}    (Actual positive class rate)"
+                f"• Base Rate:   {metrics['base_rate']:.3f}    (Actual positive class rate)"
             )
 
         return metrics

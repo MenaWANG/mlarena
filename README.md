@@ -7,7 +7,7 @@
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![CI/CD](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml/badge.svg)](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml)
 
-`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With unified interfaces, intelligent preprocessing, robust hyperparameter tuning and handy visualization utilities, `mlarena` streamlines both experimentation and production deployment for data scientists and ML engineers.
+`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With unified interface, intelligent preprocessing, robust hyperparameter tuning and handy visualization utilities, `mlarena` streamlines both experimentation and production deployment for data scientists and ML engineers.
 
 ## Publications
 
@@ -110,20 +110,31 @@ pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/exa
 **Model Optimization**
 - Efficient hyperparameter tuning with Optuna's TPE sampler
 - Smart early stopping with patient pruning to save computation resources
+  - Configurable patience parameter
+  - Startup trials before pruning begins
+  - Warmup steps per trial
 - Cross-validation with variance penalty to prevent overfitting
 - Parallel coordinates visualization for search history tracking and parameter space diagnostics
 - Automated threshold optimization with business-focused F-beta scoring
+  - Cross-validation or bootstrap methods
+  - Configurable beta parameter for precision/recall trade-off
+  - Confidence intervals for bootstrap method
 - Flexible metric selection for optimization
-  - Classification: AUC (default), F1, accuracy
-  - Regression: RMSE (default), NRMSE, MAPE
+  - Classification: AUC (default), F1, accuracy, log_loss
+  - Regression: RMSE (default), MAE, median_ae, SMAPE, NRMSE (mean/std/IQR)
 
 **Performance Analysis**
 - Comprehensive metric tracking
-  - Classification: AUC, F1, Fbeta, precision, recall
-  - Regression: RMSE, MAE, R2, adjusted R2, MAPE 
+  - Classification: AUC, F1, Fbeta, precision, recall, accuracy, log_loss, positive_rate, base_rate
+  - Regression: RMSE, MAE, median_ae, R2, adjusted R2, MAPE, SMAPE, NRMSE (mean/std/IQR), improvement over mean/median baselines
 - Performance visualization
-  - Classification: ROC_AUC curve, Precision-recall curve
-  - Regression: Residual analysis, Prediction error plot  
+  - Classification: 
+    - Metrics vs Threshold plot (precision, recall, F-beta)
+    - ROC curve with AUC score
+    - Confusion matrix with color-coded cells
+  - Regression:
+    - Residual analysis with 95% prediction intervals
+    - Prediction error plot with perfect prediction line and error bands
 - Model interpretability
   - Global feature importance
   - Local prediction explanations

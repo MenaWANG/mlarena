@@ -50,7 +50,14 @@ If you are using earlier DBR runtimes, simply install `optuna` in addition like 
 ## Visual Examples:
 
 ### Quick Start
-Pls see [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb) for more.
+Train and evaluate models quickly with `mlarena`'s default preprocessing pipeline, comprehensive reporting, and model explainability. The framework handles the complexities behind the scenes, allowing you to focus on insights rather than boilerplate code. See [1.basic_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb) for complete examples.
+<br>
+
+| Category | Classification Metrics & Plots | Regression Metrics & Plots |
+|-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Metrics | Evaluation Parameters<br>• Threshold (classification cutoff)<br>• Beta (F-beta weight parameter)<br><br>Core Performance Metrics<br>• Accuracy (overall correct predictions)<br>• Precision (true positives / predicted positives)<br>• Recall (true positives / actual positives)<br>• F1 Score (harmonic mean of Precision & Recall)<br>• Fβ Score (weighted harmonic mean, if β ≠ 1)<br>• AUC (ranking quality)<br>• Log Loss (confidence-weighted error)<br><br>Prediction Distribution<br>• Positive Rate (fraction of positive predictions)<br>• Base Rate (actual positive class rate) | Error Metrics<br>• RMSE (Root Mean Squared Error)<br>• MAE (Mean Absolute Error)<br>• Median Absolute Error<br>• NRMSE (Normalized RMSE as % of mean, std, IQR)<br>• MAPE (Mean Absolute Percentage Error, excl. zeros)<br>• SMAPE (Symmetric Mean Absolute Percentage Error)<br><br>Goodness of Fit<br>• R² (Coefficient of Determination)<br>• Adjusted R²<br><br>Improvement over Baseline<br>• RMSE Improvement over Mean Baseline (%)<br>• RMSE Improvement over Median Baseline (%) |
+| Plots | • Metrics vs Threshold (Precision, Recall, Fβ, with vertical threshold line)<br>• ROC Curve<br>• Confusion Matrix (with colored overlays) | • Residual analysis (residuals vs predicted, with 95% prediction interval)<br>• Prediction error plot (actual vs predicted, with perfect prediction line and error bands) |
+<br>
 
 #### Classification Models
 
@@ -68,13 +75,13 @@ One liner to create global and local explanation based on SHAP that will work ac
 ![Local Explanation](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/local_explanation.png)    
 
 ### Hyperparameter Optimization
-Parallel coordinates plot for hyperparameter search space diagnostics. Pls see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb) for more.   
+`mlarena` offers iterative hyperparameter tuning with cross-validation for robust results and parallel coordinates visualization for search space diagnostics. See [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb) for more.
 
 ![Hyperparameter Search Space](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/parallel_coordinates.png)
 
 ### Plotting Utility Functions 
 
-pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb) for more.
+`mlarena` offers handy utility visualizations for data exploration. Pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb) for more.
 
 #### `plot_box_scatter` for comparing numerical distributions across categories
 ![plot_box_scatter](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_box_scatter.png)

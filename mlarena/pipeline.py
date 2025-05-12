@@ -540,7 +540,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             )
             print(f"• AUC:         {metrics['auc']:.3f}    (Ranking quality)")
             print(
-                f"• Log Loss:    {metrics['log_loss']:.3f}    (Prediction confidence)"
+                f"• Log Loss:    {metrics['log_loss']:.3f}    (Confidence-weighted error)"
             )
             print(
                 f"• Precision:   {metrics['precision']:.3f}    (True positives / Predicted positives)"
@@ -681,7 +681,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         ax1.set_xlabel("Threshold")
         ax1.set_ylabel("Metrics (%)")
         ax1.set_title("Metrics vs Threshold")
-        ax1.legend(loc="lower left", bbox_to_anchor=(threshold + 0.01, 0.05))
+        buffer = max(0.04 - 0.075 * threshold, 0.011)
+        anchor_x = threshold + buffer  # handle legend position with small threshold
+        ax1.legend(loc="lower left", bbox_to_anchor=(anchor_x, 0.05))
         ax1.grid(True)
         ax1.set_ylim(0, 100)
 
@@ -868,11 +870,11 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         if self.task == "classification":
             y_pred_proba = self.predict(context=None, model_input=X_test)
             metrics = self._evaluate_classification_model(
-                y_test, y_pred_proba, threshold, beta, verbose=verbose
+                y_test, y_pred_proba, threshold=threshold, beta=beta, verbose=verbose
             )
             if visualize:
                 ML_PIPELINE._plot_classification_metrics(
-                    y_test, y_pred_proba, threshold, beta
+                    y_test, y_pred_proba, threshold=threshold, beta=beta
                 )
         else:  # regression
             y_pred = self.predict(context=None, model_input=X_test)
@@ -1153,7 +1155,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             final_results = final_model.evaluate(
                 X_test,
                 y_test,
-                optimal_threshold,
+                threshold=optimal_threshold,
                 beta=beta,
                 verbose=True,
                 visualize=True,
@@ -1296,7 +1298,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         y_true: pd.Series,
         y_pred_proba: np.ndarray,
         beta: float = 1.0,
-        method: str = "cv",
+        method: str = "bootstrap",
         cv_splits: int = 5,
         bootstrap_iterations: int = 100,
         random_state: int = 42,
@@ -1312,7 +1314,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             Predicted probabilities.
         beta : float, default=1.0
             F-beta score parameter.
-        method : str, default='cv'
+        method : str, default='bootstrap'
             Method to use for threshold selection:
             - 'cv': Cross-validation (faster, deterministic splits)
             - 'bootstrap': Bootstrap resampling (more robust, with confidence intervals)

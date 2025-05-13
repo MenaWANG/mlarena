@@ -2,7 +2,12 @@ from typing import List, Union
 
 import pandas as pd
 
-__all__ = ["clean_dollar_cols", "value_counts_with_pct", "transform_date_cols"]
+__all__ = [
+    "clean_dollar_cols",
+    "value_counts_with_pct",
+    "transform_date_cols",
+    "drop_fully_null_columns",
+]
 
 
 def clean_dollar_cols(data: pd.DataFrame, cols_to_clean: List[str]) -> pd.DataFrame:
@@ -142,4 +147,37 @@ def transform_date_cols(
                     df_[date_col], format=str_date_format, errors="coerce"
                 )
 
+    return df_
+
+
+def drop_fully_null_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Drops columns where all values are missing/null in a pandas DataFrame.
+
+    This function is particularly useful when working with Databricks' display() function,
+    which can break when encountering columns that are entirely null as it cannot
+    infer the schema. Running this function before display() helps prevent such issues.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame to check for missing columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        A new DataFrame with fully-null columns removed.
+
+    Examples
+    --------
+    >>> # In Databricks notebook:
+    >>> drop_fully_null_columns(df).display()  # this won't affect the original df, just ensure .display() work
+    """
+    null_counts = df.isnull().sum()
+    all_missing_cols = null_counts[null_counts == len(df)].index.tolist()
+
+    if all_missing_cols:
+        print(f"Dropped fully-null columns: {all_missing_cols}")
+
+    df_ = df.drop(columns=all_missing_cols)
     return df_

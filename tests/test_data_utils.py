@@ -3,6 +3,7 @@ import pytest
 
 from mlarena.utils.data_utils import (
     clean_dollar_cols,
+    drop_fully_null_columns,
     transform_date_cols,
     value_counts_with_pct,
 )
@@ -94,3 +95,48 @@ def test_transform_date_cols():
     df_invalid = pd.DataFrame({"date": ["20230101", "invalid", "20230103"]})
     result = transform_date_cols(df_invalid, ["date"])
     assert pd.isna(result["date"][1])  # invalid date should be NaT
+
+
+def test_drop_fully_null_columns(capsys):
+    # Test data with various null patterns
+    df = pd.DataFrame(
+        {
+            "all_null": [None, None, None],
+            "partial_null": [1, None, 3],
+            "no_null": [1, 2, 3],
+            "all_null_2": [pd.NA, pd.NA, pd.NA],
+        }
+    )
+
+    # Keep original for comparison
+    df_original = df.copy()
+
+    # Test dropping fully null columns
+    result = drop_fully_null_columns(df)
+
+    # Check that fully null columns are dropped
+    assert "all_null" not in result.columns
+    assert "all_null_2" not in result.columns
+
+    # Check that partially null and non-null columns are kept
+    assert "partial_null" in result.columns
+    assert "no_null" in result.columns
+
+    # Check that original DataFrame is not modified
+    pd.testing.assert_frame_equal(df, df_original)
+
+    # Check that the function prints the dropped columns
+    captured = capsys.readouterr()
+    assert "Dropped fully-null columns" in captured.out
+    assert "all_null" in captured.out
+    assert "all_null_2" in captured.out
+
+    # Test with no null columns
+    df_no_nulls = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
+    result_no_nulls = drop_fully_null_columns(df_no_nulls)
+    pd.testing.assert_frame_equal(result_no_nulls, df_no_nulls)
+
+    # Test with all null columns
+    df_all_nulls = pd.DataFrame({"col1": [None, None], "col2": [pd.NA, pd.NA]})
+    result_all_nulls = drop_fully_null_columns(df_all_nulls)
+    assert len(result_all_nulls.columns) == 0  # All columns should be dropped

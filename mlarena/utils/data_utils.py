@@ -7,6 +7,8 @@ __all__ = [
     "value_counts_with_pct",
     "transform_date_cols",
     "drop_fully_null_columns",
+    "print_schema_alphabetically",
+    "is_primary_key",
 ]
 
 
@@ -150,7 +152,7 @@ def transform_date_cols(
     return df_
 
 
-def drop_fully_null_columns(df: pd.DataFrame) -> pd.DataFrame:
+def drop_fully_null_columns(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
     """
     Drops columns where all values are missing/null in a pandas DataFrame.
 
@@ -162,6 +164,8 @@ def drop_fully_null_columns(df: pd.DataFrame) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         Input DataFrame to check for missing columns.
+    verbose : bool, default=False
+        If True, prints information about which columns were dropped.
 
     Returns
     -------
@@ -172,12 +176,138 @@ def drop_fully_null_columns(df: pd.DataFrame) -> pd.DataFrame:
     --------
     >>> # In Databricks notebook:
     >>> drop_fully_null_columns(df).display()  # this won't affect the original df, just ensure .display() work
+    >>> # To see which columns were dropped:
+    >>> drop_fully_null_columns(df, verbose=True)
     """
     null_counts = df.isnull().sum()
     all_missing_cols = null_counts[null_counts == len(df)].index.tolist()
 
-    if all_missing_cols:
+    if all_missing_cols and verbose:
         print(f"Dropped fully-null columns: {all_missing_cols}")
 
     df_ = df.drop(columns=all_missing_cols)
     return df_
+
+
+def print_schema_alphabetically(df: pd.DataFrame) -> None:
+    """
+    Prints the schema (column names and dtypes) of the DataFrame with columns sorted alphabetically.
+
+    This is particularly useful when comparing schemas between different DataFrames
+    or versions of the same DataFrame, as the alphabetical ordering makes it easier
+    to spot differences.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame whose schema is to be printed.
+
+    Returns
+    -------
+    None
+        Prints the schema to stdout.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({'c': [1], 'a': [2], 'b': ['text']})
+    >>> print_schema_alphabetically(df)
+    a    int64
+    b    object
+    c    int64
+    """
+    sorted_dtypes = df[sorted(df.columns)].dtypes
+    print(sorted_dtypes)
+
+
+def is_primary_key(
+    df: pd.DataFrame, cols: Union[str, List[str]], verbose: bool = True
+) -> bool:
+    """
+    Check if the combination of specified columns forms a primary key in the DataFrame.
+
+    A primary key traditionally requires:
+    1. Uniqueness: Each combination of values must be unique across all rows
+    2. No null values: Primary key columns cannot contain null/missing values
+
+    This implementation will:
+    1. Alert if there are any missing values in the potential key columns
+    2. Check if the columns form a unique identifier after removing rows with missing values
+
+    This approach is practical for real-world data analysis where some missing values
+    might exist but we want to understand the column(s)' potential to serve as a key.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check.
+    cols : str or List[str]
+        Column name or list of column names to check for forming a primary key.
+    verbose : bool, default=True
+        If True, print detailed information.
+
+    Returns
+    -------
+    bool
+        True if the combination of columns forms a primary key (after removing nulls),
+        False otherwise.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'id': [1, 2, None, 4],
+    ...     'date': ['2024-01-01', '2024-01-01', '2024-01-02', '2024-01-02'],
+    ...     'value': [10, 20, 30, 40]
+    ... })
+    >>> is_primary_key(df, 'id')  # Single column as string
+    >>> is_primary_key(df, ['id', 'date'])  # Multiple columns as list
+    """
+    # Convert single string to list
+    cols_list = [cols] if isinstance(cols, str) else cols
+
+    # Check if DataFrame is empty
+    if df.empty:
+        if verbose:
+            print("DataFrame is empty.")
+        return False
+
+    # Check if all columns exist in the DataFrame
+    missing_cols = [col for col in cols_list if col not in df.columns]
+    if missing_cols:
+        if verbose:
+            print(f"Column(s) {', '.join(missing_cols)} do not exist in the DataFrame.")
+        return False
+
+    # Check and report missing values in each specified column
+    has_missing = False
+    for col in cols_list:
+        missing_count = df[col].isna().sum()
+        if missing_count > 0:
+            has_missing = True
+            if verbose:
+                print(
+                    f"There are {missing_count:,} row(s) with missing values in column '{col}'."
+                )
+
+    # Filter out rows with missing values
+    filtered_df = df.dropna(subset=cols_list)
+
+    # Get counts for comparison
+    total_row_count = len(filtered_df)
+    unique_row_count = filtered_df.groupby(cols_list).size().reset_index().shape[0]
+
+    if verbose:
+        print(f"Total row count after filtering out missings: {total_row_count:,}")
+        print(f"Unique row count after filtering out missings: {unique_row_count:,}")
+
+    is_primary = unique_row_count == total_row_count
+
+    if verbose:
+        if is_primary:
+            message = "form a primary key"
+            if has_missing:
+                message += " after removing rows with missing values"
+            print(f"The column(s) {', '.join(cols_list)} {message}.")
+        else:
+            print(f"The column(s) {', '.join(cols_list)} do not form a primary key.")
+
+    return is_primary

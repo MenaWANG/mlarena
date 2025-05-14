@@ -4,6 +4,7 @@ import pytest
 from mlarena.utils.data_utils import (
     clean_dollar_cols,
     drop_fully_null_columns,
+    is_primary_key,
     transform_date_cols,
     value_counts_with_pct,
 )
@@ -111,8 +112,10 @@ def test_drop_fully_null_columns(capsys):
     # Keep original for comparison
     df_original = df.copy()
 
-    # Test dropping fully null columns
+    # Test dropping fully null columns (default verbose=False)
     result = drop_fully_null_columns(df)
+    captured = capsys.readouterr()
+    assert captured.out == ""  # No output by default
 
     # Check that fully null columns are dropped
     assert "all_null" not in result.columns
@@ -125,7 +128,8 @@ def test_drop_fully_null_columns(capsys):
     # Check that original DataFrame is not modified
     pd.testing.assert_frame_equal(df, df_original)
 
-    # Check that the function prints the dropped columns
+    # Test with verbose=True
+    result = drop_fully_null_columns(df, verbose=True)
     captured = capsys.readouterr()
     assert "Dropped fully-null columns" in captured.out
     assert "all_null" in captured.out
@@ -140,3 +144,71 @@ def test_drop_fully_null_columns(capsys):
     df_all_nulls = pd.DataFrame({"col1": [None, None], "col2": [pd.NA, pd.NA]})
     result_all_nulls = drop_fully_null_columns(df_all_nulls)
     assert len(result_all_nulls.columns) == 0  # All columns should be dropped
+
+
+def test_is_primary_key(capsys):
+    # Test data with various scenarios
+    df = pd.DataFrame(
+        {
+            "id": [1, 2, None, 4, 5],
+            "code": ["A1", "A2", "A3", "A1", "A5"],  # Has duplicates
+            "date": [
+                "2024-01-01",
+                "2024-01-01",
+                "2024-01-02",
+                "2024-01-02",
+                "2024-01-03",
+            ],
+            "value": [100, 200, 300, 400, 500],
+        }
+    )
+
+    # Test 1: Single column that is a primary key (after removing nulls)
+    assert is_primary_key(df, "id")
+    captured = capsys.readouterr()
+    assert "missing values in column 'id'" in captured.out
+    assert "form a primary key after removing rows with missing values" in captured.out
+
+    # Test 2: Single column that is not a primary key (has duplicates)
+    assert not is_primary_key(df, "code")
+    captured = capsys.readouterr()
+    assert "do not form a primary key" in captured.out
+
+    # Test 3: Multiple columns that form a primary key
+    assert is_primary_key(df, ["code", "date"])
+    captured = capsys.readouterr()
+    assert "form a primary key" in captured.out
+
+    # Test 4: Empty DataFrame
+    empty_df = pd.DataFrame(columns=["id", "value"])
+    assert not is_primary_key(empty_df, "id")
+    captured = capsys.readouterr()
+    assert "DataFrame is empty" in captured.out
+
+    # Test 5: Non-existent column
+    assert not is_primary_key(df, "non_existent")
+    captured = capsys.readouterr()
+    assert "do not exist in the DataFrame" in captured.out
+
+    # Test 6: Verbose mode off
+    result = is_primary_key(df, "id", verbose=False)
+    captured = capsys.readouterr()
+    assert captured.out == ""  # No output when verbose=False
+    assert result  # Should still return True
+
+    # Test 7: Multiple columns with one having null
+    df_composite = pd.DataFrame(
+        {
+            "id": [1, 1, None, 2],
+            "sub_id": ["A", "B", "C", "A"],
+        }
+    )
+    assert is_primary_key(df_composite, ["id", "sub_id"])
+    captured = capsys.readouterr()
+    assert "missing values in column 'id'" in captured.out
+    assert "form a primary key after removing rows with missing values" in captured.out
+
+    # Test 8: String input vs List input equivalence
+    single_col = is_primary_key(df, "value")
+    list_col = is_primary_key(df, ["value"])
+    assert single_col == list_col  # Both forms should give same result

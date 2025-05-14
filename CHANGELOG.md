@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.2.8] - 
+
+### Added
+- Enhanced data utility functions:
+  - Added `print_schema_alphabetically` function to display DataFrame schemas in sorted order
+  - Added `is_primary_key` function to verify if column(s) can serve as a primary key
+    - Supports both single column and composite key validation
+    - Provides detailed feedback about missing values and uniqueness
+    - Practical approach to handle real-world data with missing values
+  - Added comprehensive test coverage for all utility functions
+  - Updated example notebook with demonstrations of new functions
+
+### Changed
+- Improved `drop_fully_null_columns` function:
+  - Added `verbose` parameter (default=False) to control output messaging
+  - Better aligned with common data science practices for optional verbosity
+
+
 ## [0.2.7] - 2025-05-14
 
 ### Added

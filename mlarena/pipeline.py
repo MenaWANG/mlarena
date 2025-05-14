@@ -27,7 +27,7 @@ import pandas as pd
 import seaborn as sns
 import shap
 from mlflow.models.signature import infer_signature
-from optuna.pruners import MedianPruner, PatientPruner
+from optuna.pruners import MedianPruner
 from optuna.visualization import plot_parallel_coordinate
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
@@ -908,8 +908,8 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         max_evals=500,
         random_state=42,
         beta=1,
-        patience=100,
-        n_startup_trials=10,
+        early_stopping=50,
+        n_startup_trials=5,
         n_warmup_steps=0,
         verbose=0,
         cv=5,
@@ -920,6 +920,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         log_best_model=True,
         disable_optuna_logging=True,
         configure_plotly=True,
+        show_progress_bar=True,
     ):
         """
         Static method to tune hyperparameters using Optuna.
@@ -946,9 +947,10 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             Beta value for F-beta score optimization.
             beta > 1 gives more weight to recall.
             beta < 1 gives more weight to precision.
-        patience : int, default=100
-            Number of trials without improvement before stopping.
-        n_startup_trials : int, default=10
+        early_stopping : int, default=50
+            Number of trials without improvement before stopping the optimization process.
+            If None, will run for max_evals trials.
+        n_startup_trials : int, default=5
             Number of trials to run before pruning starts.
         n_warmup_steps : int, default=0
             Number of steps per trial to run before pruning.
@@ -975,6 +977,8 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         configure_plotly : bool, default=True
             If True, automatically configures Plotly renderer for optimal display
             across different environments including GitHub.
+        show_progress_bar : bool, default=True
+            If True, displays a progress bar during optimization.
 
         Returns
         -------
@@ -1109,12 +1113,9 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             # Return score based on task (maximize for classification, minimize for regression)
             return score
 
-        # Create pruner for early stopping
-        pruner = PatientPruner(
-            MedianPruner(
-                n_startup_trials=n_startup_trials, n_warmup_steps=n_warmup_steps
-            ),
-            patience=patience,
+        # Simplify to just MedianPruner
+        pruner = MedianPruner(
+            n_startup_trials=n_startup_trials, n_warmup_steps=n_warmup_steps
         )
 
         # Create and run study with appropriate direction: minimize for log_loss and regression tasks
@@ -1126,10 +1127,25 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         study = optuna.create_study(
             direction=direction,
             sampler=optuna.samplers.TPESampler(seed=random_state),
-            pruner=pruner,
+            pruner=pruner,  # Using MedianPruner directly
         )
 
-        study.optimize(objective, n_trials=max_evals)
+        def early_stopping_callback(study, trial):
+            if early_stopping is None:
+                return
+
+            current_best_trial = study.best_trial.number
+
+            # If we've done enough trials after the best one
+            if (trial.number - current_best_trial) >= early_stopping:
+                study.stop()
+
+        study.optimize(
+            objective,
+            n_trials=max_evals,
+            callbacks=[early_stopping_callback],
+            show_progress_bar=show_progress_bar,
+        )
 
         # Get best parameters
         best_params = study.best_params

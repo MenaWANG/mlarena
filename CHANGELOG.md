@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.2.7] - 2025-05-14
+
+### Added
+- Added progress bar display during hyperparameter optimization in `tune` method
+- Added early stopping functionality to the `tune` method to stop optimization when no improvement is seen
+- Simplified pruning mechanism to use only MedianPruner for clearer functionality
+
+### Changed
+- Removed `patience` parameter in favor of `early_stopping` for more intuitive optimization control
+- Default `early_stopping` set to 50 trials
+
+
 ## [0.2.6] - 2025-05-13
 
 ### Added / Improved

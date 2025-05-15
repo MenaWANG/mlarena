@@ -15,13 +15,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Supports both single column and composite key validation
     - Provides detailed feedback about missing values and uniqueness
     - Practical approach to handle real-world data with missing values
-  - Added comprehensive test coverage for all utility functions
-  - Updated example notebook with demonstrations of new functions
+  - Added `select_existing_cols` function for safe column selection
+    - Supports both case-sensitive and case-insensitive matching
+    - Provides verbose mode for debugging column selection
+    - Handles both single column and list inputs
+  - Enhanced `value_counts_with_pct` function:
+    - Added support for analyzing multiple columns (value combinations)
+  - Improved `drop_fully_null_cols` function:
+    - Added `verbose` parameter (default=False) to control output messaging
+    - Better aligned with common data science practices for optional verbosity
+- Added comprehensive test coverage for all data utility functions
+- Updated example notebook with demonstrations of new functions
 
 ### Changed
-- Improved `drop_fully_null_columns` function:
-  - Added `verbose` parameter (default=False) to control output messaging
-  - Better aligned with common data science practices for optional verbosity
+- Standardized function naming conventions in data utilities:
+  - Adopted "cols" instead of "columns" for consistency and clarity
+  - Rationale:
+    - Reduces potential naming collisions 
+    - More concise while maintaining clarity
+    - Aligns with common data science community conventions
+  - Updated functions:
+    - `clean_dollar_cols`
+    - `transform_date_cols`
+    - `drop_fully_null_cols`
+  - Unchanged functions (already following convention):
+    - `value_counts_with_pct`
+    - `print_schema_alphabetically`
+    - `is_primary_key`
+- Updated corresponding test files and documentation to reflect new naming convention
 
 
 ## [0.2.7] - 2025-05-14
@@ -360,3 +381,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - flake8 for linting
   - isort for import sorting
   - mypy for type checking
+
+## [Unreleased]
+
+### Changed
+- Standardized function naming conventions in data utilities:
+  - Adopted "cols" instead of "columns" for consistency and clarity
+  - Rationale:
+    - Reduces potential naming collisions with pandas' df.columns
+    - More concise while maintaining clarity
+    - Aligns with common data science community conventions
+    - Avoids confusion with DataFrame's columns attribute
+  - Updated functions:
+    - `clean_dollar_cols`
+    - `transform_date_cols`
+    - `drop_fully_null_cols`
+    - `select_existing_cols`
+  - Unchanged functions (already following convention):
+    - `value_counts_with_pct`
+    - `print_schema_alphabetically`
+    - `is_primary_key`
+- Updated corresponding test files and documentation to reflect new naming convention

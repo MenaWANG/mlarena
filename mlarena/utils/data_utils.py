@@ -6,9 +6,10 @@ __all__ = [
     "clean_dollar_cols",
     "value_counts_with_pct",
     "transform_date_cols",
-    "drop_fully_null_columns",
+    "drop_fully_null_cols",
     "print_schema_alphabetically",
     "is_primary_key",
+    "select_existing_cols",
 ]
 
 
@@ -29,6 +30,19 @@ def clean_dollar_cols(data: pd.DataFrame, cols_to_clean: List[str]) -> pd.DataFr
     pd.DataFrame
         DataFrame with specified columns cleaned of '$' symbols and commas,
         and converted to floating-point numbers.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'price': ['$1,234.56', '$789.00', '$2,000'],
+    ...     'revenue': ['$50,000', '$75,000.50', '$100,000'],
+    ...     'name': ['A', 'B', 'C']
+    ... })
+    >>> clean_dollar_cols(df, ['price', 'revenue'])
+       price  revenue name
+    0  1234.56  50000.00    A
+    1   789.00  75000.50    B
+    2  2000.00 100000.00    C
     """
     df_ = data.copy()
 
@@ -46,17 +60,21 @@ def clean_dollar_cols(data: pd.DataFrame, cols_to_clean: List[str]) -> pd.DataFr
 
 
 def value_counts_with_pct(
-    data: pd.DataFrame, column_name: str, dropna: bool = False, decimals: int = 2
+    data: pd.DataFrame,
+    cols: Union[str, List[str]],
+    dropna: bool = False,
+    decimals: int = 2,
 ) -> pd.DataFrame:
     """
-    Calculate the count and percentage of occurrences for each unique value in the specified column.
+    Calculate the count and percentage of occurrences for unique values or value combinations.
 
     Parameters
     ----------
     data : pd.DataFrame
         The DataFrame containing the data.
-    column_name : str
-        The name of the column for which to calculate value counts.
+    cols : str or List[str]
+        Column name or list of column names to analyze. If multiple columns are provided,
+        counts unique combinations of values across these columns.
     dropna : bool, default=False
         Whether to exclude NA/null values.
     decimals : int, default=2
@@ -65,27 +83,53 @@ def value_counts_with_pct(
     Returns
     -------
     pd.DataFrame
-        A DataFrame with unique values, their counts, and percentages.
+        A DataFrame with:
+        - For single column: unique values, their counts, and percentages
+        - For multiple columns: unique value combinations, their counts, and percentages
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'category': ['A', 'A', 'B', 'B', 'B', None],
+    ...     'status': ['Active', 'Active', 'Inactive', None, None, None]
+    ... })
+    >>> # Single column
+    >>> value_counts_with_pct(df, 'category')
+      category  count   pct
+    0       B      3  50.0
+    1       A      2  33.3
+    2    None      1  16.7
+    >>> # Multiple columns - counts combinations
+    >>> value_counts_with_pct(df, ['category', 'status'])
+      category   status  count   pct
+    0       B     None      2  33.3
+    1       A   Active      2  33.3
+    2       B Inactive      1  16.7
+    3    None     None      1  16.7
     """
-    if column_name not in data.columns:
-        raise ValueError(f"Column '{column_name}' not found in DataFrame")
+    # Convert single column to list for consistent processing
+    cols_list = [cols] if isinstance(cols, str) else cols
 
-    counts = data[column_name].value_counts(dropna=dropna, normalize=False)
-    percentages = (counts / counts.sum() * 100).round(decimals)
+    # Validate all columns exist
+    missing_cols = [col for col in cols_list if col not in data.columns]
+    if missing_cols:
+        raise ValueError(f"Column(s) {missing_cols} not found in DataFrame")
 
-    result = (
-        pd.DataFrame(
-            {
-                column_name: counts.index,
-                "count": counts.values,
-                "pct": percentages.values,
-            }
+    # Handle single column case differently to avoid MultiIndex
+    if isinstance(cols, str):
+        counts = data[cols].value_counts(dropna=dropna)
+        percentages = (counts / counts.sum() * 100).round(decimals)
+        result = pd.DataFrame(
+            {cols: counts.index, "count": counts.values, "pct": percentages.values}
         )
-        .sort_values(by="count", ascending=False)
-        .reset_index(drop=True)
-    )
+    else:
+        # Multiple columns case - use value_counts on the DataFrame
+        counts = data[cols_list].value_counts(dropna=dropna)
+        percentages = (counts / counts.sum() * 100).round(decimals)
+        result = counts.reset_index().rename(columns={0: "count"})
+        result["pct"] = percentages.values
 
-    return result
+    return result.sort_values(by="count", ascending=False).reset_index(drop=True)
 
 
 def transform_date_cols(
@@ -128,6 +172,17 @@ def transform_date_cols(
     ------
     ValueError
         If date_cols is empty.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'date': ['25Aug2024', '26AUG2024', '27aug2024']
+    ... })
+    >>> transform_date_cols(df, 'date', str_date_format='%d%b%Y')
+           date
+    0 2024-08-25
+    1 2024-08-26
+    2 2024-08-27
     """
     if isinstance(date_cols, str):
         date_cols = [date_cols]
@@ -152,7 +207,7 @@ def transform_date_cols(
     return df_
 
 
-def drop_fully_null_columns(df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
+def drop_fully_null_cols(data: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
     """
     Drops columns where all values are missing/null in a pandas DataFrame.
 
@@ -162,7 +217,7 @@ def drop_fully_null_columns(df: pd.DataFrame, verbose: bool = False) -> pd.DataF
 
     Parameters
     ----------
-    df : pd.DataFrame
+    data : pd.DataFrame
         Input DataFrame to check for missing columns.
     verbose : bool, default=False
         If True, prints information about which columns were dropped.
@@ -175,21 +230,21 @@ def drop_fully_null_columns(df: pd.DataFrame, verbose: bool = False) -> pd.DataF
     Examples
     --------
     >>> # In Databricks notebook:
-    >>> drop_fully_null_columns(df).display()  # this won't affect the original df, just ensure .display() work
+    >>> drop_fully_null_cols(df).display()  # this won't affect the original df, just ensure .display() work
     >>> # To see which columns were dropped:
-    >>> drop_fully_null_columns(df, verbose=True)
+    >>> drop_fully_null_cols(df, verbose=True)
     """
-    null_counts = df.isnull().sum()
-    all_missing_cols = null_counts[null_counts == len(df)].index.tolist()
+    null_counts = data.isnull().sum()
+    all_missing_cols = null_counts[null_counts == len(data)].index.tolist()
 
     if all_missing_cols and verbose:
-        print(f"Dropped fully-null columns: {all_missing_cols}")
+        print(f"🗑️ Dropped fully-null columns: {all_missing_cols}")
 
-    df_ = df.drop(columns=all_missing_cols)
-    return df_
+    data_ = data.drop(columns=all_missing_cols)
+    return data_
 
 
-def print_schema_alphabetically(df: pd.DataFrame) -> None:
+def print_schema_alphabetically(data: pd.DataFrame) -> None:
     """
     Prints the schema (column names and dtypes) of the DataFrame with columns sorted alphabetically.
 
@@ -199,7 +254,7 @@ def print_schema_alphabetically(df: pd.DataFrame) -> None:
 
     Parameters
     ----------
-    df : pd.DataFrame
+    data : pd.DataFrame
         The DataFrame whose schema is to be printed.
 
     Returns
@@ -215,12 +270,12 @@ def print_schema_alphabetically(df: pd.DataFrame) -> None:
     b    object
     c    int64
     """
-    sorted_dtypes = df[sorted(df.columns)].dtypes
+    sorted_dtypes = data[sorted(data.columns)].dtypes
     print(sorted_dtypes)
 
 
 def is_primary_key(
-    df: pd.DataFrame, cols: Union[str, List[str]], verbose: bool = True
+    data: pd.DataFrame, cols: Union[str, List[str]], verbose: bool = True
 ) -> bool:
     """
     Check if the combination of specified columns forms a primary key in the DataFrame.
@@ -238,7 +293,7 @@ def is_primary_key(
 
     Parameters
     ----------
-    df : pd.DataFrame
+    data : pd.DataFrame
         The DataFrame to check.
     cols : str or List[str]
         Column name or list of column names to check for forming a primary key.
@@ -265,49 +320,134 @@ def is_primary_key(
     cols_list = [cols] if isinstance(cols, str) else cols
 
     # Check if DataFrame is empty
-    if df.empty:
+    if data.empty:
         if verbose:
-            print("DataFrame is empty.")
+            print("❌ DataFrame is empty.")
         return False
 
     # Check if all columns exist in the DataFrame
-    missing_cols = [col for col in cols_list if col not in df.columns]
+    missing_cols = [col for col in cols_list if col not in data.columns]
     if missing_cols:
         if verbose:
-            print(f"Column(s) {', '.join(missing_cols)} do not exist in the DataFrame.")
+            quoted_missing = [f"'{col}'" for col in missing_cols]
+            print(
+                f"❌ Column(s) {', '.join(quoted_missing)} do not exist in the DataFrame."
+            )
         return False
 
     # Check and report missing values in each specified column
-    has_missing = False
+    cols_with_missing = []
+    cols_without_missing = []
     for col in cols_list:
-        missing_count = df[col].isna().sum()
+        missing_count = data[col].isna().sum()
         if missing_count > 0:
-            has_missing = True
+            cols_with_missing.append(col)
             if verbose:
                 print(
-                    f"There are {missing_count:,} row(s) with missing values in column '{col}'."
+                    f"⚠️ There are {missing_count:,} row(s) with missing values in column '{col}'."
+                )
+        else:
+            cols_without_missing.append(col)
+
+    if verbose:
+        if cols_without_missing:
+            quoted_cols = [f"'{col}'" for col in cols_without_missing]
+            if len(quoted_cols) == 1:
+                print(f"✅ There are no missing values in column {quoted_cols[0]}.")
+            else:
+                print(
+                    f"✅ There are no missing values in columns {', '.join(quoted_cols)}."
                 )
 
     # Filter out rows with missing values
-    filtered_df = df.dropna(subset=cols_list)
+    filtered_df = data.dropna(subset=cols_list)
 
     # Get counts for comparison
     total_row_count = len(filtered_df)
     unique_row_count = filtered_df.groupby(cols_list).size().reset_index().shape[0]
 
     if verbose:
-        print(f"Total row count after filtering out missings: {total_row_count:,}")
-        print(f"Unique row count after filtering out missings: {unique_row_count:,}")
+        print(f"ℹ️ Total row count after filtering out missings: {total_row_count:,}")
+        print(f"ℹ️ Unique row count after filtering out missings: {unique_row_count:,}")
 
     is_primary = unique_row_count == total_row_count
 
     if verbose:
+        quoted_cols = [f"'{col}'" for col in cols_list]
         if is_primary:
             message = "form a primary key"
-            if has_missing:
+            if cols_with_missing:
                 message += " after removing rows with missing values"
-            print(f"The column(s) {', '.join(cols_list)} {message}.")
+            print(f"🔑 The column(s) {', '.join(quoted_cols)} {message}.")
         else:
-            print(f"The column(s) {', '.join(cols_list)} do not form a primary key.")
+            print(
+                f"❌ The column(s) {', '.join(quoted_cols)} do not form a primary key."
+            )
 
     return is_primary
+
+
+def select_existing_cols(
+    data: pd.DataFrame,
+    cols: Union[str, List[str]],
+    verbose: bool = False,
+    strict: bool = True,
+) -> pd.DataFrame:
+    """
+    Select columns from a DataFrame if they exist.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The input DataFrame.
+    cols : Union[str, List[str]]
+        Column name or list of column names to select.
+    verbose : bool, default=False
+        If True, print which columns exist vs. are missing.
+    strict : bool, default=True
+        If True, match column names exactly (case-sensitive).
+        If False, match case-insensitively by lowering both data columns and input list.
+        Returned DataFrame will still use original column names.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with only the matched columns (with original column casing).
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({'A': [1], 'B': [2], 'C': [3]})
+    >>> select_existing_cols(df, ['A', 'D', 'b'], strict=True)  # Only returns 'A'
+    >>> select_existing_cols(df, ['A', 'D', 'b'], strict=False)  # Returns 'A' and 'B'
+    >>> select_existing_cols(df, ['A', 'D'], verbose=True)  # Shows found/missing columns
+    """
+    if not hasattr(data, "columns"):
+        raise TypeError(
+            "Input `data` must be a DataFrame-like object with a `.columns` attribute."
+        )
+
+    if isinstance(cols, str):
+        cols = [cols]
+
+    df_columns = list(data.columns)
+
+    if strict:
+        existing = [col for col in cols if col in df_columns]
+    else:
+        # Case-insensitive match
+        lower_map = {col.lower(): col for col in df_columns}
+        existing = [lower_map[col.lower()] for col in cols if col.lower() in lower_map]
+
+    missing = [
+        col
+        for col in cols
+        if col not in existing
+        and (col if strict else col.lower() not in [c.lower() for c in df_columns])
+    ]
+
+    if verbose:
+        print(f"✅ Columns found: {existing}")
+        if missing:
+            print(f"⚠️ Columns not found: {missing}")
+
+    return data[existing]

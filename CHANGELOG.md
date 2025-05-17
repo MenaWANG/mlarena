@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Added
+- Enhanced `plot_box_scatter` function with better error handling
+  - Added warning when `point_hue` column is not found in DataFrame
+  - Added graceful fallback to single-color plot when `point_hue` is missing
+- Added new tests for `plot_box_scatter`
+  - Test for warning when point_hue column is missing
+  - Test for fallback to single-color behavior
+  - Test for correct color assignment with valid point_hue
+
+### Fixed
+- Removed redundant `subplots_adjust` call in `plot_metric_event_over_time`
+  - Eliminated layout warnings by relying on `constrained_layout`
+  - Improved consistency with other plotting functions
+  - Better compatibility with matplotlib's automatic layout management
+
+
 ## [0.2.8] - 2025-05-17
 
 ### Added

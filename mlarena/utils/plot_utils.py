@@ -23,13 +23,14 @@ def plot_box_scatter(
     xlabel: Optional[str] = None,
     ylabel: Optional[str] = None,
     point_hue: Optional[str] = None,
-    point_size: int = 50,
-    point_alpha: float = 0.8,
-    jitter: float = 0.08,
+    point_size: int = 30,
+    point_alpha: float = 0.6,
+    jitter: float = 0.1,
     box_alpha: float = 0.3,
     single_color_box: bool = False,
     figsize: tuple = (10, 6),
     palette: Optional[List[str]] = None,
+    xticklabel_rotation: float = 45,
     return_summary: bool = False,
 ):
     """
@@ -51,11 +52,11 @@ def plot_box_scatter(
         Label for y-axis. If None, uses the y column name.
     point_hue : str, optional
         Column name to color points by. If set, overrides color-by-x behavior.
-    point_size : int, default=50
+    point_size : int, default=30
         Size of the overlaid scatter points.
-    point_alpha : float, default=0.8
+    point_alpha : float, default=0.6
         Transparency level for points.
-    jitter : float, default=0.08
+    jitter : float, default=0.1
         Amount of horizontal jitter for points.
     box_alpha : float, default=0.3
         Transparency level for box fill.
@@ -65,6 +66,8 @@ def plot_box_scatter(
         Size of the figure as (width, height) in inches.
     palette : List[str], optional
         List of colors. If None, uses Matplotlib's default color cycle.
+    xticklabel_rotation : float, default=45
+        Rotation angle for x-axis tick labels in degrees.
     return_summary : bool, default=False
         Whether to return a DataFrame of summary stats.
 
@@ -78,7 +81,7 @@ def plot_box_scatter(
         DataFrame with count, mean, median, std per category if return_summary=True.
     """
 
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 
     categories = sorted(data[x].unique())
     num_categories = len(categories)
@@ -132,18 +135,28 @@ def plot_box_scatter(
         x_jittered = np.random.normal(loc=idx + 1, scale=jitter, size=len(y_values))
 
         if point_hue:
-            hue_vals = data[data[x] == cat][point_hue].values
-            for xv, yv, hv in zip(x_jittered, y_values, hue_vals):
-                if pd.isna(hv):
+            # Get data for this category
+            cat_data = data[data[x] == cat]
+            hue_vals = cat_data[point_hue].values
+
+            # Plot each hue value's points together
+            for hue_val in hue_levels:
+                mask = hue_vals == hue_val
+                if not np.any(mask):  # Skip if no points for this hue value
                     continue
+
                 ax.scatter(
-                    xv,
-                    yv,
-                    color=hue_color_map.get(hv, "grey"),
+                    x_jittered[mask],
+                    y_values[mask],
+                    color=hue_color_map[hue_val],
                     s=point_size,
                     alpha=point_alpha,
                     edgecolor="none",
-                    label=hv if hv not in ax.get_legend_handles_labels()[1] else None,
+                    label=(
+                        hue_val
+                        if hue_val not in ax.get_legend_handles_labels()[1]
+                        else None
+                    ),
                     zorder=3,
                 )
         else:
@@ -165,21 +178,21 @@ def plot_box_scatter(
             (h, l) for h, l in zip(handles, labels) if not (l in seen or seen.add(l))
         ]
         if filtered:
-            ax.legend(*zip(*filtered), title=point_hue, loc="best")
-        ax.legend(
-            bbox_to_anchor=(1.02, 1),  # (x, y) position outside the axes
-            loc="upper left",  # anchor point of the legend box
-            borderaxespad=0.0,  # padding between axes and legend box
-        )
+            ax.legend(
+                *zip(*filtered),
+                title=point_hue,
+                bbox_to_anchor=(1.02, 1),  # Place legend outside
+                loc="upper left",
+                borderaxespad=0.0,
+            )
 
     # Axis labels and title
     ax.set_xticks(range(1, num_categories + 1))
-    ax.set_xticklabels(categories)
+    ax.set_xticklabels(categories, rotation=xticklabel_rotation, ha="right")
     ax.set_xlabel(xlabel or x)
     ax.set_ylabel(ylabel or y)
     ax.set_title(title)
     ax.grid(True)
-    plt.tight_layout()
 
     if return_summary:
         summary_df = (
@@ -294,7 +307,7 @@ def plot_metric_event_over_time(
     data[x] = pd.to_datetime(data[x])
 
     # Create figure
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     axes = [ax]
 
     # Create additional y-axes if needed
@@ -519,7 +532,6 @@ def plot_metric_event_over_time(
 
     # Adjust layout
     fig.autofmt_xdate(rotation=45, ha="right")
-    plt.tight_layout()
     plt.subplots_adjust(bottom=0.2)
     ax.grid(True, axis="x", zorder=10)
 
@@ -637,7 +649,7 @@ def plot_stacked_bar_over_time(
     date_labels = data_to_plot.index.strftime(date_format)
 
     # Plotting
-    fig, ax = plt.subplots(figsize=figsize)
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
     data_to_plot.plot(
         kind="bar", stacked=True, color=colors[: len(data_to_plot.columns)], ax=ax
     )
@@ -649,7 +661,6 @@ def plot_stacked_bar_over_time(
     ax.set_ylabel(y_label)
     ax.legend(title=y if not label_dict else "")
     ax.grid(True, axis="y")
-    plt.tight_layout()
 
     return fig, ax
 

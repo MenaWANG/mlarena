@@ -24,18 +24,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.2.7
+%pip install mlarena==0.2.8
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.2.7 --no-deps
+%pip install mlarena==0.2.8 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.2.7 --no-deps
+%pip install mlarena==0.2.8 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -156,6 +156,11 @@ One liner to create global and local explanation based on SHAP that will work ac
   - Standardized dollar amount cleaning for financial analysis
   - Value counts with percentage calculation for categorical analysis
   - Smart date column transformation with flexible format handling
+  - Schema and data quality utilities
+    - Primary key validation with detailed diagnostics
+    - Alphabetically sorted schema display
+    - Safe column selection with case sensitivity options
+    - Automatic removal of fully null columns
 
 ## Contributing
 

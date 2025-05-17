@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.2.8] - 
+## [0.2.8] - 2025-05-17
 
 ### Added
 - Enhanced data utility functions:
@@ -15,13 +15,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Supports both single column and composite key validation
     - Provides detailed feedback about missing values and uniqueness
     - Practical approach to handle real-world data with missing values
-  - Added comprehensive test coverage for all utility functions
+  - Added `select_existing_cols` function for safe column selection
+    - Supports both case-sensitive and case-insensitive matching
+    - Provides verbose mode for debugging column selection
+    - Handles both single column and list inputs
+  - Enhanced `value_counts_with_pct` function:
+    - Added support for analyzing multiple columns (value combinations)
+  - Improved `drop_fully_null_cols` function:
+    - Added `verbose` parameter (default=False) to control output messaging
+    - Better aligned with common data science practices for optional verbosity
+  - Added comprehensive test coverage for all data utility functions
   - Updated example notebook with demonstrations of new functions
+- Enhanced plotting utilities:
+  - Optimized `plot_box_scatter` performance with `point_hue`
+    - Significantly improved computational efficiency by plotting points by hue value
+    - Reduced redundant scatter operations and memory usage
+    - Enhanced label formatting and positioning
+  - Standardized layout management across all plotting functions using `constrained_layout`
+    - Improved handling of complex layouts with multiple subplots, colorbars, and legends
+    - Better automatic adjustment of spacing between plot elements
+    - More robust handling of rotated labels and varying font sizes
+  - Added some test coverage for plotting utilities in pytest
+- [EXPERIMENTAL] Added I/O utility functions in `io_utils`:
+  - Added `save_object` and `load_object` for flexible object serialization
+  - Supports both pickle and joblib backends with automatic defaults
+  - Robust safety measures:
+    - Validates backend selection ('pickle' or 'joblib')
+    - Ensures file extension matches the chosen backend
+    - Verifies joblib availability before use
+    - Validates file existence before loading
+    - Creates directories safely if they don't exist
+  - Features include:
+    - Date-based versioning in filenames
+    - Automatic directory creation
+    - Optional compression for joblib backend
+    - Backward compatibility options via pickle protocol selection
+  - Added extensive test coverage with safety considerations:
+    - Tests for all error conditions
+    - Validation of data integrity after save/load
+    - Safe cleanup of test files
+    - Windows-compatible file handling
+
 
 ### Changed
-- Improved `drop_fully_null_columns` function:
-  - Added `verbose` parameter (default=False) to control output messaging
-  - Better aligned with common data science practices for optional verbosity
+- Standardized function naming conventions in data utilities:
+  - Adopted "cols" instead of "columns" for consistency and clarity
+  - Rationale:
+    - Reduces potential naming collisions 
+    - More concise while maintaining clarity
+    - Aligns with common data science community conventions
+  - Updated functions:
+    - `clean_dollar_cols`
+    - `transform_date_cols`
+    - `drop_fully_null_cols`
+  - Unchanged functions (already following convention):
+    - `value_counts_with_pct`
+    - `print_schema_alphabetically`
+    - `is_primary_key`
+- Updated corresponding test files and documentation to reflect new naming convention
 
 
 ## [0.2.7] - 2025-05-14

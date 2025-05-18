@@ -1,5 +1,5 @@
-import sys
-from typing import Dict, List, Optional, Union
+import warnings
+from typing import Dict, List, Optional, Tuple, Union
 
 import matplotlib.colors as mcolors
 import matplotlib.dates as mdates
@@ -52,6 +52,7 @@ def plot_box_scatter(
         Label for y-axis. If None, uses the y column name.
     point_hue : str, optional
         Column name to color points by. If set, overrides color-by-x behavior.
+        If column does not exist, a warning will be issued and the plot will be created without point_hue coloring.
     point_size : int, default=30
         Size of the overlaid scatter points.
     point_alpha : float, default=0.6
@@ -80,6 +81,14 @@ def plot_box_scatter(
     summary_df : pd.DataFrame, optional
         DataFrame with count, mean, median, std per category if return_summary=True.
     """
+    # Check if point_hue column exists and warn if it doesn't
+    if point_hue is not None and point_hue not in data.columns:
+        warnings.warn(
+            f"point_hue column '{point_hue}' not found in DataFrame. "
+            "Proceeding with plot without point_hue coloring.",
+            UserWarning,
+        )
+        point_hue = None
 
     fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
 
@@ -532,7 +541,6 @@ def plot_metric_event_over_time(
 
     # Adjust layout
     fig.autofmt_xdate(rotation=45, ha="right")
-    plt.subplots_adjust(bottom=0.2)
     ax.grid(True, axis="x", zorder=10)
 
     return fig, axes
@@ -691,7 +699,8 @@ def plot_distribution_over_time(
         y (str): Name of the continuous column.
         freq (str): Frequency for time grouping ('m'=minute, 'h'=hour, 'D'=day, 'MS'=month start, 'ME' = month end, 'YS'=year start).
         point_hue (str, optional): Column name to use for coloring the scatter points. If provided, points will be colored
-                                  according to this variable.
+                                  according to this variable. If column does not exist, a warning will be issued and the plot
+                                  will be created without point_hue coloring.
         title (str): Title of the plot.
         xlabel (str, optional): Label for the x-axis. If None, will be set based on frequency.
         ylabel (str, optional): Label for the y-axis. If None, uses the y column name.
@@ -769,7 +778,7 @@ def plot_distribution_over_time(
             data=plot_df,
             x="time_period",
             y=y,
-            point_hue=point_hue if point_hue in plot_df.columns else None,
+            point_hue=point_hue,
             title=title,
             xlabel=x_label,
             ylabel=ylabel,
@@ -788,7 +797,7 @@ def plot_distribution_over_time(
             data=plot_df,
             x="time_period",
             y=y,
-            point_hue=point_hue if point_hue in plot_df.columns else None,
+            point_hue=point_hue,
             title=title,
             xlabel=x_label,
             ylabel=ylabel,

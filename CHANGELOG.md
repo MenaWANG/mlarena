@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [Unreleased]
+## [0.2.9] - 2025-05-19
 
 ### Added
 - Enhanced `plot_box_scatter` function with better error handling
@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Test for warning when point_hue column is missing
   - Test for fallback to single-color behavior
   - Test for correct color assignment with valid point_hue
+- Added `n_top_features` parameter to `filter_feature_selection`
+  - Allows selecting top N features based on mutual information scores
+  - Applies after basic filtering (missing values and unique values)
+  - Provides alternative to threshold-based selection
+  - Includes warning when requested features exceed available features
 
 ### Fixed
 - Removed redundant `subplots_adjust` call in `plot_metric_event_over_time`

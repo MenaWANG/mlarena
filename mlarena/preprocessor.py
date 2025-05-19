@@ -514,6 +514,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         task: str = "classification",
         missing_threshold: float = 0.2,
         mi_threshold: float = 0.1,
+        n_top_features: int = None,
         random_state: int = 42,
     ) -> dict:
         """
@@ -531,6 +532,10 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             Maximum acceptable proportion of missing values.
         mi_threshold : float, default=0.1
             Minimum acceptable normalized mutual information score.
+        n_top_features : int, optional
+            If specified, selects this many top features based on mutual information scores.
+            This is applied after filtering out features with too many missing values or no variance.
+            If None, all features meeting the threshold criteria are kept.
         random_state : int, default=42
             Random seed for mutual information calculation.
 
@@ -552,6 +557,11 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         1. Missing values: Features with missing values exceeding the threshold are recommended for dropping
         2. Unique values: Features with only one unique value (no variance) are recommended for dropping
         3. Mutual information: Features with low mutual information with the target are recommended for dropping
+
+        If n_top_features is specified, the method will:
+        1. First apply the basic filtering (missing values, unique values)
+        2. Then select the top N features based on mutual information scores
+        3. The mi_threshold will be ignored in this case
 
         Mutual information is calculated with either `mutual_info_classif` or `mutual_info_regression` based on
         user specified task.
@@ -619,12 +629,35 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         # Add reasons for dropping
         analysis["drop_missing"] = analysis["missing_ratio"] > missing_threshold
         analysis["drop_unique"] = analysis["n_unique"] <= 1
-        analysis["drop_mi"] = analysis["mutual_info_normalized"] < mi_threshold
 
-        # Get lists of columns for each drop reason
+        # Get lists of columns for basic filtering
         cols_missing = analysis[analysis["drop_missing"]]["feature"].tolist()
         cols_unique = analysis[analysis["drop_unique"]]["feature"].tolist()
-        cols_low_mi = analysis[analysis["drop_mi"]]["feature"].tolist()
+
+        # Initial filtering based on missing values and unique values
+        basic_filtered_features = analysis[
+            ~(analysis["drop_missing"] | analysis["drop_unique"])
+        ]
+
+        # Handle top N feature selection if specified
+        if n_top_features is not None:
+            if n_top_features > len(basic_filtered_features):
+                print(
+                    f"Warning: Requested {n_top_features} features but only {len(basic_filtered_features)} available after basic filtering"
+                )
+                n_top_features = len(basic_filtered_features)
+
+            selected_features = basic_filtered_features.head(n_top_features)
+            cols_low_mi = basic_filtered_features.iloc[n_top_features:][
+                "feature"
+            ].tolist()
+            analysis["drop_mi"] = ~analysis["feature"].isin(
+                selected_features["feature"]
+            )
+        else:
+            # Use mi_threshold if n_top_features not specified
+            analysis["drop_mi"] = analysis["mutual_info_normalized"] < mi_threshold
+            cols_low_mi = analysis[analysis["drop_mi"]]["feature"].tolist()
 
         cols_to_drop = list(set(cols_missing + cols_unique + cols_low_mi))
         selected_cols = list(
@@ -632,7 +665,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         )
 
         # Print summary with specific columns
-        print(f"Filter Feature Selection Summary:")
+        print("Filter Feature Selection Summary:")
         print("==========")
         print(f"Total features analyzed: {len(X.columns)}")
 
@@ -646,9 +679,14 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         if cols_unique:
             print("   Columns:", ", ".join(cols_unique))
 
-        print(
-            f"\n3. Low mutual information (<{mi_threshold}): {len(cols_low_mi)} columns"
-        )
+        if n_top_features is not None:
+            print(
+                f"\n3. Not in top {n_top_features} features: {len(cols_low_mi)} columns"
+            )
+        else:
+            print(
+                f"\n3. Low mutual information (<{mi_threshold}): {len(cols_low_mi)} columns"
+            )
         if cols_low_mi:
             print("   Columns:", ", ".join(cols_low_mi))
 
@@ -663,7 +701,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             "analysis": analysis,
             "thresholds": {
                 "missing_threshold": missing_threshold,
-                "mi_threshold": mi_threshold,
+                "mi_threshold": mi_threshold if n_top_features is None else None,
+                "n_top_features": n_top_features,
             },
         }
 

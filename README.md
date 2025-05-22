@@ -161,6 +161,14 @@ One liner to create global and local explanation based on SHAP that will work ac
     - Alphabetically sorted schema display
     - Safe column selection with case sensitivity options
     - Automatic removal of fully null columns
+- I/O utilities
+  - `save_object`: Store Python objects to disk with customizable options
+    - Support for pickle and joblib backends
+    - Optional date stamping in filenames
+    - Compression support for joblib backend
+  - `load_object`: Retrieve Python objects with automatic backend detection
+    - Seamless loading regardless of storage format
+    - Direct compatibility with paths returned by `save_object`
 
 ## Contributing
 

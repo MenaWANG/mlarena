@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [Unreleased]
+
+### Improved
+- Enhanced I/O utility functions in `io_utils`:
+  - Improved parameter naming for better clarity and consistency:
+    - In `save_object`: Changed `path` to `directory` and `filename` to `basename`
+    - In `load_object`: Changed `file_path` to `filepath`
+  - Fixed variable name bug in the `save_object` function
+  - Enhanced internal variable naming with `final_filepath` for better code readability
+  - Updated docstrings to clearly indicate return value compatibility between functions
+  - Strengthened conceptual connection between `save_object` and `load_object`
+
+### Documentation
+- Added example notebook `3.utils_io.ipynb` demonstrating I/O utilities:
+  - Examples showing how to save and load different types of objects:
+    - Python dictionaries using pickle backend
+    - Pandas DataFrames using joblib backend with compression
+    - Complete ML_PIPELINE instances for model persistence
+  - Data integrity verification after loading objects
+
 ## [0.2.9] - 2025-05-19
 
 ### Added

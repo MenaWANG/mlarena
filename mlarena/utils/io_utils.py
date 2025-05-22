@@ -13,10 +13,10 @@ __all__ = ["save_object", "load_object"]
 
 def save_object(
     obj: Any,
-    path: Union[str, Path],
-    name: str = "model",
+    directory: Union[str, Path],  # Directory
+    basename: str,  # Base filename (without extension)
     use_date: bool = True,
-    backend: str = "pickle",
+    backend: str = "pickle",  # Explicit backend, determines extension
     compress: bool = True,
     compression_level: Optional[int] = None,
     pickle_protocol: Optional[int] = None,
@@ -28,92 +28,99 @@ def save_object(
     ----------
     obj : Any
         The Python object to save.
-    path : Union[str, Path]
+    directory : Union[str, Path]
         Directory to save the file.
-    name : str, default="model"
-        Base name for the file.
+    basename : str
+        Base name for the file (without extension, e.g., 'my_model').
+        The extension will be added based on the backend.
     use_date : bool, default=True
-        Whether to append the current date to the file name.
+        Whether to append the current date to the file name stem.
     backend : str, default="pickle"
-        Storage backend to use ('pickle' or 'joblib').
+        Storage backend to use ('pickle' or 'joblib'). This determines the
+        file extension.
     compress : bool, default=True
         Whether to use compression for joblib backend.
     compression_level : Optional[int], default=None
         Compression level (0-9, joblib only). None uses backend default.
     pickle_protocol : Optional[int], default=None
         The protocol version to use for pickling. The default (None) uses pickle's
-        default protocol, which is optimized for the current Python version.
-        Only specify this if you need backward compatibility with older Python versions.
+        default protocol. Only specify if needed for backward compatibility.
 
     Returns
     -------
     Path
-        Full path to the saved file.
+        The full filepath to the saved object. This path can be directly used
+        as the `filepath` argument for the `load_object` function.
 
     Examples
     --------
-    >>> model = RandomForestClassifier()
-    >>> model.fit(X_train, y_train)
-    >>> # Save with date in filename (e.g., "model_2024-02-27.pkl")
-    >>> save_object(model, "models")
-    >>> # Save without date
-    >>> save_object(model, "models", use_date=False)
-    >>> # Save with joblib and default compression
-    >>> save_object(model, "models", backend="joblib")
+    >>> # model = RandomForestClassifier() # Assuming model is trained
+    >>> # model.fit(X_train, y_train)
+    >>> # Save with date and pickle backend (default)
+    >>> # save_object(model, directory="models", basename="my_model") # -> models/my_model_YYYY-MM-DD.pkl
+    >>> # Save without date and with joblib backend
+    >>> # save_object(model, directory="output/data", basename="raw_features", use_date=False, backend="joblib") # -> output/data/raw_features.joblib
     >>> # Save with joblib and specific compression level
-    >>> save_object(model, "models", backend="joblib", compression_level=3)
-    >>> # Save with specific protocol only if needed for compatibility
-    >>> save_object(model, "models", pickle_protocol=4)  # for Python 3.4+ compatibility
+    >>> # save_object(model, directory="models", basename="compressed_model", backend="joblib", compression_level=5)
+    >>> # Save with specific pickle protocol
+    >>> # save_object(model, directory="models", basename="old_model", pickle_protocol=4)
     """
     # Validate and create directory
-    save_dir = Path(path)
+    save_dir = Path(directory)
     save_dir.mkdir(parents=True, exist_ok=True)
 
-    # Validate backend
-    backend = backend.lower()
-    if backend not in ["pickle", "joblib"]:
-        raise ValueError("backend must be either 'pickle' or 'joblib'")
+    # Validate and process backend
+    actual_backend_str = backend.lower()
+    if actual_backend_str not in ["pickle", "joblib"]:
+        raise ValueError("Backend must be 'pickle' or 'joblib'.")
 
-    if backend == "joblib" and joblib is None:
+    if actual_backend_str == "joblib" and joblib is None:
         raise ImportError(
             "joblib is not installed. Install it with 'pip install joblib'"
         )
 
-    # Create filename
+    # Create filename components
     date_suffix = f"_{datetime.today().strftime('%Y-%m-%d')}" if use_date else ""
-    extension = "joblib" if backend == "joblib" else "pkl"
-    filename = f"{name}{date_suffix}.{extension}"
-    full_path = save_dir / filename
+    final_extension = ".joblib" if actual_backend_str == "joblib" else ".pkl"
+
+    output_filename_stem = f"{basename}{date_suffix}"
+    final_filename_with_ext = f"{output_filename_stem}{final_extension}"
+    final_filepath = save_dir / final_filename_with_ext
 
     # Save the object
-    if backend == "joblib":
-        if not compress:
-            joblib.dump(obj, full_path, compress=False)
-        elif compression_level is not None:
-            joblib.dump(obj, full_path, compress=("zlib", compression_level))
-        else:
-            joblib.dump(obj, full_path)  # Use joblib's default compression
-    else:
-        with open(full_path, "wb") as f:
+    if actual_backend_str == "joblib":
+        if not compress:  # compress parameter of save_object is False
+            joblib.dump(
+                obj, final_filepath, compress=False
+            )  # joblib.dump compress=False means no compression
+        elif (
+            compression_level is not None
+        ):  # compress is True (default or explicit) AND compression_level is set
+            joblib.dump(obj, final_filepath, compress=("zlib", compression_level))
+        else:  # compress is True (default or explicit) AND compression_level is None
+            joblib.dump(
+                obj, final_filepath, compress=True
+            )  # Use joblib's default compression behavior
+    else:  # pickle backend
+        with open(final_filepath, "wb") as f:
             if pickle_protocol is not None:
                 pickle.dump(obj, f, protocol=pickle_protocol)
             else:
                 pickle.dump(obj, f)  # Use pickle's default protocol
 
-    print(f"Object saved to {full_path}")
-    return full_path
+    print(f"Object saved to {final_filepath}")
+    return final_filepath
 
 
-def load_object(path: Union[str, Path], backend: str = "pickle") -> Any:
+def load_object(filepath: Union[str, Path]) -> Any:
     """
-    Load a Python object from disk using either pickle or joblib.
+    Load a Python object from disk, inferring backend from file extension.
 
     Parameters
     ----------
-    path : Union[str, Path]
-        Path to the file to load.
-    backend : str, default="pickle"
-        Storage backend to use ('pickle' or 'joblib').
+    filepath : Union[str, Path]
+        Full path to the file to load (e.g., "models/model.pkl" or "models/model.joblib").
+        This should be the full path, including the directory, basename and extension.
 
     Returns
     -------
@@ -122,40 +129,43 @@ def load_object(path: Union[str, Path], backend: str = "pickle") -> Any:
 
     Examples
     --------
-    >>> # Load pickle file
-    >>> model = load_object("models/model_2024-02-27.pkl")
-    >>> # Load joblib file
-    >>> model = load_object("models/model_2024-02-27.joblib", backend="joblib")
+    >>> # saved_filepath = save_object(my_data, directory="data_dir", basename="my_data_file")
+    >>> # loaded_data = load_object(filepath=saved_filepath)
+    >>> # Load a pickle file directly by path
+    >>> # model = load_object(filepath="models/model_2024-02-27.pkl")
+    >>> # Load a joblib file directly by path
+    >>> # model = load_object(filepath="models/archive/old_model.joblib")
     """
-    file_path = Path(path)
+    input_file_path = Path(filepath)
 
     # Validate file exists
-    if not file_path.exists():
-        raise FileNotFoundError(f"File not found: {file_path}")
+    if not input_file_path.exists():
+        raise FileNotFoundError(f"File not found: {input_file_path}")
 
-    # Validate backend
-    backend = backend.lower()
-    if backend not in ["pickle", "joblib"]:
-        raise ValueError("backend must be either 'pickle' or 'joblib'")
+    # Infer backend from file extension
+    file_suffix = input_file_path.suffix.lower()
+    actual_backend_str = ""
+    if file_suffix == ".pkl":
+        actual_backend_str = "pickle"
+    elif file_suffix == ".joblib":
+        actual_backend_str = "joblib"
+    else:
+        raise ValueError(
+            f"Unsupported file extension: {file_suffix}. Expected '.pkl' or '.joblib'."
+        )
 
-    if backend == "joblib" and joblib is None:
+    if actual_backend_str == "joblib" and joblib is None:
         raise ImportError(
             "joblib is not installed. Install it with 'pip install joblib'"
         )
 
-    # Validate file extension matches backend
-    expected_ext = ".joblib" if backend == "joblib" else ".pkl"
-    if file_path.suffix.lower() != expected_ext:
-        raise ValueError(
-            f"File extension {file_path.suffix} does not match expected {expected_ext} for {backend} backend"
-        )
-
     # Load the object
-    if backend == "joblib":
-        obj = joblib.load(file_path)
-    else:
-        with open(file_path, "rb") as f:
+    obj: Any
+    if actual_backend_str == "joblib":
+        obj = joblib.load(input_file_path)
+    else:  # pickle backend
+        with open(input_file_path, "rb") as f:
             obj = pickle.load(f)
 
-    print(f"Object loaded from {file_path}")
+    print(f"Object loaded from {input_file_path}")
     return obj

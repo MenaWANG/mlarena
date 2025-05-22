@@ -50,16 +50,16 @@ def test_save_load_pickle(temp_dir, sample_data):
     """Test basic save and load functionality with pickle."""
     try:
         # Save without date
-        path = save_object(
-            sample_data, temp_dir, name="test", use_date=False, backend="pickle"
+        final_filepath = save_object(
+            sample_data, directory=temp_dir, basename="test", use_date=False, backend="pickle"
         )
 
         # Check file exists
-        assert path.exists()
-        assert path.suffix == ".pkl"
+        assert final_filepath.exists()
+        assert final_filepath.suffix == ".pkl"
 
         # Load and verify
-        loaded_data = load_object(path, backend="pickle")
+        loaded_data = load_object(filepath=final_filepath)
         assert loaded_data["dict"] == sample_data["dict"]
         assert loaded_data["string"] == sample_data["string"]
         assert loaded_data["list"] == sample_data["list"]
@@ -77,16 +77,16 @@ def test_save_load_joblib(temp_dir, sample_data):
 
     try:
         # Save without date
-        path = save_object(
-            sample_data, temp_dir, name="test", use_date=False, backend="joblib"
+        final_filepath = save_object(
+            sample_data, directory=temp_dir, basename="test", use_date=False, backend="joblib"
         )
 
         # Check file exists
-        assert path.exists()
-        assert path.suffix == ".joblib"
+        assert final_filepath.exists()
+        assert final_filepath.suffix == ".joblib"
 
         # Load and verify
-        loaded_data = load_object(path, backend="joblib")
+        loaded_data = load_object(filepath=final_filepath)
         assert loaded_data["dict"] == sample_data["dict"]
         assert loaded_data["string"] == sample_data["string"]
         assert loaded_data["list"] == sample_data["list"]
@@ -104,11 +104,11 @@ def test_date_suffix(temp_dir, sample_data):
     today = datetime.today().strftime("%Y-%m-%d")
 
     # Save with date
-    path = save_object(sample_data, temp_dir, name="test", use_date=True)
+    final_filepath = save_object(sample_data, directory=temp_dir, basename="test", use_date=True)
 
     # Check filename contains date
-    assert today in path.name
-    assert path.exists()
+    assert today in final_filepath.name
+    assert final_filepath.exists()
 
 
 def test_compression_joblib(temp_dir, sample_data):
@@ -119,8 +119,8 @@ def test_compression_joblib(temp_dir, sample_data):
         # Save with different compression settings
         path1 = save_object(
             sample_data,
-            temp_dir,
-            name="test1",
+            directory=temp_dir,
+            basename="test1",
             use_date=False,
             backend="joblib",
             compress=False,
@@ -128,8 +128,8 @@ def test_compression_joblib(temp_dir, sample_data):
 
         path2 = save_object(
             sample_data,
-            temp_dir,
-            name="test2",
+            directory=temp_dir,
+            basename="test2",
             use_date=False,
             backend="joblib",
             compress=True,
@@ -144,8 +144,8 @@ def test_compression_joblib(temp_dir, sample_data):
         assert path1.stat().st_size > path2.stat().st_size
 
         # Verify data integrity
-        loaded1 = load_object(path1, backend="joblib")
-        loaded2 = load_object(path2, backend="joblib")
+        loaded1 = load_object(filepath=path1)
+        loaded2 = load_object(filepath=path2)
 
         assert loaded1["dict"] == loaded2["dict"]
         np.testing.assert_array_equal(loaded1["array"], loaded2["array"])
@@ -159,40 +159,45 @@ def test_compression_joblib(temp_dir, sample_data):
 def test_path_handling(temp_dir, sample_data):
     """Test different path input formats."""
     # Test with string path
-    path1 = save_object(sample_data, str(temp_dir), name="test1", use_date=False)
+    path1 = save_object(sample_data, directory=str(temp_dir), basename="test1", use_date=False)
     assert path1.exists()
 
     # Test with Path object
-    path2 = save_object(sample_data, Path(temp_dir), name="test2", use_date=False)
+    path2 = save_object(sample_data, directory=Path(temp_dir), basename="test2", use_date=False)
     assert path2.exists()
 
     # Test nested directory creation
     nested_dir = temp_dir / "nested" / "path"
-    path3 = save_object(sample_data, nested_dir, name="test3", use_date=False)
+    path3 = save_object(sample_data, directory=nested_dir, basename="test3", use_date=False)
     assert path3.exists()
 
 
 def test_error_handling(temp_dir, sample_data):
     """Test error cases."""
     # Test invalid backend
-    with pytest.raises(ValueError, match="backend must be either 'pickle' or 'joblib'"):
-        save_object(sample_data, temp_dir, backend="invalid")
+    with pytest.raises(ValueError, match="Backend must be 'pickle' or 'joblib'."):
+        save_object(sample_data, directory=temp_dir, basename="test", backend="invalid")
 
     # Test loading non-existent file
     with pytest.raises(FileNotFoundError):
-        load_object(temp_dir / "nonexistent.pkl")
+        load_object(filepath=temp_dir / "nonexistent.pkl")
 
-    # Test loading with wrong backend
+    # Test loading with wrong extension
     path = save_object(
-        sample_data, temp_dir, name="test", use_date=False, backend="pickle"
+        sample_data, directory=temp_dir, basename="test", use_date=False, backend="pickle"
     )
+    
+    # Since load_object now infers the backend, we need to check for a different error
+    # Related to unsupported file extension
+    wrong_ext_path = temp_dir / "wrong_ext.xyz"
+    with open(wrong_ext_path, 'wb') as f:
+        f.write(b'test')
+    
     with pytest.raises(
         ValueError,
-        match=re.escape(
-            "File extension .pkl does not match expected .joblib for joblib backend"
-        ),
+        match="Unsupported file extension: .xyz. Expected '.pkl' or '.joblib'."
     ):
-        load_object(path, backend="joblib")
+        load_object(filepath=wrong_ext_path)
 
 
 def test_large_array_comparison(temp_dir, large_array):
@@ -202,13 +207,13 @@ def test_large_array_comparison(temp_dir, large_array):
     try:
         # Save with both backends
         path_pickle = save_object(
-            large_array, temp_dir, name="large_pickle", use_date=False, backend="pickle"
+            large_array, directory=temp_dir, basename="large_pickle", use_date=False, backend="pickle"
         )
 
         path_joblib = save_object(
             large_array,
-            temp_dir,
-            name="large_joblib",
+            directory=temp_dir,
+            basename="large_joblib",
             use_date=False,
             backend="joblib",
             compress=True,
@@ -219,8 +224,8 @@ def test_large_array_comparison(temp_dir, large_array):
         assert path_joblib.exists()
 
         # Load and verify data integrity
-        loaded_pickle = load_object(path_pickle, backend="pickle")
-        loaded_joblib = load_object(path_joblib, backend="joblib")
+        loaded_pickle = load_object(filepath=path_pickle)
+        loaded_joblib = load_object(filepath=path_joblib)
 
         # Verify data integrity
         np.testing.assert_array_equal(large_array, loaded_pickle)
@@ -230,7 +235,7 @@ def test_large_array_comparison(temp_dir, large_array):
         # Print file sizes for information (but don't assert)
         pickle_size = path_pickle.stat().st_size
         joblib_size = path_joblib.stat().st_size
-        print(f"\nFile sizes for information:")
+        print("\nFile sizes for information:")
         print(f"Pickle file size: {pickle_size:,} bytes")
         print(f"Joblib file size: {joblib_size:,} bytes")
     finally:

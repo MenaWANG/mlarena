@@ -51,7 +51,11 @@ def test_save_load_pickle(temp_dir, sample_data):
     try:
         # Save without date
         final_filepath = save_object(
-            sample_data, directory=temp_dir, basename="test", use_date=False, backend="pickle"
+            sample_data,
+            directory=temp_dir,
+            basename="test",
+            use_date=False,
+            backend="pickle",
         )
 
         # Check file exists
@@ -78,7 +82,11 @@ def test_save_load_joblib(temp_dir, sample_data):
     try:
         # Save without date
         final_filepath = save_object(
-            sample_data, directory=temp_dir, basename="test", use_date=False, backend="joblib"
+            sample_data,
+            directory=temp_dir,
+            basename="test",
+            use_date=False,
+            backend="joblib",
         )
 
         # Check file exists
@@ -104,7 +112,9 @@ def test_date_suffix(temp_dir, sample_data):
     today = datetime.today().strftime("%Y-%m-%d")
 
     # Save with date
-    final_filepath = save_object(sample_data, directory=temp_dir, basename="test", use_date=True)
+    final_filepath = save_object(
+        sample_data, directory=temp_dir, basename="test", use_date=True
+    )
 
     # Check filename contains date
     assert today in final_filepath.name
@@ -159,16 +169,22 @@ def test_compression_joblib(temp_dir, sample_data):
 def test_path_handling(temp_dir, sample_data):
     """Test different path input formats."""
     # Test with string path
-    path1 = save_object(sample_data, directory=str(temp_dir), basename="test1", use_date=False)
+    path1 = save_object(
+        sample_data, directory=str(temp_dir), basename="test1", use_date=False
+    )
     assert path1.exists()
 
     # Test with Path object
-    path2 = save_object(sample_data, directory=Path(temp_dir), basename="test2", use_date=False)
+    path2 = save_object(
+        sample_data, directory=Path(temp_dir), basename="test2", use_date=False
+    )
     assert path2.exists()
 
     # Test nested directory creation
     nested_dir = temp_dir / "nested" / "path"
-    path3 = save_object(sample_data, directory=nested_dir, basename="test3", use_date=False)
+    path3 = save_object(
+        sample_data, directory=nested_dir, basename="test3", use_date=False
+    )
     assert path3.exists()
 
 
@@ -184,18 +200,22 @@ def test_error_handling(temp_dir, sample_data):
 
     # Test loading with wrong extension
     path = save_object(
-        sample_data, directory=temp_dir, basename="test", use_date=False, backend="pickle"
+        sample_data,
+        directory=temp_dir,
+        basename="test",
+        use_date=False,
+        backend="pickle",
     )
-    
+
     # Since load_object now infers the backend, we need to check for a different error
     # Related to unsupported file extension
     wrong_ext_path = temp_dir / "wrong_ext.xyz"
-    with open(wrong_ext_path, 'wb') as f:
-        f.write(b'test')
-    
+    with open(wrong_ext_path, "wb") as f:
+        f.write(b"test")
+
     with pytest.raises(
         ValueError,
-        match="Unsupported file extension: .xyz. Expected '.pkl' or '.joblib'."
+        match="Unsupported file extension: .xyz. Expected '.pkl' or '.joblib'.",
     ):
         load_object(filepath=wrong_ext_path)
 
@@ -207,7 +227,11 @@ def test_large_array_comparison(temp_dir, large_array):
     try:
         # Save with both backends
         path_pickle = save_object(
-            large_array, directory=temp_dir, basename="large_pickle", use_date=False, backend="pickle"
+            large_array,
+            directory=temp_dir,
+            basename="large_pickle",
+            use_date=False,
+            backend="pickle",
         )
 
         path_joblib = save_object(

@@ -90,6 +90,9 @@ One liner to create global and local explanation based on SHAP that will work ac
 #### `plot_distribution_over_time` for comparing numerical distributions over time
 ![plot_distribution_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_distribution_over_time.png)
 
+#### `plot_distribution_over_time` color points using `point_hue`
+![plot_distribution_over_time_point_hue](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_distribution_over_time_point_hue.png)
+
 #### `plot_stacked_bar_over_time` for comparing categorical distributions over time
 ![plot_stacked_bar_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_stacked_bar_over_time.png)
 

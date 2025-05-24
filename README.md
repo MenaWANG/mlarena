@@ -24,18 +24,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.2.9
+%pip install mlarena==0.2.10
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.2.9 --no-deps
+%pip install mlarena==0.2.10 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.2.9 --no-deps
+%pip install mlarena==0.2.10 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -45,6 +45,7 @@ If you are using earlier DBR runtimes, simply install `optuna` in addition like 
 * For more advanced examples on model optimization, see [2.advanced_usage.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb).   
 * For visualization utilities, see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb).
 * For data cleaning and manipulation utilities, see [3.utils_data.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_data.ipynb).
+* For input/output utilities, see [3.utils_io.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_io.ipynb)
 * For handling common challenges in machine learning, see [4.ml_discussions.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/4.ml_discussions.ipynb).
 
 ## Visual Examples:
@@ -95,6 +96,13 @@ One liner to create global and local explanation based on SHAP that will work ac
 #### `plot_metric_event_over_time` for timeseries trends and events
 ![plot_metric_event_over_time](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_metric_event_over_time.png)
 
+### Data Utilities
+
+Some handy uilities for data validation, cleaning and manipulations. Pls see [3.utils_data.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_data.ipynb) for more. 
+
+#### `is_primary_key`
+![is_primary_key](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/is_primary_key_demo.png)
+
 
 ## Features
 
@@ -110,6 +118,7 @@ One liner to create global and local explanation based on SHAP that will work ac
 - Automatic feature analysis with data-driven encoding recommendations 
 - Integrated target encoding with visualization for optimal smoothing selection
 - Feature filtering based on information theory metrics (mutual information)
+- Intelligent feature name sanitization to prevent pipeline failure
 - Handles the full preprocessing pipeline from missing values to feature encoding
 - Seamless integration with scikit-learn and MLflow for production deployment
 

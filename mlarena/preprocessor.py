@@ -44,6 +44,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
     drop : str, default="if_binary"
         Strategy for dropping categories in OneHotEncoder.
         Options: 'if_binary', 'first', None.
+    sanitize_feature_names : bool, default=True
+        Whether to sanitize feature names by replacing special characters.
 
     Attributes
     ----------
@@ -69,6 +71,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         Smoothing parameter for target encoding.
     drop : str
         Strategy for dropping categories in OneHotEncoder.
+    sanitize_feature_names : bool
+        Whether to sanitize feature names by replacing special characters.
 
     """
 
@@ -79,6 +83,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         target_encode_cols=None,
         target_encode_smooth="auto",
         drop="if_binary",  # choose "first" for linear models and "if_binary" for tree models
+        sanitize_feature_names=True,
     ):
         """
         Initialize the transformer.
@@ -96,12 +101,15 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         drop : str, default="if_binary"
             Strategy for dropping categories in OneHotEncoder.
             Options: 'if_binary', 'first', None.
+        sanitize_feature_names : bool, default=True
+            Whether to sanitize feature names by replacing special characters.
         """
         self.num_impute_strategy = num_impute_strategy
         self.cat_impute_strategy = cat_impute_strategy
         self.target_encode_cols = target_encode_cols
         self.target_encode_smooth = target_encode_smooth
         self.drop = drop
+        self.sanitize_feature_names = sanitize_feature_names
 
     def fit_transform(self, X, y=None):
         """
@@ -205,6 +213,48 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         return pd.concat(transformed_dfs, axis=1)
 
+    @staticmethod
+    def _sanitize_feature_names(feature_names):
+        """
+        Sanitize feature names by replacing special characters.
+
+        Parameters
+        ----------
+        feature_names : list
+            List of feature names to sanitize.
+
+        Returns
+        -------
+        list
+            Sanitized feature names.
+        """
+        sanitized = []
+        for name in feature_names:
+            sanitized_name = str(name)
+
+            # First: Replace characters with semantic meaning
+            sanitized_name = (
+                sanitized_name.replace("+", "_plus")
+                .replace("%", "_pct")
+                .replace("<", "_lt_")
+                .replace(">", "_gt_")
+                .replace("=", "_eq_")
+            )
+
+            # Second: Replace any remaining special characters with underscore
+            # Keep only alphanumeric characters and underscores
+            sanitized_name = re.sub(r"[^a-zA-Z0-9_]", "_", sanitized_name)
+
+            # Clean up: Remove multiple consecutive underscores
+            while "__" in sanitized_name:
+                sanitized_name = sanitized_name.replace("__", "_")
+
+            # Remove leading/trailing underscores
+            sanitized_name = sanitized_name.strip("_")
+
+            sanitized.append(sanitized_name)
+        return sanitized
+
     def get_transformed_cat_cols(self):
         """
         Get transformed categorical column names using sklearn's built-in method.
@@ -220,8 +270,13 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         # Get the encoder from the pipeline
         encoder = self.cat_transformer.named_steps["encoder"]
 
-        # Use sklearn's built-in method to get feature names
-        return encoder.get_feature_names_out(self.cat_features)
+        feature_names = encoder.get_feature_names_out(self.cat_features)
+
+        # Sanitize feature names if requested
+        if self.sanitize_feature_names:
+            return self._sanitize_feature_names(feature_names)
+        else:
+            return feature_names.tolist()
 
     def transform(self, X):
         """

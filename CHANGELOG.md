@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added intelligent feature name sanitization to `PreProcessor`:
+  - New `sanitize_feature_names` parameter (default=True) automatically converts problematic special characters in categorical feature names into ML-pipeline-friendly alternatives
+  - Smart semantic replacements preserve important meaning:
+    - `+` → `_plus` (range indicators like "60+")
+    - `%` → `_pct` (percentages like "50%")
+    - `<`, `>`, `=` → `_lt_`, `_gt_`, `_eq_` (comparisons like "X=Y" → "X_eq_Y")
+  - Clean separator handling for better readability:
+    - `&`, `|`, `/`, `*`, `-` → `_` (connectors like "A&B" → "A_B")
+  - Comprehensive cleanup with regex fallback for any remaining special characters
+  - Prevents common production failures by converts problematic characters to safe alternatives.
+  - Added comprehensive test coverage for sanitization functionality
+  - Added demo for user experimentation
+
 ### Improved
 - Enhanced I/O utility functions in `io_utils`:
   - Improved parameter naming for better clarity and consistency:

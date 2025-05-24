@@ -98,7 +98,7 @@ One liner to create global and local explanation based on SHAP that will work ac
 
 ### Data Utilities
 
-Some handy uilities for data validation, cleaning and manipulations. Pls see [3.utils_data.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_data.ipynb) for more. 
+Some handy utilities for data validation, cleaning and manipulations. Pls see [3.utils_data.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_data.ipynb) for more. 
 
 #### `is_primary_key`
 ![is_primary_key](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/is_primary_key_demo.png)

@@ -25,10 +25,10 @@ PreProcessor
 
    .. automethod:: visualize_target_encoding
 
-ML_PIPELINE
+MLPipeline
 ----------
 
-.. autoclass:: mlarena.pipeline.ML_PIPELINE
+.. autoclass:: mlarena.pipeline.MLPipeline
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,30 +39,47 @@ ML_PIPELINE
 
    .. automethod:: predict
 
-   .. automethod:: predict_proba
-
    .. automethod:: evaluate
 
-   .. automethod:: cross_validate
+   .. automethod:: explain_model
 
-   .. automethod:: save
+   .. automethod:: explain_case
 
-   .. automethod:: load
+   .. automethod:: tune
 
-   .. automethod:: get_feature_importance
+   .. automethod:: threshold_analysis
+
+Utils
+-----
+
+Input/Output
+~~~~~~~~~~~~
+
+.. automodule:: mlarena.utils.io_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Data Utilities
+~~~~~~~~~~~~~~
+
+.. automodule:: mlarena.utils.data_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Plot Utilities
+~~~~~~~~~~~~~~
+
+.. automodule:: mlarena.utils.plot_utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 Exceptions
 ---------
 
 .. automodule:: mlarena.exceptions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Utilities
---------
-
-.. automodule:: mlarena.utils
    :members:
    :undoc-members:
    :show-inheritance: 

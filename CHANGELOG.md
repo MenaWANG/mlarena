@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.0] - unreleased
+
+### ⚠️ Breaking Changes
+- **Renamed ML_PIPELINE to MLPipeline** to follow Python naming conventions (PEP 8):
+  - The old `ML_PIPELINE` class name has been renamed to `MLPipeline`
+  - The old name is now deprecated but still available for backward compatibility
+  - Users will see deprecation warnings when using `ML_PIPELINE` with instructions to migrate
+  - See [upgrading.md](docs/upgrading.md) for migration instructions
+  - Reasoning: Class names should use CapWords (PascalCase) convention per PEP 8
+
+### Migration Timeline
+- Current version: `ML_PIPELINE` deprecated but functional with warnings
+- From v0.4.0: `ML_PIPELINE` support will be removed
+- Recommended action: Replace `ML_PIPELINE` with `MLPipeline`
+
 ## [0.2.10] - 2025-05-25
 
 ### Added

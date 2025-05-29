@@ -1,5 +1,5 @@
 """
-Test script for ML_PIPELINE class.
+Test script for MLPipeline class.
 """
 
 # Standard library imports
@@ -14,7 +14,7 @@ from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 # Local imports
-from mlarena import ML_PIPELINE, PreProcessor
+from mlarena import MLPipeline, PreProcessor
 
 matplotlib.use("Agg")  # Use non-interactive backend for testing
 
@@ -44,7 +44,7 @@ def test_classification_pipeline():
     # Initialize and fit pipeline
     print("Initializing and fitting ML pipeline...")
     model = RandomForestClassifier(random_state=42)
-    pipeline = ML_PIPELINE(model=model, preprocessor=preprocessor)
+    pipeline = MLPipeline(model=model, preprocessor=preprocessor)
     pipeline.fit(X_train, y_train)
     print("Model training completed.")
 
@@ -97,7 +97,7 @@ def test_regression_pipeline():
     # Initialize and fit pipeline
     print("Initializing and fitting ML pipeline...")
     model = RandomForestRegressor(random_state=42)
-    pipeline = ML_PIPELINE(model=model, preprocessor=preprocessor)
+    pipeline = MLPipeline(model=model, preprocessor=preprocessor)
     pipeline.fit(X_train, y_train)
     print("Model training completed.")
 
@@ -121,7 +121,7 @@ def test_regression_pipeline():
 
 
 if __name__ == "__main__":
-    print("Starting ML_PIPELINE tests...")
+    print("Starting MLPipeline tests...")
 
     # Test classification
     print("\n" + "=" * 50)

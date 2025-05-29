@@ -57,7 +57,7 @@ from sklearn.model_selection import (
 from .preprocessor import PreProcessor
 
 
-class ML_PIPELINE(mlflow.pyfunc.PythonModel):
+class MLPipeline(mlflow.pyfunc.PythonModel):
     """
     Custom ML pipeline for classification and regression.
 
@@ -94,7 +94,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
     def __init__(self, model: BaseEstimator = None, preprocessor=None, config=None):
         """
-        Initialize the ML_PIPELINE with an optional model, preprocessor, and configuration.
+        Initialize the MLPipeline with an optional model, preprocessor, and configuration.
 
         Parameters
         ----------
@@ -227,7 +227,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
         try:
             explainer = shap.Explainer(self.model)
-        except:
+        except Exception:
             explainer = shap.Explainer(self.model.predict, X_transformed)
 
         self.shap_values = explainer(X_transformed)
@@ -873,7 +873,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 y_test, y_pred_proba, threshold=threshold, beta=beta, verbose=verbose
             )
             if visualize:
-                ML_PIPELINE._plot_classification_metrics(
+                MLPipeline._plot_classification_metrics(
                     y_test, y_pred_proba, threshold=threshold, beta=beta
                 )
         else:  # regression
@@ -1053,7 +1053,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                     y_fold_train = y_train_full[train_idx]
                     y_fold_val = y_train_full[val_idx]
 
-                model = ML_PIPELINE(
+                model = MLPipeline(
                     model=algorithm(**params, verbose=verbose),
                     preprocessor=preprocessor,
                 )
@@ -1151,14 +1151,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         best_params = study.best_params
 
         # Train final model with best parameters on full training set
-        final_model = ML_PIPELINE(
+        final_model = MLPipeline(
             model=algorithm(**best_params, verbose=verbose), preprocessor=PreProcessor()
         )
         final_model.fit(X_train_full, y_train_full)
 
         if task == "classification":
             y_pred_proba = final_model.predict(context=None, model_input=X_train_full)
-            optimal_threshold = ML_PIPELINE.threshold_analysis(
+            optimal_threshold = MLPipeline.threshold_analysis(
                 y_train_full, y_pred_proba, beta=beta
             )["optimal_threshold"]
 
@@ -1494,3 +1494,25 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             return model_info
         finally:
             mlflow.end_run()
+
+
+# Backward compatibility alias with deprecation warning
+class ML_PIPELINE(MLPipeline):
+    """
+    Deprecated: Use MLPipeline instead to follow Python naming conventions (PEP 8).
+    ML_PIPELINE will be removed in a future version.
+
+    Please update your code:
+        from mlarena import MLPipeline  # New (recommended)
+        # instead of: from mlarena import ML_PIPELINE
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "ML_PIPELINE is deprecated and will be removed in a future version. "
+            "Please use MLPipeline instead. "
+            "See upgrade guide: https://github.com/MenaWANG/mlarena/blob/master/docs/upgrading.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)

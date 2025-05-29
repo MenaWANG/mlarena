@@ -3,7 +3,8 @@ MLArena - A comprehensive ML pipeline wrapper for scikit-learn compatible models
 
 This package provides:
 - PreProcessor: Advanced data preprocessing with feature analysis and smart encoding
-- ML_PIPELINE: End-to-end ML pipeline with model training, evaluation, and deployment
+- MLPipeline: End-to-end ML pipeline with model training, evaluation, and deployment
+- ML_PIPELINE: (Deprecated) Use MLPipeline instead
 """
 
 try:
@@ -14,7 +15,7 @@ except ImportError:
     __version__ = "0.2.10"
 
 from . import utils
-from .pipeline import ML_PIPELINE
+from .pipeline import ML_PIPELINE, MLPipeline
 from .preprocessor import PreProcessor
 
-__all__ = ["PreProcessor", "ML_PIPELINE", "utils"]
+__all__ = ["PreProcessor", "MLPipeline", "ML_PIPELINE", "utils"]

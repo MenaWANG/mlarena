@@ -93,23 +93,38 @@ Project Structure
 ::
 
    mlarena/
-   ├── docs/               # Documentation
-   ├── examples/           # Example notebooks and scripts
-   ├── mlarena/           # Main package
+   ├── .github/           # GitHub Actions and workflows
+   ├── docs/              # Documentation
+   │   ├── api.rst
+   │   ├── conf.py
+   │   ├── contributing.rst
+   │   ├── MIGRATION_GUIDE.md
+   │   └── images/
+   ├── examples/          # Example notebooks and scripts
+   ├── mlarena/          # Main package
    │   ├── __init__.py
    │   ├── preprocessor.py
    │   ├── pipeline.py
-   │   └── utils.py
-   ├── tests/             # Test files
-   ├── pyproject.toml     # Package configuration and dependencies
-   ├── poetry.lock        # Lock file for reproducible builds
-   ├── README.md          # Project README
-   ├── CHANGELOG.md       # Version history
-   ├── LICENSE           # License file
-   ├── .gitignore        # Git ignore rules
-   ├── .flake8          # Flake8 configuration
-   ├── mypy.ini         # MyPy configuration
-   └── pytest.ini       # Pytest configuration
+   │   └── utils/        # Utility modules
+   │       ├── __init__.py
+   │       ├── data_utils.py     # Data manipulation utilities
+   │       ├── io_utils.py       # Input/Output utilities
+   │       └── plot_utils.py     # Plotting utilities
+   ├── tests/            # Test files
+   │   ├── test_pipeline.py
+   │   ├── test_preprocessor.py
+   │   ├── test_data_utils.py
+   │   ├── test_io_utils.py
+   │   └── test_plot_utils.py
+   ├── pyproject.toml    # Package configuration and dependencies
+   ├── poetry.lock       # Lock file for reproducible builds
+   ├── README.md         # Project README
+   ├── CHANGELOG.md      # Version history
+   ├── LICENSE          # License file
+   ├── .gitignore       # Git ignore rules
+   ├── .flake8         # Flake8 configuration
+   ├── mypy.ini        # MyPy configuration
+   └── pytest.ini      # Pytest configuration
 
 Contact
 -------

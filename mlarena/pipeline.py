@@ -57,7 +57,7 @@ from sklearn.model_selection import (
 from .preprocessor import PreProcessor
 
 
-class ML_PIPELINE(mlflow.pyfunc.PythonModel):
+class MLPipeline(mlflow.pyfunc.PythonModel):
     """
     Custom ML pipeline for classification and regression.
 
@@ -94,7 +94,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
     def __init__(self, model: BaseEstimator = None, preprocessor=None, config=None):
         """
-        Initialize the ML_PIPELINE with an optional model, preprocessor, and configuration.
+        Initialize the MLPipeline with an optional model, preprocessor, and configuration.
 
         Parameters
         ----------
@@ -185,7 +185,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             prediction = self.model.predict(processed_model_input)
         return prediction
 
-    def explain_model(self, X, plot_size="auto", plot_type="auto"):
+    def explain_model(
+        self,
+        X,
+        plot_size="auto",
+        plot_type="auto",
+        max_features=20,
+        group_remaining_features=True,
+    ):
         """
         Generate SHAP values and plots for model interpretation.
 
@@ -202,10 +209,18 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         plot_size : tuple
             Size of the summary plot (width, height).
         plot_type : str
-            Options: "auto", "static", or "interactive"
-            - "auto": tries interactive Plotly, falls back to matplotlib if needed
-            - "static": always uses matplotlib
-            - "interactive": tries Plotly, errors if not supported
+            Options: "auto", "beeswarm", or "summary"
+            - "auto": tries modern beeswarm plot, falls back to legacy summary if needed
+            - "beeswarm": always uses modern shap.plots.beeswarm()
+            - "summary": always uses legacy shap.summary_plot()
+        max_features : int, default=20
+            Maximum number of features to display in the summary plot.
+        group_remaining_features : bool, default=True
+            Whether to group remaining features (beyond max_features) together
+            and show them as a single "remaining features" entry. If False,
+            remaining features are simply excluded from the plot.
+            Note: Only applies to beeswarm plots; ignored for legacy summary plots.
+
         Returns
         -------
         None
@@ -227,31 +242,45 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
 
         try:
             explainer = shap.Explainer(self.model)
-        except:
+        except Exception:
             explainer = shap.Explainer(self.model.predict, X_transformed)
 
         self.shap_values = explainer(X_transformed)
         self.both_class = len(self.shap_values.values.shape) == 3
 
         try:
-            # Use Plotly or fallback to legacy matplotlib depending on plot_type
-            if plot_type == "interactive":
+            # Use modern beeswarm or legacy summary plots depending on plot_type
+            if plot_type == "beeswarm":
                 if self.both_class:
                     shap.plots.beeswarm(
-                        self.shap_values[:, :, 1], max_display=20, plot_size=plot_size
+                        self.shap_values[:, :, 1],
+                        max_display=max_features,
+                        plot_size=plot_size,
+                        group_remaining_features=group_remaining_features,
                     )
                 else:
                     shap.plots.beeswarm(
-                        self.shap_values, max_display=20, plot_size=plot_size
+                        self.shap_values,
+                        max_display=max_features,
+                        plot_size=plot_size,
+                        group_remaining_features=group_remaining_features,
                     )
 
-            elif plot_type == "static":  # the legacy display
+            elif plot_type == "summary":  # the legacy display
                 if self.both_class:
                     shap.summary_plot(
-                        self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                        self.shap_values[:, :, 1],
+                        plot_size=plot_size,
+                        max_display=max_features,
+                        show=True,
                     )
                 else:
-                    shap.summary_plot(self.shap_values, plot_size=plot_size, show=True)
+                    shap.summary_plot(
+                        self.shap_values,
+                        plot_size=plot_size,
+                        max_display=max_features,
+                        show=True,
+                    )
                 plt.show()
 
             elif plot_type == "auto":
@@ -259,21 +288,31 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                     if self.both_class:
                         shap.plots.beeswarm(
                             self.shap_values[:, :, 1],
-                            max_display=20,
+                            max_display=max_features,
                             plot_size=plot_size,
+                            group_remaining_features=group_remaining_features,
                         )
                     else:
                         shap.plots.beeswarm(
-                            self.shap_values, max_display=20, plot_size=plot_size
+                            self.shap_values,
+                            max_display=max_features,
+                            plot_size=plot_size,
+                            group_remaining_features=group_remaining_features,
                         )
                 except Exception:
                     if self.both_class:
                         shap.summary_plot(
-                            self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                            self.shap_values[:, :, 1],
+                            plot_size=plot_size,
+                            max_display=max_features,
+                            show=True,
                         )
                     else:
                         shap.summary_plot(
-                            self.shap_values, plot_size=plot_size, show=True
+                            self.shap_values,
+                            plot_size=plot_size,
+                            max_display=max_features,
+                            show=True,
                         )
                     plt.show()
 
@@ -873,7 +912,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                 y_test, y_pred_proba, threshold=threshold, beta=beta, verbose=verbose
             )
             if visualize:
-                ML_PIPELINE._plot_classification_metrics(
+                MLPipeline._plot_classification_metrics(
                     y_test, y_pred_proba, threshold=threshold, beta=beta
                 )
         else:  # regression
@@ -1053,7 +1092,7 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
                     y_fold_train = y_train_full[train_idx]
                     y_fold_val = y_train_full[val_idx]
 
-                model = ML_PIPELINE(
+                model = MLPipeline(
                     model=algorithm(**params, verbose=verbose),
                     preprocessor=preprocessor,
                 )
@@ -1151,14 +1190,14 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
         best_params = study.best_params
 
         # Train final model with best parameters on full training set
-        final_model = ML_PIPELINE(
+        final_model = MLPipeline(
             model=algorithm(**best_params, verbose=verbose), preprocessor=PreProcessor()
         )
         final_model.fit(X_train_full, y_train_full)
 
         if task == "classification":
             y_pred_proba = final_model.predict(context=None, model_input=X_train_full)
-            optimal_threshold = ML_PIPELINE.threshold_analysis(
+            optimal_threshold = MLPipeline.threshold_analysis(
                 y_train_full, y_pred_proba, beta=beta
             )["optimal_threshold"]
 
@@ -1494,3 +1533,25 @@ class ML_PIPELINE(mlflow.pyfunc.PythonModel):
             return model_info
         finally:
             mlflow.end_run()
+
+
+# Backward compatibility alias with deprecation warning
+class ML_PIPELINE(MLPipeline):
+    """
+    Deprecated: Use MLPipeline instead to follow Python naming conventions (PEP 8).
+    ML_PIPELINE will be removed in a future version.
+
+    Please update your code:
+        from mlarena import MLPipeline  # New (recommended)
+        # instead of: from mlarena import ML_PIPELINE
+    """
+
+    def __init__(self, *args, **kwargs):
+        warnings.warn(
+            "ML_PIPELINE is deprecated and will be removed in a future version. "
+            "Please use MLPipeline instead. "
+            "See upgrade guide: https://github.com/MenaWANG/mlarena/blob/master/docs/upgrading.md",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        super().__init__(*args, **kwargs)

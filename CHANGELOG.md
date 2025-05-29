@@ -6,6 +6,34 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.0] - 2025-05-30
+
+### ⚠️ Breaking Changes
+- **Renamed ML_PIPELINE to MLPipeline** to follow Python naming conventions (PEP 8):
+  - The old `ML_PIPELINE` class name has been renamed to `MLPipeline`
+  - The old name is now deprecated but still available for backward compatibility
+  - Users will see deprecation warnings when using `ML_PIPELINE` with instructions to migrate
+  - See [upgrading.md](docs/upgrading.md) for migration instructions
+  - Reasoning: Class names should use CapWords (PascalCase) convention per PEP 8
+  - Migration Timeline
+    - Current version: `ML_PIPELINE` deprecated but functional with warnings
+    - From v0.4.0: `ML_PIPELINE` support will be removed
+    - Recommended action: Replace `ML_PIPELINE` with `MLPipeline`
+
+### Added
+- Enhanced SHAP visualization controls in `explain_model` method:
+  - Added `max_features` parameter (default=20) to control how many features are displayed in SHAP plots
+  - Added `group_remaining_features` parameter (default=True) to control whether remaining features are grouped together
+    - When True: shows collective impact of all remaining features beyond `max_features`
+    - When False: excludes remaining features for cleaner display
+    - Note: Only applies to beeswarm plots; ignored for legacy summary plots
+  - Improved plot type naming for clarity:
+    - `"interactive"` → `"beeswarm"` (uses modern `shap.plots.beeswarm()`)
+    - `"static"` → `"summary"` (uses legacy `shap.summary_plot()`)
+    - `"auto"` remains unchanged (tries beeswarm first, falls back to summary)
+  - Parameter names matching official SHAP documentation
+  - Provides granular control over SHAP visualization presentation and feature focus
+
 ## [0.2.10] - 2025-05-25
 
 ### Added

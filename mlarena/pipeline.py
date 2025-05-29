@@ -185,7 +185,14 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             prediction = self.model.predict(processed_model_input)
         return prediction
 
-    def explain_model(self, X, plot_size="auto", plot_type="auto"):
+    def explain_model(
+        self,
+        X,
+        plot_size="auto",
+        plot_type="auto",
+        max_features=20,
+        group_remaining_features=True,
+    ):
         """
         Generate SHAP values and plots for model interpretation.
 
@@ -202,10 +209,18 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         plot_size : tuple
             Size of the summary plot (width, height).
         plot_type : str
-            Options: "auto", "static", or "interactive"
-            - "auto": tries interactive Plotly, falls back to matplotlib if needed
-            - "static": always uses matplotlib
-            - "interactive": tries Plotly, errors if not supported
+            Options: "auto", "beeswarm", or "summary"
+            - "auto": tries modern beeswarm plot, falls back to legacy summary if needed
+            - "beeswarm": always uses modern shap.plots.beeswarm()
+            - "summary": always uses legacy shap.summary_plot()
+        max_features : int, default=20
+            Maximum number of features to display in the summary plot.
+        group_remaining_features : bool, default=True
+            Whether to group remaining features (beyond max_features) together
+            and show them as a single "remaining features" entry. If False,
+            remaining features are simply excluded from the plot.
+            Note: Only applies to beeswarm plots; ignored for legacy summary plots.
+
         Returns
         -------
         None
@@ -234,24 +249,38 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         self.both_class = len(self.shap_values.values.shape) == 3
 
         try:
-            # Use Plotly or fallback to legacy matplotlib depending on plot_type
-            if plot_type == "interactive":
+            # Use modern beeswarm or legacy summary plots depending on plot_type
+            if plot_type == "beeswarm":
                 if self.both_class:
                     shap.plots.beeswarm(
-                        self.shap_values[:, :, 1], max_display=20, plot_size=plot_size
+                        self.shap_values[:, :, 1],
+                        max_display=max_features,
+                        plot_size=plot_size,
+                        group_remaining_features=group_remaining_features,
                     )
                 else:
                     shap.plots.beeswarm(
-                        self.shap_values, max_display=20, plot_size=plot_size
+                        self.shap_values,
+                        max_display=max_features,
+                        plot_size=plot_size,
+                        group_remaining_features=group_remaining_features,
                     )
 
-            elif plot_type == "static":  # the legacy display
+            elif plot_type == "summary":  # the legacy display
                 if self.both_class:
                     shap.summary_plot(
-                        self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                        self.shap_values[:, :, 1],
+                        plot_size=plot_size,
+                        max_display=max_features,
+                        show=True,
                     )
                 else:
-                    shap.summary_plot(self.shap_values, plot_size=plot_size, show=True)
+                    shap.summary_plot(
+                        self.shap_values,
+                        plot_size=plot_size,
+                        max_display=max_features,
+                        show=True,
+                    )
                 plt.show()
 
             elif plot_type == "auto":
@@ -259,21 +288,31 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     if self.both_class:
                         shap.plots.beeswarm(
                             self.shap_values[:, :, 1],
-                            max_display=20,
+                            max_display=max_features,
                             plot_size=plot_size,
+                            group_remaining_features=group_remaining_features,
                         )
                     else:
                         shap.plots.beeswarm(
-                            self.shap_values, max_display=20, plot_size=plot_size
+                            self.shap_values,
+                            max_display=max_features,
+                            plot_size=plot_size,
+                            group_remaining_features=group_remaining_features,
                         )
                 except Exception:
                     if self.both_class:
                         shap.summary_plot(
-                            self.shap_values[:, :, 1], plot_size=plot_size, show=True
+                            self.shap_values[:, :, 1],
+                            plot_size=plot_size,
+                            max_display=max_features,
+                            show=True,
                         )
                     else:
                         shap.summary_plot(
-                            self.shap_values, plot_size=plot_size, show=True
+                            self.shap_values,
+                            plot_size=plot_size,
+                            max_display=max_features,
+                            show=True,
                         )
                     plt.show()
 

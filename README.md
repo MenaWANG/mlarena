@@ -9,6 +9,8 @@
 
 `mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With unified interface, intelligent preprocessing, robust hyperparameter tuning and handy visualization utilities, `mlarena` streamlines both experimentation and production deployment for data scientists and ML engineers.
 
+It fills the gap between manual ML development and fully automated AutoML platforms - see our [comparison with AutoML platforms](docs/comparision-autoML.md) to determine which approach best fits your needs.
+
 ## Publications
 
 Read about the concepts and methodologies behind MLArena through these articles:

@@ -7,7 +7,7 @@
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![CI/CD](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml/badge.svg)](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml)
 
-`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With unified interface, intelligent preprocessing, robust hyperparameter tuning and handy visualization utilities, `mlarena` streamlines both experimentation and production deployment for data scientists and ML engineers.
+`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With smart automation that embeds ML best practices and comprehensive tools for expert-level control and diagnostics, `mlarena` provides a unified interface for all sklearn-style algorithms that streamlines both experimentation and production deployment for data scientists and ML engineers.
 
 It fills the gap between manual ML development and fully automated AutoML platforms - see our [comparison with AutoML platforms](docs/comparision-autoML.md) to determine which approach best fits your needs.
 

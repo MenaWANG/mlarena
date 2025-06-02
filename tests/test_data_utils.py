@@ -4,6 +4,8 @@ import pytest
 from mlarena.utils.data_utils import (
     clean_dollar_cols,
     drop_fully_null_cols,
+    filter_columns_by_substring,
+    filter_rows_by_substring,
     is_primary_key,
     select_existing_cols,
     transform_date_cols,
@@ -284,11 +286,11 @@ def test_select_existing_cols():
     assert list(result.columns) == ["A"]
 
     # Test case-sensitive matching
-    result = select_existing_cols(df, ["a", "B"], strict=True)
+    result = select_existing_cols(df, ["a", "B"], case_sensitive=True)
     assert list(result.columns) == ["B"]
 
     # Test case-insensitive matching
-    result = select_existing_cols(df, ["a", "mixed_case"], strict=False)
+    result = select_existing_cols(df, ["a", "mixed_case"], case_sensitive=False)
     assert set(result.columns) == {"A", "Mixed_Case"}
 
     # Test with string input
@@ -302,3 +304,163 @@ def test_select_existing_cols():
     # Test verbose output
     result = select_existing_cols(df, ["A", "NonExistent"], verbose=True)
     assert list(result.columns) == ["A"]
+
+
+def test_filter_rows_by_substring():
+    """Test filter_rows_by_substring function with various scenarios.
+
+    Tests:
+    - Basic substring filtering
+    - Case-sensitive filtering
+    - Case-insensitive filtering
+    - Handling of NaN values
+    - Non-existent column error
+    - Empty results
+    """
+    # Test data
+    df = pd.DataFrame(
+        {
+            "name": ["Alice", "Bob", "Charlie", "alice", None],
+            "city": ["New York", "San Francisco", "Chicago", "Boston", "Seattle"],
+        }
+    )
+
+    # Test basic case-insensitive filtering (default)
+    result = filter_rows_by_substring(df, "name", "alice")
+    assert len(result) == 2
+    assert set(result["name"].dropna()) == {"Alice", "alice"}
+
+    # Test case-sensitive filtering
+    result = filter_rows_by_substring(df, "name", "alice", case_sensitive=True)
+    assert len(result) == 1
+    assert result["name"].iloc[0] == "alice"
+
+    # Test case-insensitive filtering explicitly
+    result = filter_rows_by_substring(df, "name", "ALICE", case_sensitive=False)
+    assert len(result) == 2
+    assert set(result["name"].dropna()) == {"Alice", "alice"}
+
+    # Test with different column and substring
+    result = filter_rows_by_substring(df, "city", "San")
+    assert len(result) == 1
+    assert result["city"].iloc[0] == "San Francisco"
+
+    # Test with substring not found
+    result = filter_rows_by_substring(df, "name", "xyz")
+    assert len(result) == 0
+
+    # Test with non-existent column
+    with pytest.raises(KeyError):
+        filter_rows_by_substring(df, "non_existent", "test")
+
+    # Test handling of NaN values
+    result = filter_rows_by_substring(
+        df, "name", "e"
+    )  # Should match "Alice", "Charlie", "alice", and None (as "None")
+    assert len(result) == 4
+    # Note: None gets converted to string "None" which contains "e"
+    assert set(result["name"].astype(str)) == {"Alice", "Charlie", "alice", "None"}
+
+    # Test with realistic business scenario - filtering transaction descriptions
+    transactions_df = pd.DataFrame(
+        {
+            "transaction_id": [1, 2, 3, 4, 5, 6],
+            "description": [
+                "AMAZON.COM*ORDER12345 SEATTLE WA",
+                "STARBUCKS STORE #1234 NEW YORK NY",
+                "amazon prime subscription renewal",
+                "WALMART SUPERCENTER #567 AUSTIN TX",
+                "Starbucks Coffee - Downtown Location",
+                "walmart.com GROCERY PICKUP",
+            ],
+            "amount": [25.99, 4.95, 12.99, 45.67, 3.75, 23.45],
+        }
+    )
+
+    # Find all Amazon transactions (case-insensitive)
+    amazon_transactions = filter_rows_by_substring(
+        transactions_df, "description", "amazon"
+    )
+    assert len(amazon_transactions) == 2
+    assert amazon_transactions["transaction_id"].tolist() == [1, 3]
+
+    # Find Starbucks transactions (case-insensitive)
+    starbucks_transactions = filter_rows_by_substring(
+        transactions_df, "description", "starbucks"
+    )
+    assert len(starbucks_transactions) == 2
+    assert starbucks_transactions["transaction_id"].tolist() == [2, 5]
+
+    # Find Walmart transactions with case-sensitive search (should miss some variants)
+    walmart_exact = filter_rows_by_substring(
+        transactions_df, "description", "WALMART", case_sensitive=True
+    )
+    assert len(walmart_exact) == 1
+    assert walmart_exact["transaction_id"].iloc[0] == 4
+
+    # Find all Walmart variants with case-insensitive search
+    walmart_all = filter_rows_by_substring(
+        transactions_df, "description", "walmart", case_sensitive=False
+    )
+    assert len(walmart_all) == 2
+    assert set(walmart_all["transaction_id"]) == {4, 6}
+
+
+def test_filter_columns_by_substring():
+    """Test filter_columns_by_substring function with various scenarios.
+
+    Tests:
+    - Basic substring filtering
+    - Case-sensitive filtering
+    - Case-insensitive filtering
+    - No matching columns
+    - All columns match
+    - Non-string column names
+    """
+    # Test data
+    df = pd.DataFrame(
+        {
+            "price_usd": [100, 200],
+            "price_eur": [90, 180],
+            "Price_GBP": [80, 160],
+            "name": ["A", "B"],
+            "date": ["2024-01-01", "2024-01-02"],
+        }
+    )
+
+    # Test basic case-insensitive filtering (default)
+    result = filter_columns_by_substring(df, "price")
+    assert len(result.columns) == 3
+    assert set(result.columns) == {"price_usd", "price_eur", "Price_GBP"}
+
+    # Test case-sensitive filtering
+    result = filter_columns_by_substring(df, "price", case_sensitive=True)
+    assert len(result.columns) == 2
+    assert set(result.columns) == {"price_usd", "price_eur"}
+
+    # Test case-insensitive filtering explicitly
+    result = filter_columns_by_substring(df, "PRICE", case_sensitive=False)
+    assert len(result.columns) == 3
+    assert set(result.columns) == {"price_usd", "price_eur", "Price_GBP"}
+
+    # Test with different substring
+    result = filter_columns_by_substring(df, "usd")
+    assert len(result.columns) == 1
+    assert list(result.columns) == ["price_usd"]
+
+    # Test with no matching columns
+    result = filter_columns_by_substring(df, "xyz")
+    assert len(result.columns) == 0
+    assert len(result.index) == len(df.index)  # Should preserve index
+
+    # Test with all columns matching
+    result = filter_columns_by_substring(df, "")  # Empty string matches all
+    assert len(result.columns) == len(df.columns)
+
+    # Test with DataFrame having non-string column names
+    df_with_numeric_cols = pd.DataFrame(
+        {123: [1, 2], "price_456": [3, 4], "name": ["A", "B"]}
+    )
+    result = filter_columns_by_substring(df_with_numeric_cols, "price")
+    assert len(result.columns) == 1
+    assert list(result.columns) == ["price_456"]

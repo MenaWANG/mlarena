@@ -10,6 +10,8 @@ __all__ = [
     "print_schema_alphabetically",
     "is_primary_key",
     "select_existing_cols",
+    "filter_rows_by_substring",
+    "filter_columns_by_substring",
 ]
 
 
@@ -391,7 +393,7 @@ def select_existing_cols(
     data: pd.DataFrame,
     cols: Union[str, List[str]],
     verbose: bool = False,
-    strict: bool = True,
+    case_sensitive: bool = True,
 ) -> pd.DataFrame:
     """
     Select columns from a DataFrame if they exist.
@@ -404,7 +406,7 @@ def select_existing_cols(
         Column name or list of column names to select.
     verbose : bool, default=False
         If True, print which columns exist vs. are missing.
-    strict : bool, default=True
+    case_sensitive : bool, default=True
         If True, match column names exactly (case-sensitive).
         If False, match case-insensitively by lowering both data columns and input list.
         Returned DataFrame will still use original column names.
@@ -417,8 +419,8 @@ def select_existing_cols(
     Examples
     --------
     >>> df = pd.DataFrame({'A': [1], 'B': [2], 'C': [3]})
-    >>> select_existing_cols(df, ['A', 'D', 'b'], strict=True)  # Only returns 'A'
-    >>> select_existing_cols(df, ['A', 'D', 'b'], strict=False)  # Returns 'A' and 'B'
+    >>> select_existing_cols(df, ['A', 'D', 'b'], case_sensitive=True)  # Only returns 'A'
+    >>> select_existing_cols(df, ['A', 'D', 'b'], case_sensitive=False)  # Returns 'A' and 'B'
     >>> select_existing_cols(df, ['A', 'D'], verbose=True)  # Shows found/missing columns
     """
     if not hasattr(data, "columns"):
@@ -431,7 +433,7 @@ def select_existing_cols(
 
     df_columns = list(data.columns)
 
-    if strict:
+    if case_sensitive:
         existing = [col for col in cols if col in df_columns]
     else:
         # Case-insensitive match
@@ -442,7 +444,11 @@ def select_existing_cols(
         col
         for col in cols
         if col not in existing
-        and (col if strict else col.lower() not in [c.lower() for c in df_columns])
+        and (
+            col
+            if case_sensitive
+            else col.lower() not in [c.lower() for c in df_columns]
+        )
     ]
 
     if verbose:
@@ -451,3 +457,118 @@ def select_existing_cols(
             print(f"⚠️ Columns not found: {missing}")
 
     return data[existing]
+
+
+def filter_rows_by_substring(
+    data: pd.DataFrame,
+    column: str,
+    substring: str,
+    case_sensitive: bool = False,
+) -> pd.DataFrame:
+    """
+    Filter rows in a DataFrame where a specified column contains a given substring.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The DataFrame to filter.
+    column : str
+        The name of the column to search within.
+    substring : str
+        The substring to search for in the column values.
+    case_sensitive : bool, default=False
+        Whether the matching should be case-sensitive.
+
+    Returns
+    -------
+    pd.DataFrame
+        A filtered DataFrame containing only the rows where the column values
+        contain the specified substring.
+
+    Raises
+    ------
+    KeyError
+        If the specified column does not exist in the DataFrame.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({'name': ['Alice', 'Bob', 'Charlie', 'alice']})
+    >>> filter_rows_by_substring(df, 'name', 'alice')
+         name
+    0    Alice
+    3    alice
+
+    >>> filter_rows_by_substring(df, 'name', 'alice', case_sensitive=True)
+         name
+    3    alice
+    """
+    if column not in data.columns:
+        raise KeyError(f"Column '{column}' not found in DataFrame")
+
+    mask = (
+        data[column].astype(str).str.contains(substring, case=case_sensitive, na=False)
+    )
+    return data[mask]
+
+
+def filter_columns_by_substring(
+    data: pd.DataFrame,
+    substring: str,
+    case_sensitive: bool = False,
+) -> pd.DataFrame:
+    """
+    Filter columns in a DataFrame by keeping only those whose names contain a given substring.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The DataFrame whose columns are to be filtered.
+    substring : str
+        The substring to search for in column names.
+    case_sensitive : bool, default=False
+        Whether the matching should be case-sensitive.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame with only the columns whose names contain the specified substring.
+
+    Raises
+    ------
+    ValueError
+        If no columns match the substring.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'price_usd': [100, 200],
+    ...     'price_eur': [90, 180],
+    ...     'name': ['A', 'B']
+    ... })
+    >>> filter_columns_by_substring(df, 'price')
+       price_usd  price_eur
+    0        100         90
+    1        200        180
+
+    >>> filter_columns_by_substring(df, 'USD', case_sensitive=True)
+    Empty DataFrame
+    Columns: []
+    Index: [0, 1]
+
+    >>> filter_columns_by_substring(df, 'usd', case_sensitive=False)
+       price_usd
+    0        100
+    1        200
+    """
+    if case_sensitive:
+        matching_cols = [col for col in data.columns if substring in str(col)]
+    else:
+        matching_cols = [
+            col for col in data.columns if substring.lower() in str(col).lower()
+        ]
+
+    if not matching_cols:
+        # Return empty DataFrame with same index but no columns
+        return pd.DataFrame(index=data.index)
+
+    return data[matching_cols]

@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.1] - unreleased
+
+### Added
+- Enhanced data utility functions for DataFrame filtering:
+  - Added `filter_rows_by_substring` function for filtering DataFrame rows based on substring matches in specified columns
+    - Supports case-sensitive and case-insensitive matching (default: case-insensitive)
+    - Handles NaN values gracefully by converting to strings
+    - Includes comprehensive error handling for non-existent columns
+    - Ideal for real-world data cleaning tasks like transaction categorization
+  - Added `filter_columns_by_substring` function for filtering DataFrame columns based on naming patterns
+    - Supports case-sensitive and case-insensitive matching (default: case-insensitive)  
+    - Handles non-string column names safely
+    - Returns empty DataFrame with preserved index when no columns match
+    - Perfect for selecting related columns by naming conventions (e.g., all "price_*" columns)
+  - Added comprehensive test coverage with realistic business scenarios
+    - Transaction data filtering examples demonstrating practical use cases
+    - Edge case handling and error condition testing
+    - Integration with existing test suite
+
+### Changed
+- Standardized parameter naming across data utility functions for consistency:
+  - Renamed `strict` parameter to `case_sensitive` in `select_existing_cols` function
+  - All filtering functions now use consistent `case_sensitive` parameter naming
+  - Improves API consistency and user experience across the module
+  - Updated function signatures, docstrings, and examples to reflect the change
+
+### Improved
+- Enhanced test organization and reliability:
+  - Added pytest markers to `test_io_utils.py` for better test categorization
+    - Added `@pytest.mark.file_io` markers to all file I/O operations
+    - Usage: `pytest -m "not file_io"` to skip file operations during development if preferred
+  - Added information regarding anti-virus software compatibility considerations in I/O tests
+  - Improved test maintainability and developer experience
+
 ## [0.3.0] - 2025-05-30
 
 ### ⚠️ Breaking Changes

@@ -1,3 +1,10 @@
+# NOTE: This test file may trigger anti-virus software due to:
+# 1. Creating temporary files with .pkl/.joblib extensions
+# 2. Binary file operations (serialization/deserialization)
+# 3. File creation/deletion patterns
+#
+# To skip tests that might trigger AV: pytest -m "not file_io"
+
 import re
 import shutil
 from datetime import datetime
@@ -46,6 +53,7 @@ def large_array():
     return np.random.rand(100, 100)
 
 
+@pytest.mark.file_io
 def test_save_load_pickle(temp_dir, sample_data):
     """Test basic save and load functionality with pickle."""
     try:
@@ -75,6 +83,7 @@ def test_save_load_pickle(temp_dir, sample_data):
         gc.collect()
 
 
+@pytest.mark.file_io
 def test_save_load_joblib(temp_dir, sample_data):
     """Test basic save and load functionality with joblib."""
     pytest.importorskip("joblib")  # Skip if joblib not installed
@@ -106,6 +115,7 @@ def test_save_load_joblib(temp_dir, sample_data):
         gc.collect()
 
 
+@pytest.mark.file_io
 def test_date_suffix(temp_dir, sample_data):
     """Test date suffix functionality."""
     # Get today's date
@@ -121,6 +131,7 @@ def test_date_suffix(temp_dir, sample_data):
     assert final_filepath.exists()
 
 
+@pytest.mark.file_io
 def test_compression_joblib(temp_dir, sample_data):
     """Test joblib compression options."""
     pytest.importorskip("joblib")  # Skip if joblib not installed
@@ -166,6 +177,7 @@ def test_compression_joblib(temp_dir, sample_data):
         gc.collect()
 
 
+@pytest.mark.file_io
 def test_path_handling(temp_dir, sample_data):
     """Test different path input formats."""
     # Test with string path
@@ -188,6 +200,7 @@ def test_path_handling(temp_dir, sample_data):
     assert path3.exists()
 
 
+@pytest.mark.file_io
 def test_error_handling(temp_dir, sample_data):
     """Test error cases."""
     # Test invalid backend
@@ -220,6 +233,7 @@ def test_error_handling(temp_dir, sample_data):
         load_object(filepath=wrong_ext_path)
 
 
+@pytest.mark.file_io
 def test_large_array_comparison(temp_dir, large_array):
     """Test saving/loading large array with different backends."""
     pytest.importorskip("joblib")  # Skip if joblib not installed

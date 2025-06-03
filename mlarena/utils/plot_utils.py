@@ -12,6 +12,7 @@ __all__ = [
     "plot_metric_event_over_time",
     "plot_stacked_bar_over_time",
     "plot_distribution_over_time",
+    "plot_stacked_bar",
 ]
 
 
@@ -810,3 +811,84 @@ def plot_distribution_over_time(
         )
         ax.tick_params(axis="x", labelrotation=90)
         return fig, ax
+
+
+def plot_stacked_bar(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    label_dict: Optional[Dict[str, str]] = None,
+    is_pct: bool = True,
+    title: str = "Stacked Bar Chart",
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: tuple = (10, 6),
+    palette: Optional[List[str]] = None,
+    xticklabel_rotation: float = 45,
+    bar_alpha: float = 0.7,
+):
+    """
+    Plot a stacked bar chart showing the distribution of a categorical variable,
+    either in percentage or actual counts.
+
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        x (str): Name of the categorical column for x-axis.
+        y (str): Name of the categorical column for stacking.
+        label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
+        is_pct (bool): Whether to display percentage (True) or actual count (False).
+        title (str): Title of the plot.
+        xlabel (str, optional): Label for the x-axis. If None, uses the x column name.
+        ylabel (str, optional): Label for the y-axis (default is auto-set based on is_pct).
+        figsize (tuple): Figure size as (width, height) in inches. Default is (10, 6).
+        palette (List[str], optional): List of colors for the bars. If None, uses matplotlib's default color cycle.
+        xticklabel_rotation (float): Rotation angle for x-axis tick labels in degrees. Default is 45.
+        bar_alpha (float): Transparency level for the bars (0-1). Default is 0.7.
+
+    Returns:
+        Tuple[plt.Figure, plt.Axes]:
+            - Figure object for further customization
+            - Axes object for further customization
+    """
+    # Use provided color palette or fallback to matplotlib's default color cycle
+    num_categories = data[y].nunique()
+    if label_dict:
+        num_categories = len(label_dict)
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    colors = palette if palette is not None else color_cycle[:num_categories]
+
+    # Apply alpha to colors
+    colors_with_alpha = [mcolors.to_rgba(c, alpha=bar_alpha) for c in colors]
+
+    # Aggregate data
+    class_agg = data.groupby([x, y]).size().unstack(fill_value=0)
+
+    # Compute percentage if requested
+    if is_pct:
+        data_to_plot = class_agg.div(class_agg.sum(axis=1), axis=0) * 100
+        y_label = ylabel or "Percentage"
+    else:
+        data_to_plot = class_agg
+        y_label = ylabel or "Count"
+
+    # Apply label mapping if provided
+    if label_dict:
+        data_to_plot.rename(columns=label_dict, inplace=True)
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
+    data_to_plot.plot(
+        kind="bar",
+        stacked=True,
+        color=colors_with_alpha[: len(data_to_plot.columns)],
+        ax=ax,
+    )
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel or x)
+    ax.set_ylabel(y_label)
+    ax.legend(title=y if not label_dict else "")
+    ax.grid(True, axis="y")
+    ax.tick_params(axis="x", labelrotation=xticklabel_rotation)
+
+    return fig, ax

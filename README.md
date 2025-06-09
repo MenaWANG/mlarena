@@ -7,9 +7,10 @@
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
 [![CI/CD](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml/badge.svg)](https://github.com/MenaWANG/mlarena/actions/workflows/mlarena.yml)
 
-`mlarena` is an algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization. With smart automation that embeds ML best practices and comprehensive tools for expert-level control and diagnostics, `mlarena` provides a unified interface for sklearn-style algorithms that streamlines both experimentation and production deployment for data scientists and ML engineers.
 
-It fills the gap between manual ML development and fully automated AutoML platforms - see our [comparison with AutoML platforms](https://github.com/MenaWANG/mlarena/blob/master/docs/comparision-autoML.md) to determine which approach best fits your needs.
+`mlarena` is an algorithm-agnostic machine learning toolkit for streamlined model training, diagnostics, and optimization. Implemented as a custom `mlflow.pyfunc` model, it ensures seamless integration with the MLflow ecosystem for robust experiment tracking, model versioning, and framework-agnostic deployment.
+
+It blends smart automation that embeds ML best practices with comprehensive tools for expert-level customization and diagnostics. This unique combination fills the gap between manual ML development and fully automated AutoML platforms. Moreover, it comes with a suite of practical utilities for data analysis and visualizations - see our [comparison with AutoML platforms](https://github.com/MenaWANG/mlarena/blob/master/docs/comparision-autoML.md) to determine which approach best fits your needs.
 
 ## Publications
 
@@ -26,18 +27,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.3.0
+%pip install mlarena==0.3.1
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.3.0 --no-deps
+%pip install mlarena==0.3.1 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.3.0 --no-deps
+%pip install mlarena==0.3.1 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -115,8 +116,9 @@ Some handy utilities for data validation, cleaning and manipulations. Pls see [3
 - Unified interface for any scikit-learn compatible model
 - Consistent workflow across classification and regression tasks
 - Automated report generation with comprehensive metrics and visuals
-- Production-ready with MLflow integration for deployment
-- Simplified handoff between experimentation and production
+- Built on `mlflow.pyfunc` for seamless MLOps integration
+- Automated experiment tracking of parameters, metrics, and models
+- Simplified handoff from experimentation to production via the MLflow framework
 
 **Intelligent Preprocessing**
 - Streamlined feature preprocessing with smart defaults and minimal code

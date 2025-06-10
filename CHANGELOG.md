@@ -6,6 +6,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.2] - unreleased
+
+### Added
+- **Major Enhancement**: Statistical testing capabilities to plotting functions:
+  - **`plot_box_scatter`** - Statistical tests for continuous outcomes across categorical groups:
+    - Added support for "anova" (One-way ANOVA with η² effect size) and "kruskal" (Kruskal-Wallis with ε² effect size)
+    - Automatic validation requiring at least 2 groups for testing
+    - Returns descriptive statistics (count, mean, median, std) per category
+  - **`plot_stacked_bar`** - Statistical tests for categorical associations:
+    - Added support for "chi2" (Chi-square test with Cramér's V effect size) and "fisher" (Fisher's exact test for 2×2 tables)
+    - Automatic validation ensuring Fisher's test only used with 2×2 tables
+    - Returns contingency tables with totals, percentage tables, and sample size information
+  - **Common features across both functions**:
+    - `stat_summary` parameter: Returns relevant statistical summaries (renamed from `return_summary` for consistency)
+    - `stat_test` parameter: Performs statistical tests with standardized lowercase method names
+    - `stats_only` parameter: Skip plotting entirely for analysis workflows - perfect for Jupyter notebooks
+    - `show_stat_test` parameter: Display test results as annotations on plots with professional formatting
+      - Scientific p-value conventions (p < 0.001, p < 0.01, p < 0.05, exact values for p ≥ 0.05)
+      - Customizable positioning (`stat_annotation_pos`), font size, and background styling
+      - Publication-ready annotations with proper test names and effect sizes
+    - Enhanced return structure: Unified `results` dictionary with optional `summary_table` and `stat_test` outputs
+    - Maintains full backward compatibility for existing function calls
+
+### Changed
+- **Breaking Change**: Renamed `return_summary` parameter to `stat_summary` in `plot_box_scatter`:
+  - Provides consistent naming convention with other stat-related parameters
+  - Creates intuitive "stat" prefix pattern: `stat_summary`, `stat_test`, `stats_only`
+  - Updated all documentation and examples to reflect new parameter name
+- Enhanced statistical analysis robustness:
+  - Added comprehensive input validation and warning messages
+  - Improved error handling for edge cases (insufficient groups, missing data)
+
+### Improved
+- Optimized `plot_box_scatter` performance and code organization:
+  - Moved statistical calculations before plotting code for `stats_only` efficiency
+  - Reorganized function structure with early returns for better flow
+  - Enhanced parameter validation with clear error messages
+  - Improved documentation with comprehensive parameter descriptions and usage examples
+
 ## [0.3.1] - 2025-06-03
 
 ### Added

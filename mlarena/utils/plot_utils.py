@@ -165,7 +165,7 @@ def plot_box_scatter(
                 stat, pval = stats.f_oneway(*groups)
 
                 # Eta squared (η²)
-                ss_between = sum(
+                ss_between = sum(  # between group sum of square
                     len(g) * (np.mean(g) - data[y].mean()) ** 2 for g in groups
                 )
                 ss_total = sum((data[y] - data[y].mean()) ** 2)

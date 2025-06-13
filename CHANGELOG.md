@@ -35,17 +35,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Intelligent failure detection to skip strategies that don't create multiple groups
     - Supports weighted target metrics for business-critical variable prioritization
 - **Comprehensive testing suite** for stats_utils module:
-  - **Function-specific test classes** covering all edge cases and functionality:
+  - Function-specific test: classes covering all edge cases and functionality:
     - `TestCompareGroups`: Basic functionality, weights, missing data, visualization, alpha thresholds
     - `TestAddStratifiedGroups`: Single/multiple column stratification, custom labels, error handling, reproducibility
     - `TestOptimizeStratificationStrategy`: Optimization logic, max combinations, composite scoring, custom penalties
-  - **Integration tests** demonstrating complete A/B testing workflows
-  - **Realistic test data** with proper statistical properties to avoid scipy warnings
-  - **Edge case handling** including stratification failures and empty candidate lists
+  - Integration tests: demonstrating complete A/B testing workflows
+  - Realistic test: data with proper statistical properties to avoid scipy warnings
+  - Edge case handling: including stratification failures and empty candidate lists
 
-
-
-
+## Changed
+- Statistical Testing Updates for `plot_stacked_bar`:
+  - Replaced Fisher's exact test with G-test of independence (likelihood ratio test)
+  - G-test provides more flexibility by working with any contingency table size
 
 ## [0.3.2] - 2025-06-10
 

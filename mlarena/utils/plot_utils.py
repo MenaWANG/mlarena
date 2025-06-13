@@ -992,21 +992,19 @@ def plot_stacked_bar(
         xticklabel_rotation (float): Rotation angle for x-axis tick labels in degrees. Default is 45.
         bar_alpha (float): Transparency level for the bars (0-1). Default is 0.7.
         stat_summary (bool): Whether to return a DataFrame of cross-tabulation and summary statistics.
-        stat_test (str, optional): Statistical test to perform on the contingency table. Supported: "chi2", "fisher".
-            If specified, returns test statistic, p-value and effect size in results.
-            Note: Fisher's exact test is recommended for small sample sizes (expected frequencies < 5).
-        stats_only (bool): If True, skip plotting and return only statistical results. Requires either
-            stat_summary=True or stat_test to be specified.
-        show_stat_test (bool): If True, display statistical test results as an annotation on the plot.
-            Requires stat_test to be specified. Ignored when stats_only=True.
-        stat_annotation_pos (Tuple[float, float]): Position of the statistical annotation as (x, y) in axes coordinates (0-1).
-            (0, 0) is bottom-left, (1, 1) is top-right.
+        stat_test (str, optional): Statistical test to perform on the contingency table. Supported:
+            - "chi2": Pearson's chi-square test (works for any contingency table)
+            - "g_test": G-test of independence (likelihood ratio test)
+            Both tests return test statistic, p-value, and Cramér's V as effect size.
+        stats_only (bool): If True, skip plotting and return only statistical results.
+        show_stat_test (bool): If True, display statistical test results as an annotation.
+        stat_annotation_pos (Tuple[float, float]): Position of statistical annotation (0-1, 0-1).
         stat_annotation_fontsize (int): Font size for the statistical annotation.
         stat_annotation_bbox (bool): Whether to add a background box to the statistical annotation.
 
     Returns:
         Tuple[plt.Figure, plt.Axes] or dict:
-            - When stats_only=False: Figure and axis objects for further customization, optionally with results dict
+            - When stats_only=False: Figure and axis objects, optionally with results dict
             - When stats_only=True: Dictionary containing statistical results
             - results dict contains:
                 - 'summary_table': DataFrame with cross-tabulation and summary statistics
@@ -1067,47 +1065,41 @@ def plot_stacked_bar(
     if stat_test:
         # Create contingency table for testing (without marginals)
         contingency = class_agg.values
+        n = contingency.sum()
 
         if stat_test.lower() == "chi2":
+            # Pearson's chi-square test
             chi2_stat, p_val, dof, expected = stats.chi2_contingency(contingency)
+            test_stat = chi2_stat
+            method = "chi2"
 
-            # Calculate Cramér's V effect size
-            n = contingency.sum()
-            cramers_v = np.sqrt(chi2_stat / (n * (min(contingency.shape) - 1)))
+        elif stat_test.lower() == "g_test":
+            # G-test (likelihood ratio test)
+            g_stat, p_val, dof, expected = stats.chi2_contingency(
+                contingency, lambda_="log-likelihood"
+            )
+            test_stat = g_stat
+            method = "g_test"
 
-            results["stat_test"] = {
-                "method": "chi2",
-                "statistic": chi2_stat,
-                "p_value": p_val,
-                "effect_size": cramers_v,
-                "degrees_of_freedom": dof,
-            }
-
-        elif stat_test.lower() == "fisher":
-            # Fisher's exact test (only works for 2x2 tables)
-            if contingency.shape == (2, 2):
-                odds_ratio, p_val = stats.fisher_exact(contingency)
-
-                # Calculate Cramér's V for Fisher's test as well
-                n = contingency.sum()
-                # Use chi2 statistic to calculate Cramér's V for consistency
-                chi2_stat, _, _, _ = stats.chi2_contingency(contingency)
-                cramers_v = np.sqrt(chi2_stat / (n * (min(contingency.shape) - 1)))
-
-                results["stat_test"] = {
-                    "method": "fisher",
-                    "statistic": odds_ratio,
-                    "p_value": p_val,
-                    "effect_size": cramers_v,
-                }
-            else:
-                raise ValueError(
-                    f"Fisher's exact test requires a 2x2 contingency table, "
-                    f"but got {contingency.shape[0]}x{contingency.shape[1]} table. "
-                    f"Use 'chi2' test instead for larger tables."
-                )
         else:
-            raise ValueError(f"Unsupported stat_test: {stat_test}")
+            raise ValueError(
+                f"Unsupported stat_test: {stat_test}. Must be one of: 'chi2', 'g_test'"
+            )
+
+        # Calculate Cramér's V (same formula for both tests)
+        min_dim = min(contingency.shape) - 1  # minimum dimension minus 1
+        if min_dim > 0:  # Protect against division by zero
+            cramers_v = np.sqrt(test_stat / (n * min_dim))
+        else:
+            cramers_v = np.nan
+
+        results["stat_test"] = {
+            "method": method,
+            "statistic": test_stat,
+            "p_value": p_val,
+            "effect_size": cramers_v,
+            "degrees_of_freedom": dof,
+        }
 
     # If stats_only=True, return results without plotting
     if stats_only:
@@ -1146,7 +1138,7 @@ def plot_stacked_bar(
     if show_stat_test and "stat_test" in results:
         test_info = results["stat_test"]
 
-        # Format p-value with appropriate precision following scientific conventions
+        # Format p-value
         if test_info["p_value"] < 0.001:
             p_str = "p < 0.001"
         elif test_info["p_value"] < 0.01:
@@ -1156,17 +1148,22 @@ def plot_stacked_bar(
         else:
             p_str = f"p = {test_info['p_value']:.3f}"
 
-        # Create annotation text
+        # Create annotation text with method-specific formatting
         if test_info["method"] == "chi2":
             method_name = "Chi-square test"
-        elif test_info["method"] == "fisher":
-            method_name = "Fisher's exact test"
+            stat_str = f"χ² = {test_info['statistic']:.2f}"
+        else:  # g_test
+            method_name = "G-test"
+            stat_str = f"G = {test_info['statistic']:.2f}"
 
-        annotation_text = (
-            f"{method_name}\n"
-            f"{p_str}\n"
-            f"Cramér's V = {test_info['effect_size']:.3f}"
-        )
+        # Build annotation text
+        annotation_lines = [
+            method_name,
+            stat_str,
+            p_str,
+            f"Cramér's V = {test_info['effect_size']:.3f}",
+        ]
+        annotation_text = "\n".join(annotation_lines)
 
         # Configure bbox style
         bbox_props = None

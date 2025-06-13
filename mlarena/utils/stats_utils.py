@@ -234,6 +234,9 @@ def optimize_stratification_strategy(
     max_combinations: int = 3,
     alpha: float = 0.05,
     significance_penalty: float = 0.2,
+    num_test: str = "anova",
+    cat_test: str = "chi2",
+    visualize_best_strategy: bool = False,
     random_seed: int = 42,
 ) -> Dict:
     """
@@ -262,6 +265,12 @@ def optimize_stratification_strategy(
         Penalty weight applied per significant difference in composite scoring.
         Higher values more heavily penalize strategies with significant imbalances.
         Set to 0 to ignore significance count and use only effect sizes.
+    num_test : str, default="anova"
+        Statistical test for numeric variables. Supported: "anova", "kruskal".
+    cat_test : str, default="chi2"
+        Statistical test for categorical variables. Supported: "chi2", "g_test".
+    visualize_best_strategy : bool, default=False
+        If True, generates visualizations for the best stratification strategy only.
     random_seed : int, default=42
         Random seed for reproducibility.
 
@@ -289,10 +298,12 @@ def optimize_stratification_strategy(
     >>> # View performance overview of all strategies
     >>> print(results['summary'])
     >>>
-    >>> # Advanced analysis with custom penalty
+    >>> # Advanced analysis with custom penalty and tests
     >>> results_strict = optimize_stratification_strategy(
     ...     df, ['region', 'segment'], ['metric1', 'metric2'],
-    ...     significance_penalty=0.5  # Heavily penalize significant differences
+    ...     significance_penalty=0.5,  # Heavily penalize significant differences
+    ...     num_test='kruskal',       # Use non-parametric test
+    ...     visualize_best_strategy=True  # Generate plots for best strategy
     ... )
     >>> # Compare top 3 strategies
     >>> top_3 = results_strict['summary'].head(3)
@@ -338,7 +349,14 @@ def optimize_stratification_strategy(
 
             # Evaluate balance
             effect_size_sum, summary_df = compare_groups(
-                df_stratified, group_col, target_metrics, weights=weights
+                df_stratified,
+                group_col,
+                target_metrics,
+                weights=weights,
+                alpha=alpha,
+                num_test=num_test,
+                cat_test=cat_test,
+                visualize=False,  # only the best strategy if requested
             )
 
             # Count significant differences
@@ -373,6 +391,26 @@ def optimize_stratification_strategy(
     if results:
         best_key = min(results.keys(), key=lambda k: results[k]["composite_score"])
         best_stratifier = results[best_key]["stratifier"]
+
+        # If requested, visualize the best strategy
+        if visualize_best_strategy:
+            # Re-run compare_groups with visualization for the best strategy
+            df_best = add_stratified_groups(
+                data,
+                best_stratifier,
+                random_seed=random_seed,
+                group_col_name="best_strategy_group",
+            )
+            _, _ = compare_groups(
+                df_best,
+                "best_strategy_group",
+                target_metrics,
+                weights=weights,
+                alpha=alpha,
+                num_test=num_test,
+                cat_test=cat_test,
+                visualize=True,
+            )
 
         # Create rankings by composite score
         rankings = sorted(results.keys(), key=lambda k: results[k]["composite_score"])

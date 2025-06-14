@@ -27,18 +27,18 @@ Read about the concepts and methodologies behind MLArena through these articles:
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.3.2
+%pip install mlarena==0.3.3
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.3.2 --no-deps
+%pip install mlarena==0.3.3 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.3.2 --no-deps
+%pip install mlarena==0.3.3 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -87,7 +87,7 @@ One liner to create global and local explanation based on SHAP that will work ac
 
 `mlarena` offers handy utility visualizations for data exploration. Pls see [3.utils_plot.ipynb](https://github.com/MenaWANG/mlarena/blob/master/examples/3.utils_plot.ipynb) for more.
 
-#### `plot_box_scatter` for comparing numerical distributions across categories
+#### `plot_box_scatter` for comparing numerical distributions across categories with optional statistical testing
 ![plot_box_scatter](https://raw.githubusercontent.com/MenaWANG/mlarena/master/docs/images/plot_box_scatter.png)
 
 #### `plot_distribution_over_time` for comparing numerical distributions over time

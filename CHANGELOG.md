@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3] - 2025-06-15
+
+### Added
+- **NEW MODULE**: Statistical utilities (`mlarena.utils.stats_utils`) for A/B testing and experimental design:
+  - **`compare_groups`** - Statistical comparison of groups across multiple variables:
+    - Automatic test selection (ANOVA for numeric, Chi-square for categorical variables)
+    - Effect size calculation and significance testing with configurable alpha threshold
+    - Weighted scoring system for prioritizing important variables in composite analysis
+    - Optional visualization integration with `plot_box_scatter` and `plot_stacked_bar`
+    - Returns weighted effect size sum and detailed summary DataFrame with test results
+    - Essential for A/B testing validation and stratification quality assessment
+  - **`add_stratified_groups`** - Create balanced experimental groups via stratification:
+    - Maintains distribution of key characteristics across groups using sklearn's stratified splitting
+    - Supports single or multiple column stratification with automatic column combination
+    - Customizable group labels (numeric, string) and column naming for flexibility
+    - Reproducible results with random seed control for experiment consistency
+    - Graceful failure handling with informative warnings when stratification is impossible
+    - Perfect for creating balanced control/treatment groups in A/B testing scenarios
+  - **`optimize_stratification_strategy`** - Automated stratification strategy selection:
+    - Tests multiple combinations of stratification variables automatically (up to `max_combinations`)
+    - Composite scoring system balancing effect sizes with significance count penalties
+    - Configurable `significance_penalty` parameter for different experiment requirements:
+      - 0.0 for pure effect size optimization (academic research)
+      - 0.2 for balanced approach (recommended for business use cases)
+      - 0.5+ for strict balance requirements (regulatory/high-stakes experiments)
+    - Returns comprehensive results with rankings, detailed metrics, and best strategy recommendation
+    - **NEW**: Summary DataFrame for easy performance comparison and analysis of all tested strategies
+    - Intelligent failure detection to skip strategies that don't create multiple groups
+    - Supports weighted target metrics for business-critical variable prioritization
+- **Comprehensive testing suite** for stats_utils module:
+  - Function-specific test: classes covering all edge cases and functionality:
+    - `TestCompareGroups`: Basic functionality, weights, missing data, visualization, alpha thresholds
+    - `TestAddStratifiedGroups`: Single/multiple column stratification, custom labels, error handling, reproducibility
+    - `TestOptimizeStratificationStrategy`: Optimization logic, max combinations, composite scoring, custom penalties
+  - Integration tests: demonstrating complete A/B testing workflows
+  - Realistic test: data with proper statistical properties to avoid scipy warnings
+  - Edge case handling: including stratification failures and empty candidate lists
+
+## Changed
+- Statistical Testing Updates for `plot_stacked_bar`:
+  - Replaced Fisher's exact test with G-test of independence (likelihood ratio test)
+  - G-test provides more flexibility by working with any contingency table size
 
 ## [0.3.2] - 2025-06-10
 

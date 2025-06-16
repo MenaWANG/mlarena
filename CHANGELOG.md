@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.4] - unreleased
+
+### Improved
+- **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` for intuitive, intent-driven usage:
+  
+  **Three simplified usage scenarios:**
+  
+  1. **Plot only (default)**: 
+     ```python
+     fig, ax = plot_box_scatter(data=df, x='category', y='value')
+     ```
+     No statistical tests performed - just creates the visualization.
+  
+  2. **Plot with statistical annotation**:
+     ```python
+     fig, ax = plot_box_scatter(data=df, x='category', y='value', stat_test="anova")
+     # OR
+     fig, ax = plot_stacked_bar(data=df, x='dept', y='level', stat_test="chi2") 
+     ```
+     Automatically shows test results on plot. Uses intelligent defaults (anova/chi2) when `show_stat_test=True`.
+  
+  3. **Access statistical results**:
+     ```python
+     fig, ax, results = plot_box_scatter(..., stat_test="anova", return_stats=True)
+     # OR
+     results = plot_box_scatter(..., stats_only=True)  # No plotting
+     ```
+     Returns statistical data for further analysis.
+  
+  **Breaking change**: Removed `stat_summary` parameter - summary statistics now automatically included when tests are computed.
+  
+  **Design philosophy**: Eliminates parameter confusion by supporting common use cases with minimal manual configuration.
+
+
+
 ## [0.3.3] - 2025-06-15
 
 ### Added

@@ -33,10 +33,10 @@ def plot_box_scatter(
     figsize: tuple = (10, 6),
     palette: Optional[List[str]] = None,
     xticklabel_rotation: float = 45,
-    stat_summary: bool = False,
     stat_test: Optional[str] = None,
     stats_only: bool = False,
-    show_stat_test: bool = False,
+    show_stat_test: Optional[bool] = None,
+    return_stats: bool = False,
     stat_annotation_pos: Tuple[float, float] = (0.02, 0.98),
     stat_annotation_fontsize: int = 10,
     stat_annotation_bbox: bool = True,
@@ -77,18 +77,20 @@ def plot_box_scatter(
         List of colors. If None, uses Matplotlib's default color cycle.
     xticklabel_rotation : float, default=45
         Rotation angle for x-axis tick labels in degrees.
-    stat_summary : bool, default=False
-        Whether to return a DataFrame of descriptive statistics (count, mean, median, std) per category.
     stat_test : str, optional
         Statistical test to perform across groups. Supported: "anova", "kruskal".
-        If specified, returns test statistic, p-value and effect size in results.
-        Note: For Kruskal-Wallis test, ε² is an approximate effect size.
+        If not specified but show_stat_test=True or stats_only=True, defaults to "anova".
+        If specified, automatically sets show_stat_test=True unless explicitly set to False.
     stats_only : bool, default=False
-        If True, skip plotting and return only statistical results. Requires either
-        stat_summary=True or stat_test to be specified.
-    show_stat_test : bool, default=False
+        If True, skip plotting and return only statistical results.
+        Automatically sets stat_test="anova" if not specified.
+    show_stat_test : bool, optional
         If True, display statistical test results as an annotation on the plot.
-        Requires stat_test to be specified. Ignored when stats_only=True.
+        If None (default), automatically set to True when stat_test is specified.
+        If False, statistical test is computed but not displayed.
+    return_stats : bool, default=False
+        If True, return statistical results.
+        When False, only returns (fig, ax) even if statistical tests are computed.
     stat_annotation_pos : Tuple[float, float], default=(0.02, 0.98)
         Position of the statistical annotation as (x, y) in axes coordinates (0-1).
         (0, 0) is bottom-left, (1, 1) is top-right.
@@ -99,15 +101,32 @@ def plot_box_scatter(
 
     Returns
     -------
-    fig : matplotlib.figure.Figure, optional
-        The figure object for further customization. Not returned when stats_only=True.
-    ax : matplotlib.axes.Axes, optional
-        The axes object for further customization. Not returned when stats_only=True.
-    results : dict, optional
-        Dictionary containing optional outputs:
+    Union[Tuple[plt.Figure, plt.Axes], Tuple[plt.Figure, plt.Axes, dict], dict]
+        - When stats_only=True: Dictionary containing statistical results only
+        - When stats_only=False and return_stats=False: (fig, ax)
+        - When stats_only=False and return_stats=True: (fig, ax, results)
+        - results dict contains:
             - 'summary_table': DataFrame with count, mean, median, std per category.
             - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'.
-        When stats_only=True, this is always returned (not optional).
+    
+    Note
+    ----
+    Statistical test parameters have been designed with intelligent defaults to optimize user experience.
+    The following scenarios are automatically handled:
+    
+    1. **Plot only (default)**: Just call the function with data - no statistical tests performed.
+    
+    2. **Plot with statistical annotation**: 
+       - Specify `stat_test="anova"/"kruskal"` → automatically shows test results on plot
+       - Or set `show_stat_test=True` → automatically uses default test method
+       - Returns only `(fig, ax)` unless explicitly requested otherwise
+    
+    3. **Access statistical results**:
+       - Add `return_stats=True` → returns `(fig, ax, results)` 
+       - Or use `stats_only=True` → returns only `results` (no plotting)
+    
+    This design seeks to support common use cases withou minimal manual configuration.
+ 
     """
     # Check if point_hue column exists and warn if it doesn't
     if point_hue is not None and point_hue not in data.columns:
@@ -118,28 +137,32 @@ def plot_box_scatter(
         )
         point_hue = None
 
-    # Validate show_stat_test parameter
-    if show_stat_test and not stat_test:
-        warnings.warn(
-            "show_stat_test=True requires stat_test to be specified. "
-            "Statistical annotation will be skipped.",
-            UserWarning,
-        )
+    # Apply intelligent defaults based on user intent
+    if stats_only:
+        # User wants stats only - set default test if not specified
         show_stat_test = False
+        if stat_test is None:
+            stat_test = "anova"
+    elif stat_test is not None:
+        # User specified a test - show test on plot unless otherwise specified
+        if show_stat_test is None:
+            show_stat_test = True
+    elif show_stat_test is True:
+        # User wants to see stats but didn't specify test - use default
+        if stat_test is None:
+            stat_test = "anova"
 
-    # When stats_only=True, validate that there's something to return
-    if stats_only and not stat_summary and not stat_test:
-        raise ValueError(
-            "When stats_only=True, either stat_summary=True or stat_test must be specified."
-        )
+    # Ensure show_stat_test is not None for downstream logic
+    if show_stat_test is None:
+        show_stat_test = False
 
     categories = sorted(data[x].unique())
 
     # Initialize results dictionary
     results = {}
 
-    # Generate summary statistics if requested
-    if stat_summary:
+    # Always generate summary statistics when statistical test is computed
+    if stat_test:
         summary_df = (
             data.groupby(x)[y]
             .agg(n="count", mean="mean", median="median", sd="std")
@@ -349,7 +372,7 @@ def plot_box_scatter(
             zorder=10,
         )
 
-    if results:
+    if return_stats:
         return fig, ax, results
     else:
         return fig, ax

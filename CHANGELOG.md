@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.4] - unreleased
 
+### Added
+- **NEW**: Statistical threshold calculation utilities in `stats_utils`:
+  - **`calculate_threshold_stats`**: Calculate statistics and thresholds for numeric data:
+    - Supports multiple threshold calculation methods:
+      - Standard deviation based (`mean + n*std`)
+      - IQR based (`Q3 + 1.5*IQR`)
+      - Percentile based (95th percentile)
+    - Handles different input types (list, numpy array, pandas Series)
+    - Optional visualization with histogram and threshold markers
+    - Comprehensive error handling and empty input detection
+  - **`calculate_group_thresholds`**: Calculate thresholds for grouped data:
+    - Applies threshold calculations per group
+    - Configurable threshold methods and parameters
+    - Supports minimum group size validation
+    - Visualization control for first group analysis
+    - Informative warnings for empty/small groups
+  - Added comprehensive test coverage for both functions:
+    - Input type handling
+    - Different statistical distributions
+    - Edge cases (empty data, single value)
+    - Visualization control
+    - Group size validation
+
 ### Improved
 - **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` for intuitive, intent-driven usage:
   

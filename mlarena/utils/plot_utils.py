@@ -108,25 +108,25 @@ def plot_box_scatter(
         - results dict contains:
             - 'summary_table': DataFrame with count, mean, median, std per category.
             - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'.
-    
+
     Note
     ----
     Statistical test parameters have been designed with intelligent defaults to optimize user experience.
     The following scenarios are automatically handled:
-    
+
     1. **Plot only (default)**: Just call the function with data - no statistical tests performed.
-    
-    2. **Plot with statistical annotation**: 
+
+    2. **Plot with statistical annotation**:
        - Specify `stat_test="anova"/"kruskal"` → automatically shows test results on plot
        - Or set `show_stat_test=True` → automatically uses default test method
        - Returns only `(fig, ax)` unless explicitly requested otherwise
-    
+
     3. **Access statistical results**:
-       - Add `return_stats=True` → returns `(fig, ax, results)` 
+       - Add `return_stats=True` → returns `(fig, ax, results)`
        - Or use `stats_only=True` → returns only `results` (no plotting)
-    
+
     This design seeks to support common use cases withou minimal manual configuration.
- 
+
     """
     # Check if point_hue column exists and warn if it doesn't
     if point_hue is not None and point_hue not in data.columns:
@@ -613,7 +613,6 @@ def plot_stacked_bar(
         return fig, ax, results
     else:
         return fig, ax
-
 
 
 def plot_metric_event_over_time(
@@ -1212,6 +1211,3 @@ def plot_distribution_over_time(
         )
         ax.tick_params(axis="x", labelrotation=90)
         return fig, ax
-
-
-

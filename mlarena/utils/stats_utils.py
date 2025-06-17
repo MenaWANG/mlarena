@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from sklearn.model_selection import train_test_split
+import numpy as np
 
 import mlarena.utils.plot_utils as put
 
@@ -10,6 +11,8 @@ __all__ = [
     "compare_groups",
     "add_stratified_groups",
     "optimize_stratification_strategy",
+    "calculate_threshold_stats",
+    "calculate_group_thresholds",
 ]
 
 
@@ -80,6 +83,7 @@ def compare_groups(
                     title=f"{col} across group",
                     stat_test=num_test,
                     show_stat_test=True,
+                    return_stats=True,
                 )
             else:
                 results = put.plot_box_scatter(
@@ -444,3 +448,227 @@ def optimize_stratification_strategy(
             "rankings": [],
             "summary": pd.DataFrame(),
         }
+
+
+def calculate_threshold_stats(
+    data: Union[pd.Series, np.ndarray, List[Union[int, float]]],
+    n_std: float = 2.0,
+    threshold_method: str = "std",
+    visualize: bool = False,
+) -> Dict[str, Union[float, int]]:
+    """
+    Calculate frequency statistics and threshold based on statistical criteria.
+
+    This function computes basic statistics (mean, median, std, count) and
+    determines a threshold based on the specified method. Useful for outlier
+    detection and frequency analysis.
+
+    Parameters
+    ----------
+    data : Union[pd.Series, np.ndarray, List[Union[int, float]]]
+        Input data containing frequency or numeric values.
+    n_std : float, default=2.0
+        Number of standard deviations to use for threshold calculation
+        when threshold_method is "std".
+    threshold_method : str, default="std"
+        Method to calculate threshold:
+        - "std": mean + n_std * std
+        - "iqr": Q3 + 1.5 * IQR (Interquartile Range)
+        - "percentile": 95th percentile
+    visualize : bool, default=False
+        If True, creates a histogram with marked statistics.
+
+    Returns
+    -------
+    Dict[str, Union[float, int]]
+        Dictionary containing:
+        - 'mean': mean of the data
+        - 'median': median of the data
+        - 'std': standard deviation
+        - 'count': number of observations
+        - 'threshold': calculated threshold value
+        - 'method': threshold calculation method used
+
+    Examples
+    --------
+    >>> data = [1, 2, 2, 3, 3, 3, 4, 4, 10]
+    >>> stats = calculate_frequency_stats(data, n_std=2, visualize=True)
+    >>> print(f"Mean: {stats['mean']:.2f}")
+    >>> print(f"Threshold: {stats['threshold']:.2f}")
+
+    >>> # Using different threshold method
+    >>> stats_iqr = calculate_frequency_stats(
+    ...     data, threshold_method='iqr', visualize=True
+    ... )
+    """
+    # Convert input to numpy array
+    if isinstance(data, pd.Series):
+        values = data.values
+    elif isinstance(data, list):
+        values = np.array(data)
+    else:
+        values = data
+
+    # Handle empty input explicitly
+    if len(values) == 0:
+        warnings.warn(
+            "Empty input provided to calculate_threshold_stats. "
+            "Returning NaN for all statistics.",
+            UserWarning,
+        )
+        return {
+            "mean": np.nan,
+            "median": np.nan,
+            "std": np.nan,
+            "threshold": np.nan,
+            "count": 0,
+            "method": threshold_method,
+        }
+
+    # Calculate basic statistics
+    stats = {
+        "mean": float(np.mean(values)),
+        "median": float(np.median(values)),
+        "std": float(np.std(values)),
+        "count": int(len(values)),
+        "method": threshold_method,
+    }
+
+    # Calculate threshold based on method
+    if threshold_method == "std":
+        stats["threshold"] = stats["mean"] + n_std * stats["std"]
+    elif threshold_method == "iqr":
+        q1, q3 = np.percentile(values, [25, 75])
+        iqr = q3 - q1
+        stats["threshold"] = q3 + 1.5 * iqr
+    elif threshold_method == "percentile":
+        stats["threshold"] = float(np.percentile(values, 95))
+    else:
+        raise ValueError(
+            f"Invalid threshold_method: {threshold_method}. "
+            "Must be one of: 'std', 'iqr', 'percentile'"
+        )
+
+    if visualize:
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(10, 6))
+        plt.hist(values, bins="auto", alpha=0.7)
+        plt.axvline(
+            stats["mean"], color="r", linestyle="--", label=f"Mean: {stats['mean']:.2f}"
+        )
+        plt.axvline(
+            stats["median"],
+            color="g",
+            linestyle="--",
+            label=f"Median: {stats['median']:.2f}",
+        )
+        plt.axvline(
+            stats["threshold"],
+            color="b",
+            linestyle="--",
+            label=f"Threshold ({threshold_method}): {stats['threshold']:.2f}",
+        )
+        plt.title("Frequency Distribution with Statistics")
+        plt.xlabel("Value")
+        plt.ylabel("Frequency")
+        plt.legend()
+        plt.grid(True, alpha=0.3)
+        plt.show()
+
+    return stats
+
+
+def calculate_group_thresholds(
+    df: pd.DataFrame,
+    group_col: str,
+    value_col: str,
+    methods: List[str] = ["std", "iqr", "percentile"],
+    n_std: float = 2.0,
+    visualize_first_group: bool = True,
+    min_group_size: int = 1,
+) -> pd.DataFrame:
+    """
+    Calculate thresholds for values grouped by any categorical column.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input DataFrame containing the data
+    group_col : str
+        Name of the column to group by
+    value_col : str
+        Name of the column containing the values to analyze
+    methods : List[str], default=['std', 'iqr', 'percentile']
+        List of threshold methods to use
+    n_std : float, default=2.0
+        Number of standard deviations to use for threshold calculation
+        when threshold_method is "std".
+    visualize_first_group : bool, default=True
+        Whether to show visualizations for the first group
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing threshold statistics for each group and method
+
+    Examples
+    --------
+    >>> # Example with products and prices
+    >>> df = pd.DataFrame({
+    ...     'product': ['A', 'B', 'A', 'B'],
+    ...     'price': [10, 20, 15, 25]
+    ... })
+    >>> results = calculate_group_thresholds(df, 'product', 'price')
+
+    >>> # Example with locations and temperatures
+    >>> weather_df = pd.DataFrame({
+    ...     'location': ['NY', 'LA', 'NY', 'LA'],
+    ...     'temperature': [75, 85, 72, 88]
+    ... })
+    >>> results = calculate_group_thresholds(weather_df, 'location', 'temperature')
+    """
+    if len(df) == 0:
+        warnings.warn(
+            "Empty DataFrame provided to calculate_group_thresholds. "
+            "Returning empty DataFrame.",
+            UserWarning,
+        )
+        return pd.DataFrame(
+            columns=["group", "method", "mean", "median", "std", "threshold", "count"]
+        )
+
+    results = []
+
+    for group in df[group_col].unique():
+        group_values = df[df[group_col] == group][value_col]
+
+        if len(group_values) < min_group_size:
+            warnings.warn(
+                f"Group '{group}' has fewer than {min_group_size} values "
+                f"(found {len(group_values)}). Statistics may be unreliable.",
+                UserWarning,
+            )
+
+        for method in methods:
+            # Calculate stats with visualization for first group only
+            stats = calculate_threshold_stats(
+                group_values,
+                n_std=n_std,
+                threshold_method=method,
+                visualize=(visualize_first_group and group == df[group_col].iloc[0]),
+            )
+
+            results.append(
+                {
+                    "group": group,
+                    "count": stats["count"],
+                    "method": method,
+                    "mean": stats["mean"],
+                    "median": stats["median"],
+                    "std": stats["std"],
+                    "threshold": stats["threshold"],
+                }
+            )
+
+    return pd.DataFrame(results)

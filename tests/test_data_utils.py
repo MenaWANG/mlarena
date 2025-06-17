@@ -130,6 +130,22 @@ def test_transform_date_cols():
     result = transform_date_cols(df_invalid, ["date"])
     assert pd.isna(result["date"][1])  # invalid date should be NaT
 
+    # Test with abbreviated month names and two-digit year
+    df_abbr = pd.DataFrame({"date": ["25AUG24", "26aug24", "27Aug24"]})
+    result = transform_date_cols(df_abbr, "date", str_date_format="%d%b%y")
+    assert pd.api.types.is_datetime64_any_dtype(result["date"])
+    assert result["date"].dt.year.tolist() == [2024, 2024, 2024]
+    assert result["date"].dt.month.tolist() == [8, 8, 8]
+    assert result["date"].dt.day.tolist() == [25, 26, 27]
+
+    # Test with full month names
+    df_full = pd.DataFrame({"date": ["25AUGUST2024", "26august2024", "27August2024"]})
+    result = transform_date_cols(df_full, "date", str_date_format="%d%B%Y")
+    assert pd.api.types.is_datetime64_any_dtype(result["date"])
+    assert result["date"].dt.year.tolist() == [2024, 2024, 2024]
+    assert result["date"].dt.month.tolist() == [8, 8, 8]
+    assert result["date"].dt.day.tolist() == [25, 26, 27]
+
 
 def test_drop_fully_null_cols(capsys):
     # Test data with various null patterns

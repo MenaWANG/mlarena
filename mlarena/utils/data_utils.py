@@ -154,21 +154,32 @@ def transform_date_cols(
             %d: Day of the month as a zero-padded decimal (e.g., 25)
             %m: Month as a zero-padded decimal number (e.g., 08)
             %b: Abbreviated month name (e.g., Aug)
+            %B: Full month name (e.g., August)
             %Y: Four-digit year (e.g., 2024)
+            %y: Two-digit year (e.g., 24)
 
         Example formats:
             "%Y%m%d"   → '20240825'
             "%d-%m-%Y" → '25-08-2024'
             "%d%b%Y"   → '25Aug2024'
+            "%d%B%Y"   → '25August2024'
+            "%d%b%y"   → '25Aug24'
 
         Note:
-            If the format uses %b (abbreviated month), strings like '25AUG2024'
-            will be handled automatically by converting to title case before parsing.
+            If the format uses %b or %B (month names),
+            strings like '25AUG2024' or '25august2024'
+            will be automatically converted to title case before parsing.
 
     Returns
     -------
     pd.DataFrame
-        The DataFrame with specified columns transformed to datetime format.
+        The DataFrame with specified columns transformed to datetime format (datetime64[ns]).
+        When only date information is provided (no time component), the time will be set to midnight (00:00:00).
+
+        To extract just the date component later, you can use:
+            - df['date_col'].dt.date  # Returns datetime.date objects
+            - df['date_col'].dt.normalize()  # Returns datetime64[ns] at midnight
+            - df['date_col'].dt.floor('D')  # Returns datetime64[ns] at midnight
 
     Raises
     ------
@@ -180,11 +191,15 @@ def transform_date_cols(
     >>> df = pd.DataFrame({
     ...     'date': ['25Aug2024', '26AUG2024', '27aug2024']
     ... })
-    >>> transform_date_cols(df, 'date', str_date_format='%d%b%Y')
-           date
-    0 2024-08-25
-    1 2024-08-26
-    2 2024-08-27
+    >>> # Convert to datetime
+    >>> df = transform_date_cols(df, 'date', str_date_format='%d%b%Y')
+    >>> print(df['date'].dtype)
+    datetime64[ns]
+    >>>
+    >>> # Extract date-only if needed
+    >>> df['date_only'] = df['date'].dt.date
+    >>> print(df['date_only'].iloc[0])
+    2024-08-25
     """
     if isinstance(date_cols, str):
         date_cols = [date_cols]
@@ -195,7 +210,7 @@ def transform_date_cols(
     df_ = data.copy()
     for date_col in date_cols:
         if not pd.api.types.is_datetime64_any_dtype(df_[date_col]):
-            if "%b" in str_date_format:
+            if "%b" in str_date_format or "%B" in str_date_format:
                 df_[date_col] = pd.to_datetime(
                     df_[date_col].astype(str).str.title(),
                     format=str_date_format,

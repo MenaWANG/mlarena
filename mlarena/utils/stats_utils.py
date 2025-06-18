@@ -218,8 +218,12 @@ def add_stratified_groups(
 
     except ValueError as e:
         # Handle cases where stratification fails (e.g., groups with only one member)
+        stratifier_name = (
+            str(stratifier_col) if isinstance(stratifier_col, str) 
+            else "_".join(stratifier_col)
+        )
         warnings.warn(
-            f"Stratified split failed: {e}. Assigning all rows to {group_labels[0]}.",
+            f"Stratifier '{stratifier_name}' failed: {e} Assigning all rows to {group_labels[0]}.",
             UserWarning,
         )
         df[group_name] = group_labels[0]
@@ -242,6 +246,7 @@ def optimize_stratification_strategy(
     num_test: str = "anova",
     cat_test: str = "chi2",
     visualize_best_strategy: bool = False,
+    include_random_baseline: bool = True,
     random_seed: int = 42,
 ) -> Dict:
     """
@@ -276,6 +281,10 @@ def optimize_stratification_strategy(
         Statistical test for categorical variables. Supported: "chi2", "g_test".
     visualize_best_strategy : bool, default=False
         If True, generates visualizations for the best stratification strategy only.
+    include_random_baseline : bool, default=True
+        If True, includes a random baseline strategy in the comparison.
+        This creates a random 50/50 group assignment to serve as a baseline
+        for evaluating whether stratification strategies perform better than chance.
     random_seed : int, default=42
         Random seed for reproducibility.
 
@@ -313,6 +322,13 @@ def optimize_stratification_strategy(
     >>> # Compare top 3 strategies
     >>> top_3 = results_strict['summary'].head(3)
     >>> print(top_3[['stratifier', 'composite_score', 'n_significant']])
+    >>>
+    >>> # Check if any stratifier beats random baseline
+    >>> summary = results['summary']
+    >>> random_score = summary[summary['stratifier'] == 'random_baseline']['composite_score'].iloc[0]
+    >>> best_stratified_score = summary[summary['stratifier'] != 'random_baseline']['composite_score'].min()
+    >>> improvement = (random_score - best_stratified_score) / random_score * 100
+    >>> print(f"Best stratification improves over random by {improvement:.1f}%")
     """
     from itertools import combinations
 
@@ -322,34 +338,36 @@ def optimize_stratification_strategy(
         for combo in combinations(candidate_stratifiers, r):
             all_stratifiers.append(list(combo) if len(combo) > 1 else combo[0])
 
+    # Add random baseline if requested
+    if include_random_baseline:
+        all_stratifiers.append("random_baseline")
+
     results = {}
 
     for stratifier in all_stratifiers:
         try:
-            # Create stratified groups
-            df_stratified = add_stratified_groups(
-                data,
-                stratifier,
-                random_seed=random_seed,
-                group_col_name=f"temp_group_{hash(str(stratifier)) % 10000}",
-            )
+            # Handle random baseline differently
+            if stratifier == "random_baseline":
+                # Create random assignment baseline
+                df_stratified = data.copy()
+                np.random.seed(random_seed)
+                group_col = "temp_group_random"
+                df_stratified[group_col] = np.random.choice([0, 1], size=len(data))
+            else:
+                # Create stratified groups
+                df_stratified = add_stratified_groups(
+                    data,
+                    stratifier,
+                    random_seed=random_seed,
+                    group_col_name=f"temp_group_{hash(str(stratifier)) % 10000}",
+                )
+                # Get the group column name
+                group_col = f"temp_group_{hash(str(stratifier)) % 10000}"
 
-            # Get the group column name
-            group_col = f"temp_group_{hash(str(stratifier)) % 10000}"
-
-            # Check if stratification actually worked (more than one unique group)
+            # Check if assignment actually worked (more than one unique group)
             unique_groups = df_stratified[group_col].nunique()
             if unique_groups < 2:
-                stratifier_key = (
-                    str(stratifier)
-                    if isinstance(stratifier, str)
-                    else "_".join(stratifier)
-                )
-                warnings.warn(
-                    f"Stratifier {stratifier_key} failed to create multiple groups. "
-                    f"All rows assigned to single group. Skipping evaluation.",
-                    UserWarning,
-                )
+                # Skip evaluation silently since add_stratified_groups already warned
                 continue
 
             # Evaluate balance

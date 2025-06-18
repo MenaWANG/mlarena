@@ -62,6 +62,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   
   **Design philosophy**: Eliminates parameter confusion by supporting common use cases with minimal manual configuration.
 
+- **Enhanced stratification optimization** in `optimize_stratification_strategy`:
+  - **NEW**: Added `include_random_baseline` parameter (default=True) to include random 50/50 group assignment as a baseline comparison
+  - Allows users to validate whether any stratification strategy actually performs better than random chance
+  - Provides scientific rigor by establishing a proper baseline for strategy evaluation
+  - Enhanced error handling with cleaner user feedback and reduced redundant warnings
+
 
 
 ## [0.3.3] - 2025-06-15

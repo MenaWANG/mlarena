@@ -32,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Group size validation
 
 ### Improved
-- **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` for intuitive, intent-driven usage:
+- **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` and `plot_stacked_bar` for intuitive, intent-driven usage:
   
   **Three simplified usage scenarios:**
   

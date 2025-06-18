@@ -391,10 +391,10 @@ def plot_stacked_bar(
     palette: Optional[List[str]] = None,
     xticklabel_rotation: float = 45,
     bar_alpha: float = 0.7,
-    stat_summary: bool = False,
     stat_test: Optional[str] = None,
     stats_only: bool = False,
-    show_stat_test: bool = False,
+    show_stat_test: Optional[bool] = None,
+    return_stats: bool = False,
     stat_annotation_pos: Tuple[float, float] = (0.02, 0.98),
     stat_annotation_fontsize: int = 10,
     stat_annotation_bbox: bool = True,
@@ -416,39 +416,68 @@ def plot_stacked_bar(
         palette (List[str], optional): List of colors for the bars. If None, uses matplotlib's default color cycle.
         xticklabel_rotation (float): Rotation angle for x-axis tick labels in degrees. Default is 45.
         bar_alpha (float): Transparency level for the bars (0-1). Default is 0.7.
-        stat_summary (bool): Whether to return a DataFrame of cross-tabulation and summary statistics.
         stat_test (str, optional): Statistical test to perform on the contingency table. Supported:
             - "chi2": Pearson's chi-square test (works for any contingency table)
             - "g_test": G-test of independence (likelihood ratio test)
-            Both tests return test statistic, p-value, and Cramér's V as effect size.
+            If not specified but show_stat_test=True or stats_only=True, defaults to "chi2".
+            If specified, automatically sets show_stat_test=True unless explicitly set to False.
         stats_only (bool): If True, skip plotting and return only statistical results.
-        show_stat_test (bool): If True, display statistical test results as an annotation.
+            Automatically sets stat_test="chi2" if not specified.
+        show_stat_test (bool, optional): If True, display statistical test results as an annotation.
+            If None (default), automatically set to True when stat_test is specified.
+            If False, statistical test is computed but not displayed.
+        return_stats (bool): If True, return statistical results along with plot objects.
+            When False, only returns (fig, ax) even if statistical tests are computed.
         stat_annotation_pos (Tuple[float, float]): Position of statistical annotation (0-1, 0-1).
         stat_annotation_fontsize (int): Font size for the statistical annotation.
         stat_annotation_bbox (bool): Whether to add a background box to the statistical annotation.
 
     Returns:
-        Tuple[plt.Figure, plt.Axes] or dict:
-            - When stats_only=False: Figure and axis objects, optionally with results dict
-            - When stats_only=True: Dictionary containing statistical results
+        Union[Tuple[plt.Figure, plt.Axes], Tuple[plt.Figure, plt.Axes, dict], dict]:
+            - When stats_only=True: Dictionary containing statistical results only
+            - When stats_only=False and return_stats=False: (fig, ax)
+            - When stats_only=False and return_stats=True: (fig, ax, results)
             - results dict contains:
-                - 'summary_table': DataFrame with cross-tabulation and summary statistics
+                - 'summary_table': Dictionary with contingency table, percentage table, and sample size
                 - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'
-    """
-    # Validate show_stat_test parameter
-    if show_stat_test and not stat_test:
-        warnings.warn(
-            "show_stat_test=True requires stat_test to be specified. "
-            "Statistical annotation will be skipped.",
-            UserWarning,
-        )
-        show_stat_test = False
 
-    # When stats_only=True, validate that there's something to return
-    if stats_only and not stat_summary and not stat_test:
-        raise ValueError(
-            "When stats_only=True, either stat_summary=True or stat_test must be specified."
-        )
+    Note
+    ----
+    Statistical test parameters have been designed with intelligent defaults to optimize user experience.
+    The following scenarios are automatically handled:
+
+    1. **Plot only (default)**: Just call the function with data - no statistical tests performed.
+
+    2. **Plot with statistical annotation**:
+       - Specify `stat_test="chi2"/"g_test"` → automatically shows test results on plot
+       - Or set `show_stat_test=True` → automatically uses default test method
+       - Returns only `(fig, ax)` unless explicitly requested otherwise
+
+    3. **Access statistical results**:
+       - Add `return_stats=True` → returns `(fig, ax, results)`
+       - Or use `stats_only=True` → returns only `results` (no plotting)
+
+    This design seeks to support common use cases withou minimal manual configuration.
+
+    """
+    # Apply intelligent defaults based on user intent
+    if stats_only:
+        # User wants stats only - set default test if not specified
+        show_stat_test = False
+        if stat_test is None:
+            stat_test = "chi2"
+    elif stat_test is not None:
+        # User specified a test - show test on plot unless otherwise specified
+        if show_stat_test is None:
+            show_stat_test = True
+    elif show_stat_test is True:
+        # User wants to see stats but didn't specify test - use default
+        if stat_test is None:
+            stat_test = "chi2"
+
+    # Ensure show_stat_test is not None for downstream logic
+    if show_stat_test is None:
+        show_stat_test = False
 
     # Use provided color palette or fallback to matplotlib's default color cycle
     num_categories = data[y].nunique()
@@ -466,8 +495,8 @@ def plot_stacked_bar(
     # Initialize results dictionary
     results = {}
 
-    # Generate summary statistics if requested
-    if stat_summary:
+    # Always generate summary statistics when statistical test is computed
+    if stat_test:
         # Create comprehensive summary with contingency table and marginals
         contingency_table = class_agg.copy()
 
@@ -609,7 +638,7 @@ def plot_stacked_bar(
             zorder=10,
         )
 
-    if results:
+    if return_stats:
         return fig, ax, results
     else:
         return fig, ax
@@ -1188,7 +1217,7 @@ def plot_distribution_over_time(
             point_alpha=point_alpha,
             jitter=jitter,
             figsize=figsize,
-            return_summary=True,
+            return_stats=True,
             single_color_box=True,
         )
         ax.tick_params(axis="x", labelrotation=90)

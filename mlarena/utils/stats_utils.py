@@ -99,6 +99,7 @@ def compare_groups(
                     title=f"{col} across group",
                     stat_test=cat_test,
                     show_stat_test=True,
+                    return_stats=True,
                 )
             else:
                 results = put.plot_stacked_bar(

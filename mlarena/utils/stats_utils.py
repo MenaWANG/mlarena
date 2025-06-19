@@ -43,7 +43,7 @@ def compare_groups(
     weights : Optional[Dict[str, float]], optional
         Optional dictionary of weights for each target column.
     num_test : str, default="anova"
-        Statistical test for numeric variables. Supported: "anova", "kruskal".
+        Statistical test for numeric variables. Supported: "anova", "welch", "kruskal".
     cat_test : str, default="chi2"
         Statistical test for categorical variables.
     alpha : float, default=0.05
@@ -219,7 +219,8 @@ def add_stratified_groups(
     except ValueError as e:
         # Handle cases where stratification fails (e.g., groups with only one member)
         stratifier_name = (
-            str(stratifier_col) if isinstance(stratifier_col, str) 
+            str(stratifier_col)
+            if isinstance(stratifier_col, str)
             else "_".join(stratifier_col)
         )
         warnings.warn(
@@ -276,7 +277,7 @@ def optimize_stratification_strategy(
         Higher values more heavily penalize strategies with significant imbalances.
         Set to 0 to ignore significance count and use only effect sizes.
     num_test : str, default="anova"
-        Statistical test for numeric variables. Supported: "anova", "kruskal".
+        Statistical test for numeric variables. Supported: "anova", "welch", "kruskal".
     cat_test : str, default="chi2"
         Statistical test for categorical variables. Supported: "chi2", "g_test".
     visualize_best_strategy : bool, default=False

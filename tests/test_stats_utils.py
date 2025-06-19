@@ -253,7 +253,7 @@ class TestAddStratifiedGroups:
 
             # Check that warning was issued
             assert len(w) == 1
-            assert "Stratified split failed" in str(w[0].message)
+            assert "Stratifier 'category' failed:" in str(w[0].message)
 
             # Check that all rows are assigned to first group
             assert all(result["stratified_group"] == 0)
@@ -327,22 +327,39 @@ class TestOptimizeStratificationStrategy:
             }
         )
 
-        # Test with max_combinations=1 (only single columns)
+        # Test with max_combinations=1 (only single columns) and no random baseline for predictable results
         results = optimize_stratification_strategy(
-            df, ["col1", "col2", "col3"], ["metric"], max_combinations=1
+            df,
+            ["col1", "col2", "col3"],
+            ["metric"],
+            max_combinations=1,
+            include_random_baseline=False,
         )
 
         # Should only have single column stratifiers
-        expected_stratifiers = ["col1", "col2", "col3"]
-        assert set(results["results"].keys()) == set(expected_stratifiers)
+        expected_stratifiers = {"col1", "col2", "col3"}
+        assert set(results["results"].keys()) == expected_stratifiers
 
-        # Test with max_combinations=2 (single + pairs)
+        # Test with max_combinations=2 (single + pairs) and no random baseline
         results = optimize_stratification_strategy(
-            df, ["col1", "col2", "col3"], ["metric"], max_combinations=2
+            df,
+            ["col1", "col2", "col3"],
+            ["metric"],
+            max_combinations=2,
+            include_random_baseline=False,
         )
 
         # Should have more stratifiers (singles + combinations)
         assert len(results["results"]) > 3
+
+        # Test with random baseline included (default behavior)
+        results_with_baseline = optimize_stratification_strategy(
+            df, ["col1", "col2", "col3"], ["metric"], max_combinations=1
+        )
+
+        # Should include the random baseline plus the single columns
+        expected_with_baseline = {"col1", "col2", "col3", "random_baseline"}
+        assert set(results_with_baseline["results"].keys()) == expected_with_baseline
 
     def test_composite_scoring(self):
         """Test that composite scoring includes both effect size and significance count."""
@@ -385,12 +402,25 @@ class TestOptimizeStratificationStrategy:
         """Test handling of empty candidate list."""
         df = pd.DataFrame({"metric": [1, 2, 3, 4], "group": ["A", "B", "A", "B"]})
 
-        results = optimize_stratification_strategy(df, [], ["metric"])
+        # With include_random_baseline=False, should have empty results
+        results = optimize_stratification_strategy(
+            df, [], ["metric"], include_random_baseline=False
+        )
 
         assert results["best_stratifier"] is None
         assert results["results"] == {}
         assert results["rankings"] == []
         assert len(results["summary"]) == 0  # Empty DataFrame
+
+        # With include_random_baseline=True (default), should have random baseline
+        results_with_baseline = optimize_stratification_strategy(
+            df, [], ["metric"], include_random_baseline=True
+        )
+
+        assert results_with_baseline["best_stratifier"] == "random_baseline"
+        assert "random_baseline" in results_with_baseline["results"]
+        assert len(results_with_baseline["rankings"]) == 1
+        assert len(results_with_baseline["summary"]) == 1
 
     def test_stratification_failure_handling(self):
         """Test graceful handling when stratification fails."""
@@ -401,22 +431,23 @@ class TestOptimizeStratificationStrategy:
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
+            # Disable random baseline to make test more predictable
             results = optimize_stratification_strategy(
-                df, ["bad_stratifier"], ["metric"]
+                df, ["bad_stratifier"], ["metric"], include_random_baseline=False
             )
 
             # Should handle gracefully and continue
             assert isinstance(results, dict)
 
             # Should have issued warnings about stratification failure
-            # Check for either the original stratification warning or our new one
+            # Check for the updated warning message pattern
             warning_messages = [str(warning.message) for warning in w]
             assert len(warning_messages) > 0  # At least one warning should be issued
 
             # Check for expected warning patterns
             stratification_warnings = any(
-                "stratified split failed" in msg.lower()
-                or "failed to create multiple groups" in msg.lower()
+                "stratifier 'bad_stratifier' failed:" in msg.lower()
+                or "failed to evaluate stratifier" in msg.lower()
                 for msg in warning_messages
             )
             assert (

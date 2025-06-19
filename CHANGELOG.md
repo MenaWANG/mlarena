@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.4] - unreleased
 
 ### Added
+- **NEW DEPENDENCY**: Added `statsmodels` (>=0.14.0) for enhanced statistical analysis capabilities
 - **NEW**: Statistical threshold calculation utilities in `stats_utils`:
   - **`calculate_threshold_stats`**: Calculate statistics and thresholds for numeric data:
     - Supports multiple threshold calculation methods:
@@ -32,6 +33,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Group size validation
 
 ### Improved
+- **Enhanced Statistical Analysis**: Added Welch ANOVA implementation in `plot_box_scatter`:
+  - Good for data with unequal variance
+  - Updated the stats methods comparison table in the demo
+
 - **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` and `plot_stacked_bar` for intuitive, intent-driven usage:
   
   **Three simplified usage scenarios:**

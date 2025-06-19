@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
+from statsmodels.stats.oneway import anova_oneway, _fstat2effectsize
 
 __all__ = [
     "plot_box_scatter",
@@ -78,7 +79,7 @@ def plot_box_scatter(
     xticklabel_rotation : float, default=45
         Rotation angle for x-axis tick labels in degrees.
     stat_test : str, optional
-        Statistical test to perform across groups. Supported: "anova", "kruskal".
+        Statistical test to perform across groups. Supported: "anova", "welch", "kruskal".
         If not specified but show_stat_test=True or stats_only=True, defaults to "anova".
         If specified, automatically sets show_stat_test=True unless explicitly set to False.
     stats_only : bool, default=False
@@ -193,6 +194,16 @@ def plot_box_scatter(
                 )
                 ss_total = sum((data[y] - data[y].mean()) ** 2)
                 effect_size = ss_between / ss_total if ss_total > 0 else np.nan
+
+            elif stat_test.lower() == "welch":
+                # Welch's ANOVA using statsmodels - doesn't assume equal variances
+                result = anova_oneway(groups, use_var="unequal", welch_correction=True)
+                stat = result.statistic
+                pval = result.pvalue
+
+                # Calculate effect size using statsmodels' method
+                effect_measures = _fstat2effectsize(stat, result.df)
+                effect_size = effect_measures.omega2
 
             elif stat_test.lower() == "kruskal":
                 stat, pval = stats.kruskal(*groups)
@@ -342,10 +353,15 @@ def plot_box_scatter(
             p_str = f"p = {test_info['p_value']:.3f}"
 
         # Create annotation text
-        method_name = (
-            "One-way ANOVA" if test_info["method"] == "anova" else "Kruskal-Wallis"
-        )
-        effect_name = "η²" if test_info["method"] == "anova" else "ε²"
+        if test_info["method"] == "anova":
+            method_name = "One-way ANOVA"
+            effect_name = "η²"
+        elif test_info["method"] == "welch":
+            method_name = "Welch's ANOVA"
+            effect_name = "ω²"
+        else:  # kruskal
+            method_name = "Kruskal-Wallis"
+            effect_name = "ε²"
 
         annotation_text = (
             f"{method_name}\n"

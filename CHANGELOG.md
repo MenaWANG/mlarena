@@ -6,10 +6,32 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.3.4] - unreleased
+## [0.3.4] - 2025-06-22
 
 ### Added
 - **NEW DEPENDENCY**: Added `statsmodels` (>=0.14.0) for enhanced statistical analysis capabilities
+- **More Data Quality Utilities**: Added comprehensive duplicate detection and resolution functions in `data_utils`:
+  - **`find_duplicates`**: Intelligent duplicate row detection with detailed analysis:
+    - Identifies duplicate rows based on specified columns (single or multiple)
+    - Returns complete duplicate records with count information for investigation
+    - Automatically excludes rows with NULL values in key columns
+    - Perfect for data quality assessment and duplicate investigation workflows
+    - Essential for ML preprocessing to identify problematic records before model training
+  - **`deduplicate_by_rank`**: Smart duplicate resolution by keeping best-ranked records:
+    - Intelligent deduplication based on ranking criteria (date, score, priority, etc.)
+    - Flexible ascending/descending sort order (keep latest/earliest, highest/lowest scores)
+    - Advanced tiebreaker system: prefers records with non-missing values in specified columns
+    - Support for single or multiple ID columns (composite keys like customer_id + product_id)
+    - Comprehensive input validation and error handling for production use
+    - Optional verbose mode with detailed progress reporting and statistics
+    - Business-focused design for real-world scenarios like customer master data cleanup
+  - **Complete Duplicate Management Workflow**: Together, these functions provide a systematic "Discover → Investigate → Resolve" approach:
+    - Use `is_primary_key` to discover the existance of duplication issues
+    - Use `find_duplicates` to analyze duplicate patterns
+    - Use `deduplicate_by_rank` to intelligently resolve duplicates with business logic
+    - Seamless integration for comprehensive data quality management in ML pipelines
+  - **Comprehensive Testing and Documentation**: Added extensive test coverage covering edge cases, business scenarios, error handling, and verbose output validation
+
 - **NEW**: Statistical threshold calculation utilities in `stats_utils`:
   - **`calculate_threshold_stats`**: Calculate statistics and thresholds for numeric data:
     - Supports multiple threshold calculation methods:

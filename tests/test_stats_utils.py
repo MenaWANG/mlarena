@@ -7,10 +7,10 @@ import pytest
 
 from mlarena.utils.stats_utils import (
     add_stratified_groups,
+    calculate_group_thresholds,
+    calculate_threshold_stats,
     compare_groups,
     optimize_stratification_strategy,
-    calculate_threshold_stats,
-    calculate_group_thresholds,
 )
 
 

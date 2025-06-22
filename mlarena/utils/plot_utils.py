@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
-from statsmodels.stats.oneway import anova_oneway, _fstat2effectsize
+from statsmodels.stats.oneway import _fstat2effectsize, anova_oneway
 
 __all__ = [
     "plot_box_scatter",

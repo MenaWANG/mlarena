@@ -1,9 +1,9 @@
 import warnings
 from typing import Dict, List, Optional, Tuple, Union
 
+import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-import numpy as np
 
 import mlarena.utils.plot_utils as put
 

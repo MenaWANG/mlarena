@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Optional, Union
 
 import pandas as pd
 
@@ -12,6 +12,8 @@ __all__ = [
     "select_existing_cols",
     "filter_rows_by_substring",
     "filter_columns_by_substring",
+    "find_duplicates",
+    "deduplicate_by_rank",
 ]
 
 
@@ -154,21 +156,32 @@ def transform_date_cols(
             %d: Day of the month as a zero-padded decimal (e.g., 25)
             %m: Month as a zero-padded decimal number (e.g., 08)
             %b: Abbreviated month name (e.g., Aug)
+            %B: Full month name (e.g., August)
             %Y: Four-digit year (e.g., 2024)
+            %y: Two-digit year (e.g., 24)
 
         Example formats:
             "%Y%m%d"   → '20240825'
             "%d-%m-%Y" → '25-08-2024'
             "%d%b%Y"   → '25Aug2024'
+            "%d%B%Y"   → '25August2024'
+            "%d%b%y"   → '25Aug24'
 
         Note:
-            If the format uses %b (abbreviated month), strings like '25AUG2024'
-            will be handled automatically by converting to title case before parsing.
+            If the format uses %b or %B (month names),
+            strings like '25AUG2024' or '25august2024'
+            will be automatically converted to title case before parsing.
 
     Returns
     -------
     pd.DataFrame
-        The DataFrame with specified columns transformed to datetime format.
+        The DataFrame with specified columns transformed to datetime format (datetime64[ns]).
+        When only date information is provided (no time component), the time will be set to midnight (00:00:00).
+
+        To extract just the date component later, you can use:
+            - df['date_col'].dt.date  # Returns datetime.date objects
+            - df['date_col'].dt.normalize()  # Returns datetime64[ns] at midnight
+            - df['date_col'].dt.floor('D')  # Returns datetime64[ns] at midnight
 
     Raises
     ------
@@ -180,11 +193,15 @@ def transform_date_cols(
     >>> df = pd.DataFrame({
     ...     'date': ['25Aug2024', '26AUG2024', '27aug2024']
     ... })
-    >>> transform_date_cols(df, 'date', str_date_format='%d%b%Y')
-           date
-    0 2024-08-25
-    1 2024-08-26
-    2 2024-08-27
+    >>> # Convert to datetime
+    >>> df = transform_date_cols(df, 'date', str_date_format='%d%b%Y')
+    >>> print(df['date'].dtype)
+    datetime64[ns]
+    >>>
+    >>> # Extract date-only if needed
+    >>> df['date_only'] = df['date'].dt.date
+    >>> print(df['date_only'].iloc[0])
+    2024-08-25
     """
     if isinstance(date_cols, str):
         date_cols = [date_cols]
@@ -195,7 +212,7 @@ def transform_date_cols(
     df_ = data.copy()
     for date_col in date_cols:
         if not pd.api.types.is_datetime64_any_dtype(df_[date_col]):
-            if "%b" in str_date_format:
+            if "%b" in str_date_format or "%B" in str_date_format:
                 df_[date_col] = pd.to_datetime(
                     df_[date_col].astype(str).str.title(),
                     format=str_date_format,
@@ -572,3 +589,185 @@ def filter_columns_by_substring(
         return pd.DataFrame(index=data.index)
 
     return data[matching_cols]
+
+
+def find_duplicates(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
+    """
+    Function to find duplicate rows based on specified columns.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to check.
+    cols : List[str]
+        List of column names to check for duplicates.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing duplicate rows based on the specified columns,
+        with the specified columns and the 'count' column as the first columns,
+        along with the rest of the columns from the original DataFrame,
+        ordered by the specified columns.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'id': [1, 2, 3, 4, 5],
+    ...     'name': ['Alice', 'Bob', 'Alice', 'Charlie', 'Bob'],
+    ...     'age': [25, 30, 25, 35, 35]
+    ... })
+    >>> find_duplicates(df, ['name'])
+       count   name  id  age
+    0      2  Alice   1   25
+    1      2  Alice   3   25
+    2      2    Bob   2   30
+    3      2    Bob   5   35
+
+    >>> find_duplicates(df, ['name', 'age'])
+       count   name  age  id
+    0      2  Alice   25   1
+    1      2  Alice   25   3
+    """
+    # Remove rows with NULLs in any of the specified columns
+    filtered_df = df.dropna(subset=cols)
+
+    # Group by the specified columns and count occurrences
+    dup_counts = filtered_df.groupby(cols).size().reset_index(name="count")
+
+    # Keep only groups with count > 1
+    duplicates = dup_counts[dup_counts["count"] > 1]
+
+    if duplicates.empty:
+        # No duplicates found
+        return pd.DataFrame(
+            columns=["count"] + cols + [c for c in df.columns if c not in cols]
+        )
+
+    # Merge to get full rows
+    result = (
+        pd.merge(duplicates, filtered_df, on=cols, how="inner")
+        .sort_values(by=cols)
+        .reset_index(drop=True)
+    )
+
+    # Reorder columns: count + specified cols + other cols
+    other_cols = [c for c in df.columns if c not in cols]
+    result = result[["count"] + cols + other_cols]
+
+    return result
+
+
+def deduplicate_by_rank(
+    df: pd.DataFrame,
+    id_cols: Union[str, List[str]],
+    ranking_col: str,
+    ascending: bool = False,
+    tiebreaker_col: Optional[str] = None,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """
+    Deduplicate rows by keeping the best-ranked row per group of id_cols,
+    optionally breaking ties by preferring non-missing tiebreaker_col.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        The DataFrame to deduplicate.
+    id_cols : Union[str, List[str]]
+        Column(s) defining the unique entity (e.g., customer_id, product_id).
+    ranking_col : str
+        The column to rank within each group (e.g., 'date', 'score', 'priority').
+    ascending : bool, default=False
+        Sort order for ranking_col:
+        - True: smallest value kept (e.g., earliest date)
+        - False: largest value kept (e.g., most recent date, highest score)
+    tiebreaker_col : Optional[str], default=None
+        Column where non-missing values are preferred in case of ties.
+        Useful when ranking_col has identical values.
+    verbose : bool, default=False
+        If True, print information about the deduplication process.
+
+    Returns
+    -------
+    pd.DataFrame
+        Deduplicated DataFrame with one row per unique combination of id_cols.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'customer_id': ['C001', 'C001', 'C002', 'C002', 'C003'],
+    ...     'transaction_date': ['2024-01-01', '2024-01-15', '2024-01-05', '2024-01-10', '2024-01-20'],
+    ...     'amount': [100, 200, 150, 150, 300],
+    ...     'email': ['old@email.com', 'new@email.com', None, 'email@test.com', 'test@email.com']
+    ... })
+
+    >>> # Keep most recent transaction per customer
+    >>> deduplicate_by_rank(df, 'customer_id', 'transaction_date', ascending=False)
+       customer_id transaction_date  amount           email
+    0        C001       2024-01-15     200   new@email.com
+    1        C002       2024-01-10     150  email@test.com
+    2        C003       2024-01-20     300  test@email.com
+
+    >>> # Keep highest amount, break ties by preferring non-null email
+    >>> deduplicate_by_rank(df, 'customer_id', 'amount', ascending=False, tiebreaker_col='email')
+       customer_id transaction_date  amount           email
+    0        C001       2024-01-15     200   new@email.com
+    1        C002       2024-01-10     150  email@test.com
+    2        C003       2024-01-20     300  test@email.com
+    """
+    # Handle empty DataFrame
+    if df.empty:
+        if verbose:
+            print("⚠️ Input DataFrame is empty. Returning empty DataFrame.")
+        return df.copy()
+
+    # Normalize id_cols to list
+    if isinstance(id_cols, str):
+        id_cols = [id_cols]
+
+    # Validate that all columns exist
+    missing_cols = [col for col in id_cols + [ranking_col] if col not in df.columns]
+    if tiebreaker_col and tiebreaker_col not in df.columns:
+        missing_cols.append(tiebreaker_col)
+
+    if missing_cols:
+        raise ValueError(f"Column(s) {missing_cols} not found in DataFrame")
+
+    if verbose:
+        initial_count = len(df)
+        unique_groups = df[id_cols].drop_duplicates().shape[0]
+        print(f"🔄 Deduplicating {initial_count} rows by {id_cols}")
+        print(f"ℹ️ Found {unique_groups} unique groups")
+
+    # Prepare sorting columns and orders
+    sort_cols = id_cols + [ranking_col]
+    sort_orders = [True] * len(id_cols) + [ascending]
+
+    df_sorted = df.copy()
+
+    # Add tiebreaker logic if specified
+    if tiebreaker_col:
+        df_sorted["_tiebreaker_isna"] = df_sorted[tiebreaker_col].isna().astype(int)
+        sort_cols.append("_tiebreaker_isna")
+        sort_orders.append(True)  # Prefer non-missing (0) over missing (1)
+
+    # Sort by all criteria
+    df_sorted = df_sorted.sort_values(by=sort_cols, ascending=sort_orders)
+
+    # Keep first row per group (best-ranked after sorting)
+    dedup_df = df_sorted.drop_duplicates(subset=id_cols, keep="first").reset_index(
+        drop=True
+    )
+
+    # Remove temporary tiebreaker column
+    if tiebreaker_col:
+        dedup_df = dedup_df.drop(columns="_tiebreaker_isna")
+
+    if verbose:
+        final_count = len(dedup_df)
+        removed_count = initial_count - final_count
+        print(f"✅ Removed {removed_count} duplicate rows")
+        print(f"📊 Final dataset: {final_count} rows")
+
+    return dedup_df

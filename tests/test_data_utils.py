@@ -3,9 +3,11 @@ import pytest
 
 from mlarena.utils.data_utils import (
     clean_dollar_cols,
+    deduplicate_by_rank,
     drop_fully_null_cols,
     filter_columns_by_substring,
     filter_rows_by_substring,
+    find_duplicates,
     is_primary_key,
     select_existing_cols,
     transform_date_cols,
@@ -129,6 +131,22 @@ def test_transform_date_cols():
     df_invalid = pd.DataFrame({"date": ["20230101", "invalid", "20230103"]})
     result = transform_date_cols(df_invalid, ["date"])
     assert pd.isna(result["date"][1])  # invalid date should be NaT
+
+    # Test with abbreviated month names and two-digit year
+    df_abbr = pd.DataFrame({"date": ["25AUG24", "26aug24", "27Aug24"]})
+    result = transform_date_cols(df_abbr, "date", str_date_format="%d%b%y")
+    assert pd.api.types.is_datetime64_any_dtype(result["date"])
+    assert result["date"].dt.year.tolist() == [2024, 2024, 2024]
+    assert result["date"].dt.month.tolist() == [8, 8, 8]
+    assert result["date"].dt.day.tolist() == [25, 26, 27]
+
+    # Test with full month names
+    df_full = pd.DataFrame({"date": ["25AUGUST2024", "26august2024", "27August2024"]})
+    result = transform_date_cols(df_full, "date", str_date_format="%d%B%Y")
+    assert pd.api.types.is_datetime64_any_dtype(result["date"])
+    assert result["date"].dt.year.tolist() == [2024, 2024, 2024]
+    assert result["date"].dt.month.tolist() == [8, 8, 8]
+    assert result["date"].dt.day.tolist() == [25, 26, 27]
 
 
 def test_drop_fully_null_cols(capsys):
@@ -464,3 +482,399 @@ def test_filter_columns_by_substring():
     result = filter_columns_by_substring(df_with_numeric_cols, "price")
     assert len(result.columns) == 1
     assert list(result.columns) == ["price_456"]
+
+
+def test_find_duplicates():
+    """Test find_duplicates function with various scenarios.
+
+    Tests:
+    - Basic duplicate finding with single column
+    - Multiple column combinations
+    - No duplicates scenario
+    - Handling of NaN values
+    - Column ordering in output
+    - Empty DataFrame input
+    - Various data types
+    """
+    # Test 1: Basic duplicate finding with single column
+    df_basic = pd.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5],
+            "name": ["Alice", "Bob", "Alice", "Charlie", "Bob"],
+            "age": [25, 30, 25, 35, 30],
+        }
+    )
+
+    result = find_duplicates(df_basic, ["name"])
+    assert len(result) == 4  # 2 Alice rows + 2 Bob rows
+    assert list(result.columns) == ["count", "name", "id", "age"]
+    assert set(result["name"]) == {"Alice", "Bob"}
+    assert all(result["count"] == 2)
+
+    # Test 2: Multiple column combinations
+    result_multi = find_duplicates(df_basic, ["name", "age"])
+    assert len(result_multi) == 4  # Same as single column in this case
+    assert list(result_multi.columns) == ["count", "name", "age", "id"]
+    assert all(result_multi["count"] == 2)
+
+    # Test 3: No duplicates scenario
+    df_unique = pd.DataFrame(
+        {"id": [1, 2, 3], "name": ["Alice", "Bob", "Charlie"], "age": [25, 30, 35]}
+    )
+
+    result_unique = find_duplicates(df_unique, ["name"])
+    assert len(result_unique) == 0
+    assert list(result_unique.columns) == ["count", "name", "id", "age"]
+
+    # Test 4: Handling of NaN values - should be excluded from analysis
+    df_nan = pd.DataFrame(
+        {
+            "id": [1, 2, 3, 4, 5, 6],
+            "name": ["Alice", "Bob", None, "Alice", None, "Charlie"],
+            "score": [85, 90, 88, 85, 92, 78],
+        }
+    )
+
+    result_nan = find_duplicates(df_nan, ["name"])
+    assert len(result_nan) == 2  # Only 2 Alice rows (None values excluded)
+    assert set(result_nan["name"]) == {"Alice"}
+    assert all(result_nan["count"] == 2)
+
+    # Test 5: Complex business scenario - customer transactions
+    transactions_df = pd.DataFrame(
+        {
+            "transaction_id": [1, 2, 3, 4, 5, 6, 7, 8],
+            "customer_id": [
+                "C001",
+                "C002",
+                "C001",
+                "C003",
+                "C002",
+                "C001",
+                "C004",
+                "C002",
+            ],
+            "product": ["A", "B", "A", "C", "B", "C", "A", "A"],
+            "amount": [100, 200, 100, 150, 200, 300, 100, 100],
+            "date": [
+                "2024-01-01",
+                "2024-01-02",
+                "2024-01-03",
+                "2024-01-04",
+                "2024-01-05",
+                "2024-01-06",
+                "2024-01-07",
+                "2024-01-08",
+            ],
+        }
+    )
+
+    # Find customers with duplicate product purchases
+    customer_product_dups = find_duplicates(transactions_df, ["customer_id", "product"])
+    assert len(customer_product_dups) == 4  # C001-A (2), C002-B (2)
+    assert list(customer_product_dups.columns) == [
+        "count",
+        "customer_id",
+        "product",
+        "transaction_id",
+        "amount",
+        "date",
+    ]
+
+    # Find duplicate amounts
+    amount_dups = find_duplicates(transactions_df, ["amount"])
+    # Should find: 100 (4 times), 200 (2 times)
+    assert len(amount_dups) == 6  # 4 + 2 = 6 rows
+    amounts_with_dups = set(amount_dups["amount"])
+    assert amounts_with_dups == {100, 200}
+
+    # Test 6: Empty DataFrame
+    df_empty = pd.DataFrame(columns=["name", "age"])
+    result_empty = find_duplicates(df_empty, ["name"])
+    assert len(result_empty) == 0
+    assert list(result_empty.columns) == ["count", "name", "age"]
+
+    # Test 7: Single row DataFrame (no duplicates possible)
+    df_single = pd.DataFrame({"name": ["Alice"], "age": [25]})
+    result_single = find_duplicates(df_single, ["name"])
+    assert len(result_single) == 0
+    assert list(result_single.columns) == ["count", "name", "age"]
+
+    # Test 8: All rows identical
+    df_identical = pd.DataFrame(
+        {"name": ["Alice", "Alice", "Alice"], "age": [25, 25, 25]}
+    )
+
+    result_identical = find_duplicates(df_identical, ["name"])
+    assert len(result_identical) == 3
+    assert all(result_identical["count"] == 3)
+    assert all(result_identical["name"] == "Alice")
+
+    # Test 9: Mixed data types
+    df_mixed = pd.DataFrame(
+        {
+            "str_col": ["A", "B", "A", "C"],
+            "int_col": [1, 2, 1, 3],
+            "float_col": [1.1, 2.2, 1.1, 3.3],
+            "bool_col": [True, False, True, False],
+        }
+    )
+
+    result_mixed = find_duplicates(df_mixed, ["str_col", "int_col"])
+    assert len(result_mixed) == 2  # Two 'A', 1 combinations
+    assert all(result_mixed["count"] == 2)
+
+    # Test 10: Column ordering - make sure specified columns come first after count
+    df_ordering = pd.DataFrame(
+        {"z_col": ["A", "B", "A"], "a_col": [1, 2, 1], "b_col": [10, 20, 10]}
+    )
+
+    result_ordering = find_duplicates(df_ordering, ["a_col", "z_col"])
+    expected_columns = ["count", "a_col", "z_col", "b_col"]
+    assert list(result_ordering.columns) == expected_columns
+
+
+def test_deduplicate_by_rank():
+    """Test deduplicate_by_rank function with various scenarios.
+
+    Tests:
+    - Basic deduplication with single id column
+    - Multiple id columns
+    - Ascending vs descending ranking
+    - Tiebreaker column functionality
+    - Edge cases (empty DataFrame, single row)
+    - Error handling for missing columns
+    - Verbose mode output
+    - Business scenarios
+    """
+    # Test 1: Basic deduplication - keep most recent record per customer
+    df_basic = pd.DataFrame(
+        {
+            "customer_id": ["C001", "C001", "C002", "C002", "C003"],
+            "transaction_date": [
+                "2024-01-01",
+                "2024-01-15",
+                "2024-01-05",
+                "2024-01-10",
+                "2024-01-20",
+            ],
+            "amount": [100, 200, 150, 175, 300],
+            "email": [
+                "old@email.com",
+                "new@email.com",
+                "test@email.com",
+                "updated@email.com",
+                "customer@email.com",
+            ],
+        }
+    )
+
+    # Keep most recent transaction (descending date)
+    result_recent = deduplicate_by_rank(
+        df_basic, "customer_id", "transaction_date", ascending=False
+    )
+    assert len(result_recent) == 3  # One per customer
+    assert result_recent["customer_id"].tolist() == ["C001", "C002", "C003"]
+    assert result_recent["transaction_date"].tolist() == [
+        "2024-01-15",
+        "2024-01-10",
+        "2024-01-20",
+    ]
+    assert result_recent["amount"].tolist() == [200, 175, 300]
+
+    # Keep earliest transaction (ascending date)
+    result_earliest = deduplicate_by_rank(
+        df_basic, "customer_id", "transaction_date", ascending=True
+    )
+    assert len(result_earliest) == 3
+    assert result_earliest["transaction_date"].tolist() == [
+        "2024-01-01",
+        "2024-01-05",
+        "2024-01-20",
+    ]
+    assert result_earliest["amount"].tolist() == [100, 150, 300]
+
+    # Test 2: Multiple id columns
+    df_multi_id = pd.DataFrame(
+        {
+            "customer_id": ["C001", "C001", "C001", "C002", "C002"],
+            "product_id": ["P001", "P001", "P002", "P001", "P001"],
+            "date": [
+                "2024-01-01",
+                "2024-01-15",
+                "2024-01-10",
+                "2024-01-05",
+                "2024-01-20",
+            ],
+            "quantity": [1, 2, 3, 1, 5],
+        }
+    )
+
+    result_multi = deduplicate_by_rank(
+        df_multi_id, ["customer_id", "product_id"], "date", ascending=False
+    )
+    assert len(result_multi) == 3  # C001-P001, C001-P002, C002-P001
+    expected_combos = [("C001", "P001"), ("C001", "P002"), ("C002", "P001")]
+    actual_combos = list(zip(result_multi["customer_id"], result_multi["product_id"]))
+    assert set(actual_combos) == set(expected_combos)
+
+    # Test 3: Tiebreaker functionality
+    df_ties = pd.DataFrame(
+        {
+            "id": ["A", "A", "B", "B", "C", "C"],
+            "score": [100, 100, 90, 90, 80, 80],  # Tied scores
+            "email": [
+                "old@test.com",
+                None,
+                None,
+                "new@test.com",
+                "valid@test.com",
+                "invalid@test.com",
+            ],
+            "date": [
+                "2024-01-01",
+                "2024-01-02",
+                "2024-01-03",
+                "2024-01-04",
+                "2024-01-05",
+                "2024-01-06",
+            ],
+        }
+    )
+
+    # Without tiebreaker - should be somewhat random based on original order
+    result_no_tie = deduplicate_by_rank(df_ties, "id", "score", ascending=False)
+    assert len(result_no_tie) == 3
+
+    # With tiebreaker - should prefer non-null email
+    result_with_tie = deduplicate_by_rank(
+        df_ties, "id", "score", ascending=False, tiebreaker_col="email"
+    )
+    assert len(result_with_tie) == 3
+    # Check that non-null emails are preferred
+    assert (
+        result_with_tie[result_with_tie["id"] == "A"]["email"].iloc[0] == "old@test.com"
+    )  # Non-null preferred
+    assert (
+        result_with_tie[result_with_tie["id"] == "B"]["email"].iloc[0] == "new@test.com"
+    )  # Non-null preferred
+
+    # Test 4: Business scenario - customer data cleanup
+    customer_data = pd.DataFrame(
+        {
+            "customer_id": ["C001", "C001", "C001", "C002", "C002", "C003", "C003"],
+            "last_login": [
+                "2024-01-01",
+                "2024-01-15",
+                "2024-01-10",
+                "2024-01-05",
+                "2024-01-20",
+                "2024-01-25",
+                "2024-01-30",
+            ],
+            "profile_completeness": [0.3, 0.8, 0.6, 0.4, 0.9, 0.7, 0.5],
+            "email_verified": [False, True, False, False, True, True, False],
+            "phone": [None, "555-0001", "555-0002", None, "555-0003", "555-0004", None],
+        }
+    )
+
+    # Keep most recent login with highest profile completeness as tiebreaker
+    result_customer = deduplicate_by_rank(
+        customer_data,
+        "customer_id",
+        "last_login",
+        ascending=False,
+        tiebreaker_col="phone",
+    )
+    assert len(result_customer) == 3
+    assert result_customer["customer_id"].tolist() == ["C001", "C002", "C003"]
+
+    # Test 5: Edge cases
+    # Empty DataFrame
+    df_empty = pd.DataFrame(columns=["id", "score", "value"])
+    result_empty = deduplicate_by_rank(df_empty, "id", "score")
+    assert len(result_empty) == 0
+    assert list(result_empty.columns) == ["id", "score", "value"]
+
+    # Single row
+    df_single = pd.DataFrame({"id": ["A"], "score": [100], "value": ["test"]})
+    result_single = deduplicate_by_rank(df_single, "id", "score")
+    assert len(result_single) == 1
+    pd.testing.assert_frame_equal(result_single, df_single)
+
+    # No duplicates
+    df_unique = pd.DataFrame(
+        {"id": ["A", "B", "C"], "score": [100, 90, 80], "value": ["x", "y", "z"]}
+    )
+    result_unique = deduplicate_by_rank(df_unique, "id", "score")
+    assert len(result_unique) == 3
+    pd.testing.assert_frame_equal(
+        result_unique.sort_values("id").reset_index(drop=True),
+        df_unique.sort_values("id").reset_index(drop=True),
+    )
+
+    # Test 6: Error handling
+    df_test = pd.DataFrame({"id": ["A", "B"], "score": [1, 2]})
+
+    # Missing id column
+    with pytest.raises(ValueError, match="not found in DataFrame"):
+        deduplicate_by_rank(df_test, "missing_id", "score")
+
+    # Missing ranking column
+    with pytest.raises(ValueError, match="not found in DataFrame"):
+        deduplicate_by_rank(df_test, "id", "missing_score")
+
+    # Missing tiebreaker column
+    with pytest.raises(ValueError, match="not found in DataFrame"):
+        deduplicate_by_rank(df_test, "id", "score", tiebreaker_col="missing_col")
+
+    # Test 7: String input handling
+    result_string_input = deduplicate_by_rank(
+        df_basic, "customer_id", "transaction_date"
+    )
+    assert len(result_string_input) == 3
+
+    # Test 8: Data types preservation
+    df_types = pd.DataFrame(
+        {
+            "id": ["A", "A", "B"],
+            "int_col": [1, 2, 3],
+            "float_col": [1.1, 2.2, 3.3],
+            "bool_col": [True, False, True],
+            "date_col": pd.to_datetime(["2024-01-01", "2024-01-02", "2024-01-03"]),
+        }
+    )
+
+    result_types = deduplicate_by_rank(df_types, "id", "int_col", ascending=False)
+    assert len(result_types) == 2
+    assert result_types["int_col"].dtype == df_types["int_col"].dtype
+    assert result_types["float_col"].dtype == df_types["float_col"].dtype
+    assert result_types["bool_col"].dtype == df_types["bool_col"].dtype
+    assert result_types["date_col"].dtype == df_types["date_col"].dtype
+
+
+def test_deduplicate_by_rank_verbose(capsys):
+    """Test verbose output of deduplicate_by_rank function."""
+    df = pd.DataFrame(
+        {
+            "customer_id": ["C001", "C001", "C002"],
+            "date": ["2024-01-01", "2024-01-15", "2024-01-10"],
+            "amount": [100, 200, 150],
+        }
+    )
+
+    # Test verbose mode
+    result = deduplicate_by_rank(df, "customer_id", "date", verbose=True)
+    captured = capsys.readouterr()
+
+    assert "Deduplicating 3 rows" in captured.out
+    assert "Found 2 unique groups" in captured.out
+    assert "Removed 1 duplicate rows" in captured.out
+    assert "Final dataset: 2 rows" in captured.out
+
+    # Test verbose with empty DataFrame
+    df_empty = pd.DataFrame(columns=["id", "score"])
+    result_empty = deduplicate_by_rank(df_empty, "id", "score", verbose=True)
+    captured_empty = capsys.readouterr()
+
+    assert "Input DataFrame is empty" in captured_empty.out

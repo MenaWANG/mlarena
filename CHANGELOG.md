@@ -5,6 +5,98 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.4] - 2025-06-22
+
+### Added
+- **NEW DEPENDENCY**: Added `statsmodels` (>=0.14.0) for enhanced statistical analysis capabilities
+- **More Data Quality Utilities**: Added comprehensive duplicate detection and resolution functions in `data_utils`:
+  - **`find_duplicates`**: Intelligent duplicate row detection with detailed analysis:
+    - Identifies duplicate rows based on specified columns (single or multiple)
+    - Returns complete duplicate records with count information for investigation
+    - Automatically excludes rows with NULL values in key columns
+    - Perfect for data quality assessment and duplicate investigation workflows
+    - Essential for ML preprocessing to identify problematic records before model training
+  - **`deduplicate_by_rank`**: Smart duplicate resolution by keeping best-ranked records:
+    - Intelligent deduplication based on ranking criteria (date, score, priority, etc.)
+    - Flexible ascending/descending sort order (keep latest/earliest, highest/lowest scores)
+    - Advanced tiebreaker system: prefers records with non-missing values in specified columns
+    - Support for single or multiple ID columns (composite keys like customer_id + product_id)
+    - Comprehensive input validation and error handling for production use
+    - Optional verbose mode with detailed progress reporting and statistics
+    - Business-focused design for real-world scenarios like customer master data cleanup
+  - **Complete Duplicate Management Workflow**: Together, these functions provide a systematic "Discover → Investigate → Resolve" approach:
+    - Use `is_primary_key` to discover the existance of duplication issues
+    - Use `find_duplicates` to analyze duplicate patterns
+    - Use `deduplicate_by_rank` to intelligently resolve duplicates with business logic
+    - Seamless integration for comprehensive data quality management in ML pipelines
+  - **Comprehensive Testing and Documentation**: Added extensive test coverage covering edge cases, business scenarios, error handling, and verbose output validation
+
+- **NEW**: Statistical threshold calculation utilities in `stats_utils`:
+  - **`calculate_threshold_stats`**: Calculate statistics and thresholds for numeric data:
+    - Supports multiple threshold calculation methods:
+      - Standard deviation based (`mean + n*std`)
+      - IQR based (`Q3 + 1.5*IQR`)
+      - Percentile based (95th percentile)
+    - Handles different input types (list, numpy array, pandas Series)
+    - Optional visualization with histogram and threshold markers
+    - Comprehensive error handling and empty input detection
+  - **`calculate_group_thresholds`**: Calculate thresholds for grouped data:
+    - Applies threshold calculations per group
+    - Configurable threshold methods and parameters
+    - Supports minimum group size validation
+    - Visualization control for first group analysis
+    - Informative warnings for empty/small groups
+  - Added comprehensive test coverage for both functions:
+    - Input type handling
+    - Different statistical distributions
+    - Edge cases (empty data, single value)
+    - Visualization control
+    - Group size validation
+
+### Improved
+- **Enhanced Statistical Analysis**: Added Welch ANOVA implementation in `plot_box_scatter`:
+  - Good for data with unequal variance
+  - Updated the stats methods comparison table in the demo
+
+- **Major UX Enhancement**: Redesigned parameter intelligent configuration in `plot_box_scatter` and `plot_stacked_bar` for intuitive, intent-driven usage:
+  
+  **Three simplified usage scenarios:**
+  
+  1. **Plot only (default)**: 
+     ```python
+     fig, ax = plot_box_scatter(data=df, x='category', y='value')
+     ```
+     No statistical tests performed - just creates the visualization.
+  
+  2. **Plot with statistical annotation**:
+     ```python
+     fig, ax = plot_box_scatter(data=df, x='category', y='value', stat_test="anova")
+     # OR
+     fig, ax = plot_stacked_bar(data=df, x='dept', y='level', stat_test="chi2") 
+     ```
+     Automatically shows test results on plot. Uses intelligent defaults (anova/chi2) when `show_stat_test=True`.
+  
+  3. **Access statistical results**:
+     ```python
+     fig, ax, results = plot_box_scatter(..., stat_test="anova", return_stats=True)
+     # OR
+     results = plot_box_scatter(..., stats_only=True)  # No plotting
+     ```
+     Returns statistical data for further analysis.
+  
+  **Breaking change**: Removed `stat_summary` parameter - summary statistics now automatically included when tests are computed.
+  
+  **Design philosophy**: Eliminates parameter confusion by supporting common use cases with minimal manual configuration.
+
+- **Enhanced stratification optimization** in `optimize_stratification_strategy`:
+  - **NEW**: Added `include_random_baseline` parameter (default=True) to include random 50/50 group assignment as a baseline comparison
+  - Allows users to validate whether any stratification strategy actually performs better than random chance
+  - Provides scientific rigor by establishing a proper baseline for strategy evaluation
+  - Enhanced error handling with cleaner user feedback and reduced redundant warnings
+
+
+
 ## [0.3.3] - 2025-06-15
 
 ### Added

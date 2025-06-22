@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from scipy import stats
+from statsmodels.stats.oneway import _fstat2effectsize, anova_oneway
 
 __all__ = [
     "plot_box_scatter",
@@ -33,10 +34,10 @@ def plot_box_scatter(
     figsize: tuple = (10, 6),
     palette: Optional[List[str]] = None,
     xticklabel_rotation: float = 45,
-    stat_summary: bool = False,
     stat_test: Optional[str] = None,
     stats_only: bool = False,
-    show_stat_test: bool = False,
+    show_stat_test: Optional[bool] = None,
+    return_stats: bool = False,
     stat_annotation_pos: Tuple[float, float] = (0.02, 0.98),
     stat_annotation_fontsize: int = 10,
     stat_annotation_bbox: bool = True,
@@ -77,18 +78,20 @@ def plot_box_scatter(
         List of colors. If None, uses Matplotlib's default color cycle.
     xticklabel_rotation : float, default=45
         Rotation angle for x-axis tick labels in degrees.
-    stat_summary : bool, default=False
-        Whether to return a DataFrame of descriptive statistics (count, mean, median, std) per category.
     stat_test : str, optional
-        Statistical test to perform across groups. Supported: "anova", "kruskal".
-        If specified, returns test statistic, p-value and effect size in results.
-        Note: For Kruskal-Wallis test, ε² is an approximate effect size.
+        Statistical test to perform across groups. Supported: "anova", "welch", "kruskal".
+        If not specified but show_stat_test=True or stats_only=True, defaults to "anova".
+        If specified, automatically sets show_stat_test=True unless explicitly set to False.
     stats_only : bool, default=False
-        If True, skip plotting and return only statistical results. Requires either
-        stat_summary=True or stat_test to be specified.
-    show_stat_test : bool, default=False
+        If True, skip plotting and return only statistical results.
+        Automatically sets stat_test="anova" if not specified.
+    show_stat_test : bool, optional
         If True, display statistical test results as an annotation on the plot.
-        Requires stat_test to be specified. Ignored when stats_only=True.
+        If None (default), automatically set to True when stat_test is specified.
+        If False, statistical test is computed but not displayed.
+    return_stats : bool, default=False
+        If True, return statistical results.
+        When False, only returns (fig, ax) even if statistical tests are computed.
     stat_annotation_pos : Tuple[float, float], default=(0.02, 0.98)
         Position of the statistical annotation as (x, y) in axes coordinates (0-1).
         (0, 0) is bottom-left, (1, 1) is top-right.
@@ -99,15 +102,32 @@ def plot_box_scatter(
 
     Returns
     -------
-    fig : matplotlib.figure.Figure, optional
-        The figure object for further customization. Not returned when stats_only=True.
-    ax : matplotlib.axes.Axes, optional
-        The axes object for further customization. Not returned when stats_only=True.
-    results : dict, optional
-        Dictionary containing optional outputs:
+    Union[Tuple[plt.Figure, plt.Axes], Tuple[plt.Figure, plt.Axes, dict], dict]
+        - When stats_only=True: Dictionary containing statistical results only
+        - When stats_only=False and return_stats=False: (fig, ax)
+        - When stats_only=False and return_stats=True: (fig, ax, results)
+        - results dict contains:
             - 'summary_table': DataFrame with count, mean, median, std per category.
             - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'.
-        When stats_only=True, this is always returned (not optional).
+
+    Note
+    ----
+    Statistical test parameters have been designed with intelligent defaults to optimize user experience.
+    The following scenarios are automatically handled:
+
+    1. **Plot only (default)**: Just call the function with data - no statistical tests performed.
+
+    2. **Plot with statistical annotation**:
+       - Specify `stat_test="anova"/"kruskal"` → automatically shows test results on plot
+       - Or set `show_stat_test=True` → automatically uses default test method
+       - Returns only `(fig, ax)` unless explicitly requested otherwise
+
+    3. **Access statistical results**:
+       - Add `return_stats=True` → returns `(fig, ax, results)`
+       - Or use `stats_only=True` → returns only `results` (no plotting)
+
+    This design seeks to support common use cases withou minimal manual configuration.
+
     """
     # Check if point_hue column exists and warn if it doesn't
     if point_hue is not None and point_hue not in data.columns:
@@ -118,28 +138,32 @@ def plot_box_scatter(
         )
         point_hue = None
 
-    # Validate show_stat_test parameter
-    if show_stat_test and not stat_test:
-        warnings.warn(
-            "show_stat_test=True requires stat_test to be specified. "
-            "Statistical annotation will be skipped.",
-            UserWarning,
-        )
+    # Apply intelligent defaults based on user intent
+    if stats_only:
+        # User wants stats only - set default test if not specified
         show_stat_test = False
+        if stat_test is None:
+            stat_test = "anova"
+    elif stat_test is not None:
+        # User specified a test - show test on plot unless otherwise specified
+        if show_stat_test is None:
+            show_stat_test = True
+    elif show_stat_test is True:
+        # User wants to see stats but didn't specify test - use default
+        if stat_test is None:
+            stat_test = "anova"
 
-    # When stats_only=True, validate that there's something to return
-    if stats_only and not stat_summary and not stat_test:
-        raise ValueError(
-            "When stats_only=True, either stat_summary=True or stat_test must be specified."
-        )
+    # Ensure show_stat_test is not None for downstream logic
+    if show_stat_test is None:
+        show_stat_test = False
 
     categories = sorted(data[x].unique())
 
     # Initialize results dictionary
     results = {}
 
-    # Generate summary statistics if requested
-    if stat_summary:
+    # Always generate summary statistics when statistical test is computed
+    if stat_test:
         summary_df = (
             data.groupby(x)[y]
             .agg(n="count", mean="mean", median="median", sd="std")
@@ -170,6 +194,16 @@ def plot_box_scatter(
                 )
                 ss_total = sum((data[y] - data[y].mean()) ** 2)
                 effect_size = ss_between / ss_total if ss_total > 0 else np.nan
+
+            elif stat_test.lower() == "welch":
+                # Welch's ANOVA using statsmodels - doesn't assume equal variances
+                result = anova_oneway(groups, use_var="unequal", welch_correction=True)
+                stat = result.statistic
+                pval = result.pvalue
+
+                # Calculate effect size using statsmodels' method
+                effect_measures = _fstat2effectsize(stat, result.df)
+                effect_size = effect_measures.omega2
 
             elif stat_test.lower() == "kruskal":
                 stat, pval = stats.kruskal(*groups)
@@ -319,10 +353,15 @@ def plot_box_scatter(
             p_str = f"p = {test_info['p_value']:.3f}"
 
         # Create annotation text
-        method_name = (
-            "One-way ANOVA" if test_info["method"] == "anova" else "Kruskal-Wallis"
-        )
-        effect_name = "η²" if test_info["method"] == "anova" else "ε²"
+        if test_info["method"] == "anova":
+            method_name = "One-way ANOVA"
+            effect_name = "η²"
+        elif test_info["method"] == "welch":
+            method_name = "Welch's ANOVA"
+            effect_name = "ω²"
+        else:  # kruskal
+            method_name = "Kruskal-Wallis"
+            effect_name = "ε²"
 
         annotation_text = (
             f"{method_name}\n"
@@ -349,7 +388,273 @@ def plot_box_scatter(
             zorder=10,
         )
 
-    if results:
+    if return_stats:
+        return fig, ax, results
+    else:
+        return fig, ax
+
+
+def plot_stacked_bar(
+    data: pd.DataFrame,
+    x: str,
+    y: str,
+    label_dict: Optional[Dict[str, str]] = None,
+    is_pct: bool = True,
+    title: str = "Stacked Bar Chart",
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    figsize: tuple = (10, 6),
+    palette: Optional[List[str]] = None,
+    xticklabel_rotation: float = 45,
+    bar_alpha: float = 0.7,
+    stat_test: Optional[str] = None,
+    stats_only: bool = False,
+    show_stat_test: Optional[bool] = None,
+    return_stats: bool = False,
+    stat_annotation_pos: Tuple[float, float] = (0.02, 0.98),
+    stat_annotation_fontsize: int = 10,
+    stat_annotation_bbox: bool = True,
+):
+    """
+    Plot a stacked bar chart showing the distribution of a categorical variable,
+    either in percentage or actual counts.
+
+    Parameters:
+        data (pd.DataFrame): Input DataFrame.
+        x (str): Name of the categorical column for x-axis.
+        y (str): Name of the categorical column for stacking.
+        label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
+        is_pct (bool): Whether to display percentage (True) or actual count (False).
+        title (str): Title of the plot.
+        xlabel (str, optional): Label for the x-axis. If None, uses the x column name.
+        ylabel (str, optional): Label for the y-axis (default is auto-set based on is_pct).
+        figsize (tuple): Figure size as (width, height) in inches. Default is (10, 6).
+        palette (List[str], optional): List of colors for the bars. If None, uses matplotlib's default color cycle.
+        xticklabel_rotation (float): Rotation angle for x-axis tick labels in degrees. Default is 45.
+        bar_alpha (float): Transparency level for the bars (0-1). Default is 0.7.
+        stat_test (str, optional): Statistical test to perform on the contingency table. Supported:
+            - "chi2": Pearson's chi-square test (works for any contingency table)
+            - "g_test": G-test of independence (likelihood ratio test)
+            If not specified but show_stat_test=True or stats_only=True, defaults to "chi2".
+            If specified, automatically sets show_stat_test=True unless explicitly set to False.
+        stats_only (bool): If True, skip plotting and return only statistical results.
+            Automatically sets stat_test="chi2" if not specified.
+        show_stat_test (bool, optional): If True, display statistical test results as an annotation.
+            If None (default), automatically set to True when stat_test is specified.
+            If False, statistical test is computed but not displayed.
+        return_stats (bool): If True, return statistical results along with plot objects.
+            When False, only returns (fig, ax) even if statistical tests are computed.
+        stat_annotation_pos (Tuple[float, float]): Position of statistical annotation (0-1, 0-1).
+        stat_annotation_fontsize (int): Font size for the statistical annotation.
+        stat_annotation_bbox (bool): Whether to add a background box to the statistical annotation.
+
+    Returns:
+        Union[Tuple[plt.Figure, plt.Axes], Tuple[plt.Figure, plt.Axes, dict], dict]:
+            - When stats_only=True: Dictionary containing statistical results only
+            - When stats_only=False and return_stats=False: (fig, ax)
+            - When stats_only=False and return_stats=True: (fig, ax, results)
+            - results dict contains:
+                - 'summary_table': Dictionary with contingency table, percentage table, and sample size
+                - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'
+
+    Note
+    ----
+    Statistical test parameters have been designed with intelligent defaults to optimize user experience.
+    The following scenarios are automatically handled:
+
+    1. **Plot only (default)**: Just call the function with data - no statistical tests performed.
+
+    2. **Plot with statistical annotation**:
+       - Specify `stat_test="chi2"/"g_test"` → automatically shows test results on plot
+       - Or set `show_stat_test=True` → automatically uses default test method
+       - Returns only `(fig, ax)` unless explicitly requested otherwise
+
+    3. **Access statistical results**:
+       - Add `return_stats=True` → returns `(fig, ax, results)`
+       - Or use `stats_only=True` → returns only `results` (no plotting)
+
+    This design seeks to support common use cases withou minimal manual configuration.
+
+    """
+    # Apply intelligent defaults based on user intent
+    if stats_only:
+        # User wants stats only - set default test if not specified
+        show_stat_test = False
+        if stat_test is None:
+            stat_test = "chi2"
+    elif stat_test is not None:
+        # User specified a test - show test on plot unless otherwise specified
+        if show_stat_test is None:
+            show_stat_test = True
+    elif show_stat_test is True:
+        # User wants to see stats but didn't specify test - use default
+        if stat_test is None:
+            stat_test = "chi2"
+
+    # Ensure show_stat_test is not None for downstream logic
+    if show_stat_test is None:
+        show_stat_test = False
+
+    # Use provided color palette or fallback to matplotlib's default color cycle
+    num_categories = data[y].nunique()
+    if label_dict:
+        num_categories = len(label_dict)
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+    colors = palette if palette is not None else color_cycle[:num_categories]
+
+    # Apply alpha to colors
+    colors_with_alpha = [mcolors.to_rgba(c, alpha=bar_alpha) for c in colors]
+
+    # Aggregate data
+    class_agg = data.groupby([x, y]).size().unstack(fill_value=0)
+
+    # Initialize results dictionary
+    results = {}
+
+    # Always generate summary statistics when statistical test is computed
+    if stat_test:
+        # Create comprehensive summary with contingency table and marginals
+        contingency_table = class_agg.copy()
+
+        # Add row and column totals
+        contingency_table.loc["Total"] = contingency_table.sum()
+        contingency_table["Total"] = contingency_table.sum(axis=1)
+
+        # Create percentage table
+        pct_table = class_agg.div(class_agg.sum().sum()) * 100
+        pct_table.loc["Total"] = pct_table.sum()
+        pct_table["Total"] = pct_table.sum(axis=1)
+
+        results["summary_table"] = {
+            "contingency_table": contingency_table,
+            "percentage_table": pct_table,
+            "sample_size": int(class_agg.sum().sum()),
+        }
+
+    # Perform statistical test if requested
+    if stat_test:
+        # Create contingency table for testing (without marginals)
+        contingency = class_agg.values
+        n = contingency.sum()
+
+        if stat_test.lower() == "chi2":
+            # Pearson's chi-square test
+            chi2_stat, p_val, dof, expected = stats.chi2_contingency(contingency)
+            test_stat = chi2_stat
+            method = "chi2"
+
+        elif stat_test.lower() == "g_test":
+            # G-test (likelihood ratio test)
+            g_stat, p_val, dof, expected = stats.chi2_contingency(
+                contingency, lambda_="log-likelihood"
+            )
+            test_stat = g_stat
+            method = "g_test"
+
+        else:
+            raise ValueError(
+                f"Unsupported stat_test: {stat_test}. Must be one of: 'chi2', 'g_test'"
+            )
+
+        # Calculate Cramér's V (same formula for both tests)
+        min_dim = min(contingency.shape) - 1  # minimum dimension minus 1
+        if min_dim > 0:  # Protect against division by zero
+            cramers_v = np.sqrt(test_stat / (n * min_dim))
+        else:
+            cramers_v = np.nan
+
+        results["stat_test"] = {
+            "method": method,
+            "statistic": test_stat,
+            "p_value": p_val,
+            "effect_size": cramers_v,
+            "degrees_of_freedom": dof,
+        }
+
+    # If stats_only=True, return results without plotting
+    if stats_only:
+        return results
+
+    # Continue with plotting code
+    # Compute percentage if requested
+    if is_pct:
+        data_to_plot = class_agg.div(class_agg.sum(axis=1), axis=0) * 100
+        y_label = ylabel or "Percentage"
+    else:
+        data_to_plot = class_agg
+        y_label = ylabel or "Count"
+
+    # Apply label mapping if provided
+    if label_dict:
+        data_to_plot.rename(columns=label_dict, inplace=True)
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
+    data_to_plot.plot(
+        kind="bar",
+        stacked=True,
+        color=colors_with_alpha[: len(data_to_plot.columns)],
+        ax=ax,
+    )
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel or x)
+    ax.set_ylabel(y_label)
+    ax.legend(title=y if not label_dict else "")
+    ax.grid(True, axis="y")
+    ax.tick_params(axis="x", labelrotation=xticklabel_rotation)
+
+    # Add statistical test annotation if requested
+    if show_stat_test and "stat_test" in results:
+        test_info = results["stat_test"]
+
+        # Format p-value
+        if test_info["p_value"] < 0.001:
+            p_str = "p < 0.001"
+        elif test_info["p_value"] < 0.01:
+            p_str = "p < 0.01"
+        elif test_info["p_value"] < 0.05:
+            p_str = "p < 0.05"
+        else:
+            p_str = f"p = {test_info['p_value']:.3f}"
+
+        # Create annotation text with method-specific formatting
+        if test_info["method"] == "chi2":
+            method_name = "Chi-square test"
+            stat_str = f"χ² = {test_info['statistic']:.2f}"
+        else:  # g_test
+            method_name = "G-test"
+            stat_str = f"G = {test_info['statistic']:.2f}"
+
+        # Build annotation text
+        annotation_lines = [
+            method_name,
+            stat_str,
+            p_str,
+            f"Cramér's V = {test_info['effect_size']:.3f}",
+        ]
+        annotation_text = "\n".join(annotation_lines)
+
+        # Configure bbox style
+        bbox_props = None
+        if stat_annotation_bbox:
+            bbox_props = dict(
+                boxstyle="round,pad=0.3", facecolor="white", edgecolor="gray", alpha=0.8
+            )
+
+        # Add annotation
+        ax.annotate(
+            annotation_text,
+            xy=stat_annotation_pos,
+            xycoords="axes fraction",
+            fontsize=stat_annotation_fontsize,
+            verticalalignment="top",
+            horizontalalignment="left",
+            bbox=bbox_props,
+            zorder=10,
+        )
+
+    if return_stats:
         return fig, ax, results
     else:
         return fig, ax
@@ -928,7 +1233,7 @@ def plot_distribution_over_time(
             point_alpha=point_alpha,
             jitter=jitter,
             figsize=figsize,
-            return_summary=True,
+            return_stats=True,
             single_color_box=True,
         )
         ax.tick_params(axis="x", labelrotation=90)
@@ -950,241 +1255,4 @@ def plot_distribution_over_time(
             single_color_box=True,
         )
         ax.tick_params(axis="x", labelrotation=90)
-        return fig, ax
-
-
-def plot_stacked_bar(
-    data: pd.DataFrame,
-    x: str,
-    y: str,
-    label_dict: Optional[Dict[str, str]] = None,
-    is_pct: bool = True,
-    title: str = "Stacked Bar Chart",
-    xlabel: Optional[str] = None,
-    ylabel: Optional[str] = None,
-    figsize: tuple = (10, 6),
-    palette: Optional[List[str]] = None,
-    xticklabel_rotation: float = 45,
-    bar_alpha: float = 0.7,
-    stat_summary: bool = False,
-    stat_test: Optional[str] = None,
-    stats_only: bool = False,
-    show_stat_test: bool = False,
-    stat_annotation_pos: Tuple[float, float] = (0.02, 0.98),
-    stat_annotation_fontsize: int = 10,
-    stat_annotation_bbox: bool = True,
-):
-    """
-    Plot a stacked bar chart showing the distribution of a categorical variable,
-    either in percentage or actual counts.
-
-    Parameters:
-        data (pd.DataFrame): Input DataFrame.
-        x (str): Name of the categorical column for x-axis.
-        y (str): Name of the categorical column for stacking.
-        label_dict (Dict[str, str], optional): Mapping of original category values to display labels.
-        is_pct (bool): Whether to display percentage (True) or actual count (False).
-        title (str): Title of the plot.
-        xlabel (str, optional): Label for the x-axis. If None, uses the x column name.
-        ylabel (str, optional): Label for the y-axis (default is auto-set based on is_pct).
-        figsize (tuple): Figure size as (width, height) in inches. Default is (10, 6).
-        palette (List[str], optional): List of colors for the bars. If None, uses matplotlib's default color cycle.
-        xticklabel_rotation (float): Rotation angle for x-axis tick labels in degrees. Default is 45.
-        bar_alpha (float): Transparency level for the bars (0-1). Default is 0.7.
-        stat_summary (bool): Whether to return a DataFrame of cross-tabulation and summary statistics.
-        stat_test (str, optional): Statistical test to perform on the contingency table. Supported:
-            - "chi2": Pearson's chi-square test (works for any contingency table)
-            - "g_test": G-test of independence (likelihood ratio test)
-            Both tests return test statistic, p-value, and Cramér's V as effect size.
-        stats_only (bool): If True, skip plotting and return only statistical results.
-        show_stat_test (bool): If True, display statistical test results as an annotation.
-        stat_annotation_pos (Tuple[float, float]): Position of statistical annotation (0-1, 0-1).
-        stat_annotation_fontsize (int): Font size for the statistical annotation.
-        stat_annotation_bbox (bool): Whether to add a background box to the statistical annotation.
-
-    Returns:
-        Tuple[plt.Figure, plt.Axes] or dict:
-            - When stats_only=False: Figure and axis objects, optionally with results dict
-            - When stats_only=True: Dictionary containing statistical results
-            - results dict contains:
-                - 'summary_table': DataFrame with cross-tabulation and summary statistics
-                - 'stat_test': Dictionary with keys 'method', 'statistic', 'p_value', 'effect_size'
-    """
-    # Validate show_stat_test parameter
-    if show_stat_test and not stat_test:
-        warnings.warn(
-            "show_stat_test=True requires stat_test to be specified. "
-            "Statistical annotation will be skipped.",
-            UserWarning,
-        )
-        show_stat_test = False
-
-    # When stats_only=True, validate that there's something to return
-    if stats_only and not stat_summary and not stat_test:
-        raise ValueError(
-            "When stats_only=True, either stat_summary=True or stat_test must be specified."
-        )
-
-    # Use provided color palette or fallback to matplotlib's default color cycle
-    num_categories = data[y].nunique()
-    if label_dict:
-        num_categories = len(label_dict)
-    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-    colors = palette if palette is not None else color_cycle[:num_categories]
-
-    # Apply alpha to colors
-    colors_with_alpha = [mcolors.to_rgba(c, alpha=bar_alpha) for c in colors]
-
-    # Aggregate data
-    class_agg = data.groupby([x, y]).size().unstack(fill_value=0)
-
-    # Initialize results dictionary
-    results = {}
-
-    # Generate summary statistics if requested
-    if stat_summary:
-        # Create comprehensive summary with contingency table and marginals
-        contingency_table = class_agg.copy()
-
-        # Add row and column totals
-        contingency_table.loc["Total"] = contingency_table.sum()
-        contingency_table["Total"] = contingency_table.sum(axis=1)
-
-        # Create percentage table
-        pct_table = class_agg.div(class_agg.sum().sum()) * 100
-        pct_table.loc["Total"] = pct_table.sum()
-        pct_table["Total"] = pct_table.sum(axis=1)
-
-        results["summary_table"] = {
-            "contingency_table": contingency_table,
-            "percentage_table": pct_table,
-            "sample_size": int(class_agg.sum().sum()),
-        }
-
-    # Perform statistical test if requested
-    if stat_test:
-        # Create contingency table for testing (without marginals)
-        contingency = class_agg.values
-        n = contingency.sum()
-
-        if stat_test.lower() == "chi2":
-            # Pearson's chi-square test
-            chi2_stat, p_val, dof, expected = stats.chi2_contingency(contingency)
-            test_stat = chi2_stat
-            method = "chi2"
-
-        elif stat_test.lower() == "g_test":
-            # G-test (likelihood ratio test)
-            g_stat, p_val, dof, expected = stats.chi2_contingency(
-                contingency, lambda_="log-likelihood"
-            )
-            test_stat = g_stat
-            method = "g_test"
-
-        else:
-            raise ValueError(
-                f"Unsupported stat_test: {stat_test}. Must be one of: 'chi2', 'g_test'"
-            )
-
-        # Calculate Cramér's V (same formula for both tests)
-        min_dim = min(contingency.shape) - 1  # minimum dimension minus 1
-        if min_dim > 0:  # Protect against division by zero
-            cramers_v = np.sqrt(test_stat / (n * min_dim))
-        else:
-            cramers_v = np.nan
-
-        results["stat_test"] = {
-            "method": method,
-            "statistic": test_stat,
-            "p_value": p_val,
-            "effect_size": cramers_v,
-            "degrees_of_freedom": dof,
-        }
-
-    # If stats_only=True, return results without plotting
-    if stats_only:
-        return results
-
-    # Continue with plotting code
-    # Compute percentage if requested
-    if is_pct:
-        data_to_plot = class_agg.div(class_agg.sum(axis=1), axis=0) * 100
-        y_label = ylabel or "Percentage"
-    else:
-        data_to_plot = class_agg
-        y_label = ylabel or "Count"
-
-    # Apply label mapping if provided
-    if label_dict:
-        data_to_plot.rename(columns=label_dict, inplace=True)
-
-    # Plotting
-    fig, ax = plt.subplots(figsize=figsize, constrained_layout=True)
-    data_to_plot.plot(
-        kind="bar",
-        stacked=True,
-        color=colors_with_alpha[: len(data_to_plot.columns)],
-        ax=ax,
-    )
-
-    ax.set_title(title)
-    ax.set_xlabel(xlabel or x)
-    ax.set_ylabel(y_label)
-    ax.legend(title=y if not label_dict else "")
-    ax.grid(True, axis="y")
-    ax.tick_params(axis="x", labelrotation=xticklabel_rotation)
-
-    # Add statistical test annotation if requested
-    if show_stat_test and "stat_test" in results:
-        test_info = results["stat_test"]
-
-        # Format p-value
-        if test_info["p_value"] < 0.001:
-            p_str = "p < 0.001"
-        elif test_info["p_value"] < 0.01:
-            p_str = "p < 0.01"
-        elif test_info["p_value"] < 0.05:
-            p_str = "p < 0.05"
-        else:
-            p_str = f"p = {test_info['p_value']:.3f}"
-
-        # Create annotation text with method-specific formatting
-        if test_info["method"] == "chi2":
-            method_name = "Chi-square test"
-            stat_str = f"χ² = {test_info['statistic']:.2f}"
-        else:  # g_test
-            method_name = "G-test"
-            stat_str = f"G = {test_info['statistic']:.2f}"
-
-        # Build annotation text
-        annotation_lines = [
-            method_name,
-            stat_str,
-            p_str,
-            f"Cramér's V = {test_info['effect_size']:.3f}",
-        ]
-        annotation_text = "\n".join(annotation_lines)
-
-        # Configure bbox style
-        bbox_props = None
-        if stat_annotation_bbox:
-            bbox_props = dict(
-                boxstyle="round,pad=0.3", facecolor="white", edgecolor="gray", alpha=0.8
-            )
-
-        # Add annotation
-        ax.annotate(
-            annotation_text,
-            xy=stat_annotation_pos,
-            xycoords="axes fraction",
-            fontsize=stat_annotation_fontsize,
-            verticalalignment="top",
-            horizontalalignment="left",
-            bbox=bbox_props,
-            zorder=10,
-        )
-
-    if results:
-        return fig, ax, results
-    else:
         return fig, ax

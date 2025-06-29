@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.5] - unreleased
+
+### Added
+- Added `target_type` parameter to `PreProcessor` to allow for explicit control over target variable type ('binary' or 'continuous') for `TargetEncoder`.
+  - Automatically detects the `target_type` if it is not specified.
+  - Check in place to ensure the specified `target_type` is consistent with actual target values.
+
+### Changed
+- Refactored the `PreProcessor` class for improved clarity and a more intuitive API.
+  - The `cat_features` attribute now correctly contains all identified categorical features.
+  - A new attribute `onehot_encode_cols` has been added to store the list of columns designated for one-hot encoding. 
+  - Both `onehot_encode_cols` and `target_encode_cols` are subgroups of `cat_features`
+  - The private method `get_transformed_cat_cols()` has been renamed to `_get_onehot_col_names()` to be more descriptive.
+
 
 ## [0.3.4] - 2025-06-22
 

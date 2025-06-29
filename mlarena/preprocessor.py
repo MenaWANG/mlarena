@@ -38,7 +38,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
     cat_impute_strategy : str, default="most_frequent"
         Strategy for categorical missing values.
     target_encode_cols : List[str], optional
-        Columns to apply mean encoding.
+        Columns to apply mean encoding. These are a subgroup of all categorical features.
     target_encode_smooth : Union[str, float], default="auto"
         Smoothing parameter for target encoding.
     drop : str, default="if_binary"
@@ -46,6 +46,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         Options: 'if_binary', 'first', None.
     sanitize_feature_names : bool, default=True
         Whether to sanitize feature names by replacing special characters.
+    target_type : str, optional
+        Type of target variable.
+        Options: 'binary', 'continuous', None
 
     Attributes
     ----------
@@ -55,24 +58,28 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         Categorical imputation strategy.
     num_transformer : Pipeline
         Numeric preprocessing pipeline.
-    cat_transformer : Pipeline
-        Categorical preprocessing pipeline.
+    onehot_transformer : Pipeline
+        One-hot encoding preprocessing pipeline.
     target_transformer : Pipeline
         Target encoding preprocessing pipeline.
     transformed_cat_cols : List[str]
         One-hot encoded column names.
     num_features : List[str]
-        Numeric feature names.
+        The primary list of all identified numerical feature names.
     cat_features : List[str]
-        Categorical feature names.
+        The primary list of all identified categorical feature names.
+    onehot_encode_cols : List[str]
+        A subgroup of `cat_features` designated for one-hot encoding.
     target_encode_cols : List[str]
-        Columns for target encoding.
+        A subgroup of `cat_features` designated for target encoding.
     target_encode_smooth : Union[str, float]
         Smoothing parameter for target encoding.
     drop : str
         Strategy for dropping categories in OneHotEncoder.
     sanitize_feature_names : bool
         Whether to sanitize feature names by replacing special characters.
+    target_type : str
+        Type of target variable.
 
     """
 
@@ -84,6 +91,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         target_encode_smooth="auto",
         drop="if_binary",  # choose "first" for linear models and "if_binary" for tree models
         sanitize_feature_names=True,
+        target_type=None,
     ):
         """
         Initialize the transformer.
@@ -95,7 +103,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         cat_impute_strategy : str, default="most_frequent"
             Strategy for categorical missing values.
         target_encode_cols : List[str], optional
-            Columns to apply mean encoding.
+            Columns to apply mean encoding. These are a subgroup of all categorical features.
         target_encode_smooth : Union[str, float], default="auto"
             Smoothing parameter for target encoding.
         drop : str, default="if_binary"
@@ -103,6 +111,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             Options: 'if_binary', 'first', None.
         sanitize_feature_names : bool, default=True
             Whether to sanitize feature names by replacing special characters.
+        target_type : str, optional
+            Type of the target.
+            Options: 'binary', 'continuous', None.
         """
         self.num_impute_strategy = num_impute_strategy
         self.cat_impute_strategy = cat_impute_strategy
@@ -110,6 +121,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         self.target_encode_smooth = target_encode_smooth
         self.drop = drop
         self.sanitize_feature_names = sanitize_feature_names
+        self.target_type = target_type
 
     def fit_transform(self, X, y=None):
         """
@@ -145,17 +157,42 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             if missing_cols:
                 raise ValueError(f"Columns {missing_cols} not found in input data")
 
+            n_unique_y = pd.Series(y).nunique()
+
+            # Automatically determine target type if not specified
+            if self.target_type is None:
+                if n_unique_y == 2:
+                    self.target_type = "binary"
+                else:
+                    self.target_type = "continuous"
+
+            # Consistency check if target_type is provided
+            if self.target_type == "binary" and n_unique_y > 2:
+                raise ValueError(
+                    "target_type is 'binary' but y has more than 2 unique values"
+                )
+
+            if self.target_type == "continuous" and n_unique_y <= 2:
+                raise ValueError(
+                    "target_type is 'continuous' but y has 2 or fewer unique values"
+                )
+
+        # Broadly categorize all columns into numerical and categorical features
         self.num_features = X.select_dtypes(include=np.number).columns.tolist()
-        self.cat_features = [
+        self.cat_features = X.select_dtypes(exclude=np.number).columns.tolist()
+
+        # Determine the specific column lists for each categorical encoding strategy
+        self.onehot_encode_cols = [
             col
-            for col in X.select_dtypes(exclude=np.number).columns
+            for col in self.cat_features
             if col not in (self.target_encode_cols or [])
         ]
 
         transformed_dfs = []
 
-        # Handle target encoding features
+        # Handle target encoding cols among cat features
         if self.target_encode_cols:
+
             # self.target_encode_cols = [f for f in self.target_encode_cols if f in X.columns] # if we want target coding to continue working even if some cols are missing
             self.target_transformer = Pipeline(
                 steps=[
@@ -171,7 +208,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             )
             transformed_dfs.append(
                 pd.DataFrame(
-                    target_encoded, columns=self.target_encode_cols, index=X.index
+                    target_encoded,
+                    columns=self.target_encode_cols,
+                    index=X.index,
                 )
             )
 
@@ -188,9 +227,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                 pd.DataFrame(num_transformed, columns=self.num_features, index=X.index)
             )
 
-        # Handle categorical features
-        if self.cat_features:
-            self.cat_transformer = Pipeline(
+        # Handle one-hot encoding cols among categorical features
+        if self.onehot_encode_cols:
+            self.onehot_transformer = Pipeline(
                 steps=[
                     ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
                     (
@@ -202,11 +241,13 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                 ]
             )
 
-            cat_transformed = self.cat_transformer.fit_transform(X[self.cat_features])
+            cat_transformed = self.onehot_transformer.fit_transform(
+                X[self.onehot_encode_cols]
+            )
             transformed_dfs.append(
                 pd.DataFrame(
                     cat_transformed,
-                    columns=self.get_transformed_cat_cols(),
+                    columns=self._get_onehot_col_names(),
                     index=X.index,
                 )
             )
@@ -255,22 +296,22 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             sanitized.append(sanitized_name)
         return sanitized
 
-    def get_transformed_cat_cols(self):
+    def _get_onehot_col_names(self):
         """
-        Get transformed categorical column names using sklearn's built-in method.
+        Get transformed one-hot encoded column names using sklearn's built-in method.
 
         Returns
         -------
         List[str]
             One-hot encoded column names.
         """
-        if not hasattr(self, "cat_transformer"):
+        if not hasattr(self, "onehot_transformer"):
             return []
 
         # Get the encoder from the pipeline
-        encoder = self.cat_transformer.named_steps["encoder"]
+        encoder = self.onehot_transformer.named_steps["encoder"]
 
-        feature_names = encoder.get_feature_names_out(self.cat_features)
+        feature_names = encoder.get_feature_names_out(self.onehot_encode_cols)
 
         # Sanitize feature names if requested
         if self.sanitize_feature_names:
@@ -307,7 +348,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                 X[self.target_encode_cols]
             )
             target_encoded_df = pd.DataFrame(
-                target_encoded_data, columns=self.target_encode_cols, index=X.index
+                target_encoded_data,
+                columns=self.target_encode_cols,
+                index=X.index,
             )
             transformed_parts.append(target_encoded_df)
 
@@ -318,9 +361,11 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             )
             transformed_parts.append(transformed_num_df)
 
-        if self.cat_features:
-            transformed_cat_data = self.cat_transformer.transform(X[self.cat_features])
-            self.transformed_cat_cols = self.get_transformed_cat_cols()
+        if self.onehot_encode_cols:
+            transformed_cat_data = self.onehot_transformer.transform(
+                X[self.onehot_encode_cols]
+            )
+            self.transformed_cat_cols = self._get_onehot_col_names()
             transformed_cat_df = pd.DataFrame(
                 transformed_cat_data, columns=self.transformed_cat_cols, index=X.index
             )

@@ -177,6 +177,10 @@ Some handy utilities for data validation, cleaning and manipulations. Pls see [3
     - Alphabetically sorted schema display
     - Safe column selection with case sensitivity options
     - Automatic removal of fully null columns
+  - Complete Duplicate Management Workflow: "Discover → Investigate → Resolve":
+    - Use `is_primary_key` to discover the existance of duplication issues
+    - Use `find_duplicates` to analyze duplicate patterns
+    - Use `deduplicate_by_rank` to intelligently resolve duplicates with business logic
 - I/O utilities
   - `save_object`: Store Python objects to disk with customizable options
     - Support for pickle and joblib backends

@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The `cat_features` attribute now correctly contains all identified categorical features.
   - A new attribute `onehot_encode_cols` has been added to store the list of columns designated for one-hot encoding. 
   - Both `onehot_encode_cols` and `target_encode_cols` are subgroups of `cat_features`
-  - The public method `get_transformed_cat_cols()` has been renamed to `get_onehot_col_names()` to be more descriptive.
+  - The private method `get_transformed_cat_cols()` has been renamed to `_get_onehot_col_names()` to be more descriptive.
 
 
 ## [0.3.4] - 2025-06-22

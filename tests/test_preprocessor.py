@@ -263,10 +263,10 @@ def test_sanitize_feature_names():
 
     # Test return types
     assert isinstance(
-        preprocessor_sanitized.get_onehot_col_names(), list
+        preprocessor_sanitized._get_onehot_col_names(), list
     ), "Should return list"
     assert isinstance(
-        preprocessor_raw.get_onehot_col_names(), list
+        preprocessor_raw._get_onehot_col_names(), list
     ), "Should return list"
 
     print("✓ All sanitize_feature_names tests passed")

@@ -247,7 +247,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             transformed_dfs.append(
                 pd.DataFrame(
                     cat_transformed,
-                    columns=self.get_onehot_col_names(),
+                    columns=self._get_onehot_col_names(),
                     index=X.index,
                 )
             )
@@ -296,7 +296,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             sanitized.append(sanitized_name)
         return sanitized
 
-    def get_onehot_col_names(self):
+    def _get_onehot_col_names(self):
         """
         Get transformed one-hot encoded column names using sklearn's built-in method.
 
@@ -365,7 +365,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             transformed_cat_data = self.onehot_transformer.transform(
                 X[self.onehot_encode_cols]
             )
-            self.transformed_cat_cols = self.get_onehot_col_names()
+            self.transformed_cat_cols = self._get_onehot_col_names()
             transformed_cat_df = pd.DataFrame(
                 transformed_cat_data, columns=self.transformed_cat_cols, index=X.index
             )

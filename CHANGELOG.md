@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `target_type` parameter to `PreProcessor` to allow for explicit control over target variable type ('binary' or 'continuous') for `TargetEncoder`.
   - Automatically detects the `target_type` if it is not specified.
   - Check in place to ensure the specified `target_type` is consistent with actual target values.
+- Intelligent `Model Evaluation Diagnostics` section in evaluation report:
+  - This section will appear when any of the issues below exist. It seeks to alert ML practitioners of potential problems in the model to avoid silent failures. 
+  - Data Quality Insights: 
+    - Sample-to-feature ratio warnings (n/k < 10): Alerts users to potential overfitting risks when training data is insufficient relative to feature count
+  - Regression-Specific Diagnostics:
+    - MAPE transparency: Reports number and percentage of observations excluded from MAPE calculation when target values are zero
+  - Classification-Specific Diagnostics:
+    - Class imbalance detection: Identifies severely imbalanced datasets that may require resampling or cost-sensitive learning approaches
+    - Data leakage alerts: Warns when AUC > 0.99, which often indicates data leakage or overfitting issues
+- Enhanced Metrics Tracking: Added training sample count, sample-to-feature ratio, and MAPE exclusion counts to returned metrics dictionary for programmatic access
 
 ### Changed
 - Refactored the `PreProcessor` class for improved clarity and a more intuitive API.
@@ -18,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - A new attribute `onehot_encode_cols` has been added to store the list of columns designated for one-hot encoding. 
   - Both `onehot_encode_cols` and `target_encode_cols` are subgroups of `cat_features`
   - The private method `get_transformed_cat_cols()` has been renamed to `_get_onehot_col_names()` to be more descriptive.
+  - Note: None of these changes affect any public APIs. 
 
 
 ## [0.3.4] - 2025-06-22

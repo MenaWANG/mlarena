@@ -84,6 +84,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         Type of ML task ('classification' or 'regression').
     n_features : int
         Number of features after preprocessing.
+    n_train_samples: int
+        Sample size of the train data.
     both_class : bool
         Whether SHAP values include both classes.
     shap_values : shap.Explanation
@@ -143,6 +145,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             X_train_preprocessed = X_train.copy()
 
         self.n_features = X_train_preprocessed.shape[1]
+        self.n_train_samples = len(X_train_preprocessed)
 
         # Prepare fit parameters
         fit_params = {}
@@ -387,6 +390,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - adj_r2: Adjusted R-squared
             - rmse_improvement_over_mean: Improvement over mean baseline (%)
             - rmse_improvement_over_median: Improvement over median baseline (%)
+            - n_train_samples: Number of samples in the train set
+            - n_features: Number of features
+            - sample_to_feature_ratio: Ratio of training samples to features
+            - mape_excluded_count: Number of observations excluded from MAPE calculation
         """
         # Basic metrics
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))
@@ -394,10 +401,16 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         median_ae = median_absolute_error(y_true, y_pred)
         r2 = r2_score(y_true, y_pred)
 
-        n_samples = len(y_true)
-        if n_samples > self.n_features + 1:
-            adj_r2 = 1 - (1 - r2) * (n_samples - 1) / (n_samples - self.n_features - 1)
+        n_test_samples = len(y_true)  # test set size
+        sample_to_feature_ratio = (
+            self.n_train_samples / self.n_features if self.n_features > 0 else float("inf")
+        )
+        
+        # Calculate adjusted R² (using training set size)
+        if self.n_train_samples > self.n_features + 1:
+            adj_r2 = 1 - (1 - r2) * (self.n_train_samples - 1) / (self.n_train_samples - self.n_features - 1)
         else:
+            # Adjusted R² is undefined when n_samples <= n_features + 1
             adj_r2 = float("nan")
 
         # Scale-independent metrics using different normalizations
@@ -413,6 +426,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         # MAPE (excluding observations where y_true is zero)
         non_zero = y_true != 0
+        mape_excluded_count = len(y_true) - np.sum(non_zero)
         if np.any(non_zero):
             mape = (
                 np.mean(
@@ -460,6 +474,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             "adj_r2": adj_r2,
             "rmse_improvement_over_mean": rmse_improvement_over_mean,
             "rmse_improvement_over_median": rmse_improvement_over_median,
+            "n_train_samples":self.n_train_samples,
+            "n_features": self.n_features,
+            "sample_to_feature_ratio": sample_to_feature_ratio,
+            "mape_excluded_count": mape_excluded_count,
         }
 
         if verbose:
@@ -483,7 +501,12 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print("\n2. Goodness of Fit")
             print("-" * 40)
             print(f"• R²:           {r2:.3f}      (Coefficient of Determination)")
-            print(f"• Adj. R²:      {adj_r2:.3f}      (Adjusted for # of features)")
+            if not np.isnan(adj_r2):
+                print(f"• Adj. R²:      {adj_r2:.3f}      (Adjusted for # of features)")
+            else:
+                print(
+                    f"• Adj. R²:      N/A        (insufficient training sample size: n_train={self.n_train_samples}, k={self.n_features})"
+                )
 
             print("\n3. Improvement over Baseline")
             print("-" * 40)
@@ -493,12 +516,24 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(
                 f"• vs Median:    {rmse_improvement_over_median:.1f}%      (RMSE improvement)"
             )
+            
+            show_warnings = (
+                mape_excluded_count > 0 or 
+                sample_to_feature_ratio <= 10                
+            )
 
-            if r2 - adj_r2 > 0.1:
-                print("\n⚠️ Model Complexity Warning:")
+            if show_warnings:
+                print("\n4. Model Evaluation Diagnostics")
                 print("-" * 40)
-                print(f"• R² dropped by {(r2 - adj_r2):.3f} after adjustment")
-                print("• Consider feature selection or regularization")
+                if sample_to_feature_ratio < 10:
+                    print(
+                        f"⚠️ Sample-to-feature ratio is low at {sample_to_feature_ratio:.1f} - consider more data or fewer features"
+                    )
+                if mape_excluded_count > 0:
+                    print(
+                        f"ℹ️ MAPE calculation excluded {mape_excluded_count} observations ({mape_excluded_count/n_test_samples*100:.1f}%) where y_true = 0"
+                    )
+
 
         return metrics
 
@@ -540,9 +575,18 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - auc: Area under ROC curve
             - log_loss: Logarithmic loss
             - positive_rate: Percentage of positive predictions
+            - base_rate: Actual positive class rate
+            - n_train_samples: Number of samples in the train set
+            - n_features: Number of features
+            - sample_to_feature_ratio: Ratio of training samples to features
         """
         # Get predictions at specified threshold
         y_pred = (y_pred_proba >= threshold).astype(int)
+
+        n_test_samples = len(y_true)  # test set size
+        sample_to_feature_ratio = (
+            self.n_train_samples / self.n_features if self.n_features > 0 else float("inf")
+        )
 
         # Calculate metrics
         metrics = {
@@ -560,6 +604,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             # Additional context
             "positive_rate": np.mean(y_pred),  # % of positive predictions
             "base_rate": np.mean(y_true),
+            "n_train_samples": self.n_train_samples,
+            "n_features": self.n_features,
+            "sample_to_feature_ratio": sample_to_feature_ratio,
         }
 
         if verbose:
@@ -603,6 +650,36 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(
                 f"• Base Rate:   {metrics['base_rate']:.3f}    (Actual positive class rate)"
             )
+
+            # Determine which warnings to show
+            show_warnings = (
+                sample_to_feature_ratio < 10 or  # Low n/k ratio
+                metrics['base_rate'] < 0.1 or metrics['base_rate'] > 0.9 or  # Class imbalance
+                metrics['auc'] > 0.99   # Perfect AUC
+            )
+
+            if show_warnings:
+                print("\n4. Model Evaluation Diagnostics")
+                print("-" * 40)
+                
+                if sample_to_feature_ratio < 10:
+                    print(
+                        f"⚠️ Sample-to-feature ratio is low at {sample_to_feature_ratio:.1f} - consider more data or fewer features"
+                    )              
+                             
+                if metrics['auc'] > 0.99:
+                    print(
+                        f"⚠️ Near-perfect AUC ({metrics['auc']:.3f}) - check for data leakage or overfitting"
+                    )
+                
+                if metrics['base_rate'] < 0.1:
+                    print(
+                        f"ℹ️ Imbalanced dataset: only {metrics['base_rate']:.1%} positive class"
+                    )
+                elif metrics['base_rate'] > 0.9:
+                    print(
+                        f"ℹ️ Imbalanced dataset: {metrics['base_rate']:.1%} positive class"
+                    ) 
 
         return metrics
 

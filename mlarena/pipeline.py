@@ -36,6 +36,7 @@ from sklearn.metrics import (
     f1_score,
     fbeta_score,
     log_loss,
+    matthews_corrcoef,
     mean_absolute_error,
     mean_squared_error,
     median_absolute_error,
@@ -403,12 +404,16 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         n_test_samples = len(y_true)  # test set size
         sample_to_feature_ratio = (
-            self.n_train_samples / self.n_features if self.n_features > 0 else float("inf")
+            self.n_train_samples / self.n_features
+            if self.n_features > 0
+            else float("inf")
         )
-        
+
         # Calculate adjusted R² (using training set size)
         if self.n_train_samples > self.n_features + 1:
-            adj_r2 = 1 - (1 - r2) * (self.n_train_samples - 1) / (self.n_train_samples - self.n_features - 1)
+            adj_r2 = 1 - (1 - r2) * (self.n_train_samples - 1) / (
+                self.n_train_samples - self.n_features - 1
+            )
         else:
             # Adjusted R² is undefined when n_samples <= n_features + 1
             adj_r2 = float("nan")
@@ -474,7 +479,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             "adj_r2": adj_r2,
             "rmse_improvement_over_mean": rmse_improvement_over_mean,
             "rmse_improvement_over_median": rmse_improvement_over_median,
-            "n_train_samples":self.n_train_samples,
+            "n_train_samples": self.n_train_samples,
             "n_features": self.n_features,
             "sample_to_feature_ratio": sample_to_feature_ratio,
             "mape_excluded_count": mape_excluded_count,
@@ -516,11 +521,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(
                 f"• vs Median:    {rmse_improvement_over_median:.1f}%      (RMSE improvement)"
             )
-            
-            show_warnings = (
-                mape_excluded_count > 0 or 
-                sample_to_feature_ratio <= 10                
-            )
+
+            show_warnings = mape_excluded_count > 0 or sample_to_feature_ratio <= 10
 
             if show_warnings:
                 print("\n4. Model Evaluation Diagnostics")
@@ -533,7 +535,6 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     print(
                         f"ℹ️ MAPE calculation excluded {mape_excluded_count} observations ({mape_excluded_count/n_test_samples*100:.1f}%) where y_true = 0"
                     )
-
 
         return metrics
 
@@ -585,7 +586,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         n_test_samples = len(y_true)  # test set size
         sample_to_feature_ratio = (
-            self.n_train_samples / self.n_features if self.n_features > 0 else float("inf")
+            self.n_train_samples / self.n_features
+            if self.n_features > 0
+            else float("inf")
         )
 
         # Calculate metrics
@@ -601,6 +604,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             "f_beta": fbeta_score(y_true, y_pred, beta=beta),
             "auc": roc_auc_score(y_true, y_pred_proba),
             "log_loss": log_loss(y_true, y_pred_proba),
+            "mcc": matthews_corrcoef(y_true, y_pred),
             # Additional context
             "positive_rate": np.mean(y_pred),  # % of positive predictions
             "base_rate": np.mean(y_true),
@@ -637,6 +641,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(
                 f"• F1 Score:    {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
             )
+            print(
+                f"• MCC:         {metrics['mcc']:.3f}    (Matthews Correlation Coefficient)"
+            )
             if beta != 1:
                 print(
                     f"• F{beta:.1f} Score:  {metrics['f_beta']:.3f}    (Weighted harmonic mean)"
@@ -653,33 +660,34 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
             # Determine which warnings to show
             show_warnings = (
-                sample_to_feature_ratio < 10 or  # Low n/k ratio
-                metrics['base_rate'] < 0.1 or metrics['base_rate'] > 0.9 or  # Class imbalance
-                metrics['auc'] > 0.99   # Perfect AUC
+                sample_to_feature_ratio < 10  # Low n/k ratio
+                or metrics["base_rate"] < 0.1
+                or metrics["base_rate"] > 0.9  # Class imbalance
+                or metrics["auc"] > 0.99  # Perfect AUC
             )
 
             if show_warnings:
                 print("\n4. Model Evaluation Diagnostics")
                 print("-" * 40)
-                
+
                 if sample_to_feature_ratio < 10:
                     print(
                         f"⚠️ Sample-to-feature ratio is low at {sample_to_feature_ratio:.1f} - consider more data or fewer features"
-                    )              
-                             
-                if metrics['auc'] > 0.99:
+                    )
+
+                if metrics["auc"] > 0.99:
                     print(
                         f"⚠️ Near-perfect AUC ({metrics['auc']:.3f}) - check for data leakage or overfitting"
                     )
-                
-                if metrics['base_rate'] < 0.1:
+
+                if metrics["base_rate"] < 0.1:
                     print(
                         f"ℹ️ Imbalanced dataset: only {metrics['base_rate']:.1%} positive class"
                     )
-                elif metrics['base_rate'] > 0.9:
+                elif metrics["base_rate"] > 0.9:
                     print(
                         f"ℹ️ Imbalanced dataset: {metrics['base_rate']:.1%} positive class"
-                    ) 
+                    )
 
         return metrics
 
@@ -1084,7 +1092,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         tune_metric : str, optional
             Metric to optimize during hyperparameter tuning.
             If None, defaults to 'auc' for classification and 'rmse' for regression.
-            Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss'
+            Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss', 'mcc'
             Regression metrics: 'rmse', 'mae', 'median_ae', 'smape', 'nrmse_mean', 'nrmse_iqr', 'nrmse_std'
         log_best_model : bool, default=True
             If True, logs the best model to MLflow.
@@ -1180,7 +1188,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 )
 
                 if task == "classification":
-                    if tune_metric not in ["auc", "f1", "accuracy", "log_loss"]:
+                    if tune_metric not in ["auc", "f1", "accuracy", "log_loss", "mcc"]:
                         raise ValueError(
                             f"Unsupported metric for classification: {tune_metric}"
                         )
@@ -1386,6 +1394,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     "test_precision": final_results["precision"],
                     "test_recall": final_results["recall"],
                     "test_log_loss": final_results["log_loss"],
+                    "test_mcc": final_results["mcc"],
                     f"cv_{tune_metric}_mean": best_trial.user_attrs[
                         f"mean_{tune_metric}"
                     ],

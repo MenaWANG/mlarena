@@ -8,27 +8,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.5] - unreleased
 
 ### Added
-- Added `target_type` parameter to `PreProcessor` to allow for explicit control over target variable type ('binary' or 'continuous') for `TargetEncoder`.
-  - Automatically detects the `target_type` if it is not specified.
-  - Check in place to ensure the specified `target_type` is consistent with actual target values.
-- Intelligent `Model Evaluation Diagnostics` section in evaluation report:
-  - This section will appear when any of the issues below exist. It seeks to alert ML practitioners of potential problems in the model to avoid silent failures. 
-  - Data Quality Insights: 
-    - Sample-to-feature ratio warnings (n/k < 10): Alerts users to potential overfitting risks when training data is insufficient relative to feature count
-  - Regression-Specific Diagnostics:
-    - MAPE transparency: Reports number and percentage of observations excluded from MAPE calculation when target values are zero
-  - Classification-Specific Diagnostics:
-    - Class imbalance detection: Identifies severely imbalanced datasets that may require resampling or cost-sensitive learning approaches
-    - Data leakage alerts: Warns when AUC > 0.99, which often indicates data leakage or overfitting issues
-- Enhanced Metrics Tracking: Added training sample count, sample-to-feature ratio, and MAPE exclusion counts to returned metrics dictionary for programmatic access
+- **Model Evaluation Diagnostics** section appears only when potential red flags are detected:           
+    - **Regression Diagnostics**
+      - ⚠️ Sample-to-feature ratio warnings: Alerts when n/k < 10, indicating high overfitting risk
+      - ℹ️ MAPE transparency: Reports how many observations were excluded from MAPE due to zero target values     
+    - **Classification Diagnostics**  
+      - ⚠️ Data leakage detection: Flags near-perfect AUC (>99%) that often indicates leakage
+      - ⚠️ Overfitting alerts: Same n/k ratio warnings as regression
+      - ℹ️ Class imbalance awareness: Flags severely imbalanced class distributions
+- `target_type` parameter to `PreProcessor` for explicit target variable type control ('binary' or 'continuous')
+  - Auto-detects if not specified, with consistency validation
+- `mcc` (Matthews Correlation Coefficient) to classification evaluation with updated reporting and tests
 
 ### Changed
-- Refactored the `PreProcessor` class for improved clarity and a more intuitive API.
-  - The `cat_features` attribute now correctly contains all identified categorical features.
-  - A new attribute `onehot_encode_cols` has been added to store the list of columns designated for one-hot encoding. 
-  - Both `onehot_encode_cols` and `target_encode_cols` are subgroups of `cat_features`
-  - The private method `get_transformed_cat_cols()` has been renamed to `_get_onehot_col_names()` to be more descriptive.
-  - Note: None of these changes affect any public APIs. 
+- Refactored `PreProcessor` class for improved clarity:
+  - `cat_features` now contains all identified categorical features that are either target- or onehot-encoded
+  - Added `onehot_encode_cols` attribute for columns designated for one-hot encoding
+  - Renamed `get_transformed_cat_cols()` to `_get_onehot_col_names()` for clarity
+  - No public API changes
 
 
 ## [0.3.4] - 2025-06-22

@@ -65,11 +65,13 @@ def test_classification_pipeline():
     assert "recall" in results
     assert "f1" in results
     assert "auc" in results
+    assert "mcc" in results
     assert 0 <= results["accuracy"] <= 1
     assert 0 <= results["precision"] <= 1
     assert 0 <= results["recall"] <= 1
     assert 0 <= results["f1"] <= 1
     assert 0 <= results["auc"] <= 1
+    assert -1 <= results["mcc"] <= 1
 
 
 def test_regression_pipeline():

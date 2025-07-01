@@ -59,7 +59,7 @@ Train and evaluate models quickly with `mlarena`'s default preprocessing pipelin
 
 | Category | Classification Metrics & Plots | Regression Metrics & Plots |
 |-------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Metrics | **Evaluation Parameters**<br>• Threshold (classification cutoff)<br>• Beta (F-beta weight parameter)<br><br>**Core Performance Metrics**<br>• Accuracy (overall correct predictions)<br>• Precision (true positives / predicted positives)<br>• Recall (true positives / actual positives)<br>• F1 Score (harmonic mean of Precision & Recall)<br>• Fβ Score (weighted harmonic mean, if β ≠ 1)<br>• AUC (ranking quality)<br>• Log Loss (confidence-weighted error)<br><br>**Prediction Distribution**<br>• Positive Rate (fraction of positive predictions)<br>• Base Rate (actual positive class rate) | **Error Metrics**<br>• RMSE (Root Mean Squared Error)<br>• MAE (Mean Absolute Error)<br>• Median Absolute Error<br>• NRMSE (Normalized RMSE as % of mean, std, IQR)<br>• MAPE (Mean Absolute Percentage Error, excl. zeros)<br>• SMAPE (Symmetric Mean Absolute Percentage Error)<br><br>**Goodness of Fit**<br>• R² (Coefficient of Determination)<br>• Adjusted R²<br><br>**Improvement over Baseline**<br>• RMSE Improvement over Mean Baseline (%)<br>• RMSE Improvement over Median Baseline (%) |
+| Metrics | **Evaluation Parameters**<br>• Threshold (classification cutoff)<br>• Beta (F-beta weight parameter)<br><br>**Core Performance Metrics**<br>• Accuracy (overall correct predictions)<br>• Precision (true positives / predicted positives)<br>• Recall (true positives / actual positives)<br>• F1 Score (harmonic mean of Precision & Recall)<br>• Fβ Score (weighted harmonic mean, if β ≠ 1)<br>• MCC (Matthews Correlation Coefficient)<br>• AUC (ranking quality)<br>• Log Loss (confidence-weighted error)<br><br>**Prediction Distribution**<br>• Positive Rate (fraction of positive predictions)<br>• Base Rate (actual positive class rate) | **Error Metrics**<br>• RMSE (Root Mean Squared Error)<br>• MAE (Mean Absolute Error)<br>• Median Absolute Error<br>• NRMSE (Normalized RMSE as % of) <ul style="margin-top:0;margin-bottom:0;"><li>mean</li><li>std</li><li>IQR</li></ul>• MAPE (Mean Absolute Percentage Error, excl. zeros)<br>• SMAPE (Symmetric Mean Absolute Percentage Error)<br><br>**Goodness of Fit**<br>• R² (Coefficient of Determination)<br>• Adjusted R²<br><br>**Improvement over Baseline**<br>• RMSE Improvement over Mean Baseline (%)<br>• RMSE Improvement over Median Baseline (%) |
 | Plots | • Metrics vs Threshold (Precision, Recall, Fβ, with vertical threshold line)<br>• ROC Curve<br>• Confusion Matrix (with colored overlays) | • Residual analysis (residuals vs predicted, with 95% prediction interval)<br>• Prediction error plot (actual vs predicted, with perfect prediction line and error bands) |
 <br>
 
@@ -143,12 +143,12 @@ Some handy utilities for data validation, cleaning and manipulations. Pls see [3
   - Configurable beta parameter for precision/recall trade-off
   - Confidence intervals for bootstrap method
 - Flexible metric selection for optimization
-  - Classification: AUC (default), F1, accuracy, log_loss
+  - Classification: AUC (default), F1, accuracy, log_loss, MCC
   - Regression: RMSE (default), MAE, median_ae, SMAPE, NRMSE (mean/std/IQR)
 
 **Performance Analysis**
 - Comprehensive metric tracking
-  - Classification: AUC, F1, Fbeta, precision, recall, accuracy, log_loss, positive_rate, base_rate
+  - Classification: AUC, F1, Fbeta, precision, recall, accuracy, log_loss, MCC, positive_rate, base_rate
   - Regression: RMSE, MAE, median_ae, R2, adjusted R2, MAPE, SMAPE, NRMSE (mean/std/IQR), improvement over mean/median baselines
 - Performance visualization
   - Classification: 

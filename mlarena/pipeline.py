@@ -641,13 +641,13 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(
                 f"• F1 Score:    {metrics['f1']:.3f}    (Harmonic mean of Precision & Recall)"
             )
-            print(
-                f"• MCC:         {metrics['mcc']:.3f}    (Matthews Correlation Coefficient)"
-            )
             if beta != 1:
                 print(
                     f"• F{beta:.1f} Score:  {metrics['f_beta']:.3f}    (Weighted harmonic mean)"
                 )
+            print(
+                f"• MCC:         {metrics['mcc']:.3f}    (Matthews Correlation Coefficient)"
+            )
 
             print("\n3. Prediction Distribution")
             print("-" * 40)

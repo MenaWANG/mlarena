@@ -2,7 +2,6 @@
 Tests for wrapper feature selection functionality in PreProcessor.
 """
 
-import lightgbm as lgb
 import numpy as np
 import pandas as pd
 import pytest
@@ -321,7 +320,7 @@ class TestWrapperFeatureSelection:
     def test_rfecv_object(self, classification_data):
         """Test that RFECV object is returned."""
         X, y = classification_data
-        estimator = lgb.LGBMClassifier(n_estimators=10, random_state=42)
+        estimator = RandomForestClassifier(n_estimators=10, random_state=42)
 
         results = PreProcessor.wrapper_feature_selection(
             X, y, estimator, n_max_features=8, visualize=False, verbose=False

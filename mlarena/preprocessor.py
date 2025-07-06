@@ -10,8 +10,14 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.compose import ColumnTransformer
-from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
+from sklearn.feature_selection import (
+    RFE,
+    RFECV,
+    mutual_info_classif,
+    mutual_info_regression,
+)
 from sklearn.impute import SimpleImputer
+from sklearn.model_selection import KFold, StratifiedKFold
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, TargetEncoder
 
@@ -805,6 +811,371 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                 "n_top_features": n_top_features,
             },
         }
+
+    @staticmethod
+    def wrapper_feature_selection(
+        X: pd.DataFrame,
+        y: pd.Series,
+        estimator,
+        n_max_features: int = None,
+        min_features_to_select: int = 2,
+        step: int = 1,
+        cv: int = 5,
+        cv_variance_penalty: float = 0.1,
+        scoring: str = None,
+        random_state: int = 42,
+        visualize: bool = True,
+        verbose: bool = True,
+    ) -> dict:
+        """
+        Perform wrapper-based feature selection using Recursive Feature Elimination with Cross-Validation.
+
+        This method uses RFECV (Recursive Feature Elimination with Cross-Validation) to select
+        the optimal number of features by recursively eliminating features and selecting the best
+        subset based on cross-validation performance with optional variance penalty.
+
+        Parameters
+        ----------
+        X : pd.DataFrame
+            Input features for feature selection.
+        y : pd.Series
+            Target variable.
+        estimator : sklearn estimator
+            A supervised learning estimator with a fit method that provides information
+            about feature importance either through a coef_ attribute or through a
+            feature_importances_ attribute.
+        n_max_features : int, optional
+            Maximum number of features to consider. If None, defaults to n_samples // 10
+            to prevent overfitting. The method will select the optimal number of features
+            up to this maximum.
+        min_features_to_select : int, default=2
+            Minimum number of features to select.
+        step : int, default=1
+            Number of features to remove at each iteration.
+        cv : int, default=5
+            Number of folds for cross-validation.
+        cv_variance_penalty : float, default=0.1
+            Penalty weight for cross-validation score variance. Higher values prefer
+            more stable (lower variance) feature sets. The penalized score is calculated as:
+            penalized_score = mean_score - cv_variance_penalty * std_score
+        scoring : str, optional
+            Scoring metric for cross-validation. If None, uses the estimator's default scorer.
+        random_state : int, default=42
+            Random state for reproducibility.
+        visualize : bool, default=True
+            Whether to display the feature selection plot.
+        verbose : bool, default=True
+            Whether to print detailed results.
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'selected_features': List of selected feature names
+            - 'n_features_selected': Number of features selected
+            - 'optimal_score': Best cross-validation score achieved
+            - 'optimal_score_std': Standard deviation of the best score
+            - 'penalized_score': Best score with variance penalty applied
+            - 'cv_scores': List of mean CV scores for each feature count
+            - 'cv_scores_std': List of CV score standard deviations
+            - 'feature_rankings': Feature importance rankings from RFE
+            - 'rfecv_object': The fitted RFECV object for advanced usage
+            - 'selection_params': Dictionary of parameters used for selection
+
+        Examples
+        --------
+        >>> from sklearn.ensemble import RandomForestClassifier
+        >>> from sklearn.datasets import make_classification
+        >>> import pandas as pd
+        >>>
+        >>> # Create sample data
+        >>> X, y = make_classification(n_samples=100, n_features=20, n_informative=10)
+        >>> X_df = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(20)])
+        >>> y_series = pd.Series(y)
+        >>>
+        >>> # Perform feature selection
+        >>> results = PreProcessor.wrapper_feature_selection(
+        ...     X_df, y_series,
+        ...     estimator=RandomForestClassifier(random_state=42),
+        ...     n_max_features=10
+        ... )
+        >>>
+        >>> print(f"Selected {results['n_features_selected']} features")
+        >>> print(f"Selected features: {results['selected_features']}")
+
+        Notes
+        -----
+        - The method automatically detects the task type (classification/regression) based on
+          the target variable and sets appropriate cross-validation strategy
+        - For classification tasks with binary targets, uses StratifiedKFold
+        - For regression tasks, uses KFold
+        - The variance penalty helps select feature sets that are not only high-performing
+          but also stable across different data splits
+        - Visualization shows the trade-off between number of features and model performance
+        """
+        # Input validation
+        if not isinstance(X, pd.DataFrame):
+            raise ValueError("X must be a pandas DataFrame")
+        if not isinstance(y, pd.Series):
+            raise ValueError("y must be a pandas Series")
+        if len(X) != len(y):
+            raise ValueError("X and y must have the same number of samples")
+        if min_features_to_select < 1:
+            raise ValueError("min_features_to_select must be at least 1")
+        if step < 1:
+            raise ValueError("step must be at least 1")
+        if cv < 2:
+            raise ValueError("cv must be at least 2")
+        if cv_variance_penalty < 0:
+            raise ValueError("cv_variance_penalty must be non-negative")
+
+        # Set default n_max_features if not provided
+        if n_max_features is None:
+            n_max_features = max(min_features_to_select, len(X) // 10)
+
+        # Ensure n_max_features is reasonable
+        n_max_features = min(n_max_features, len(X.columns))
+        n_max_features = max(n_max_features, min_features_to_select)
+
+        # Detect task type and set up cross-validation
+        n_unique_y = y.nunique()
+        if n_unique_y == 2:
+            task_type = "classification"
+            cv_strategy = StratifiedKFold(
+                n_splits=cv, shuffle=True, random_state=random_state
+            )
+        else:
+            task_type = "regression"
+            cv_strategy = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+
+        # Prepare data - handle missing values for RFE
+        X_processed = X.copy()
+
+        # Simple preprocessing for missing values
+        for col in X_processed.columns:
+            if X_processed[col].dtype in ["object", "category"]:
+                # For categorical, fill with mode
+                mode_val = X_processed[col].mode()
+                if len(mode_val) > 0:
+                    X_processed[col] = X_processed[col].fillna(mode_val[0])
+                else:
+                    X_processed[col] = X_processed[col].fillna("missing")
+                # Convert to numeric codes for RFE
+                X_processed[col] = pd.Categorical(X_processed[col]).codes
+            else:
+                # For numeric, fill with median
+                X_processed[col] = X_processed[col].fillna(X_processed[col].median())
+
+        # Perform RFECV
+        rfecv = RFECV(
+            estimator=estimator,
+            min_features_to_select=min_features_to_select,
+            step=step,
+            cv=cv_strategy,
+            scoring=scoring,  # TODO: [ ] set default scoring to be AUC or RMSE
+            n_jobs=-1,  # Use all available cores
+        )
+
+        rfecv.fit(X_processed, y)
+
+        # Get results
+        selected_features = X.columns[rfecv.support_].tolist()
+        n_features_selected = len(selected_features)
+
+        # Extract CV scores and calculate penalized scores
+        cv_scores = rfecv.cv_results_["mean_test_score"]
+        cv_scores_std = rfecv.cv_results_["std_test_score"]
+
+        # Calculate penalized scores (mean - penalty * std)
+        penalized_scores = cv_scores - cv_variance_penalty * cv_scores_std
+
+        # Find optimal based on penalized score, but limit to n_max_features
+        feature_counts = range(
+            min_features_to_select, len(cv_scores) + min_features_to_select
+        )
+        valid_indices = [
+            i for i, count in enumerate(feature_counts) if count <= n_max_features
+        ]
+
+        if valid_indices:
+            # Find best within the valid range
+            best_idx_in_valid = np.argmax([penalized_scores[i] for i in valid_indices])
+            optimal_idx = valid_indices[best_idx_in_valid]
+            optimal_n_features = feature_counts[optimal_idx]
+        else:
+            # Fallback to the minimum
+            optimal_idx = 0
+            optimal_n_features = min_features_to_select
+
+        # If the RFECV selected more features than our optimum, re-run with fixed number
+        if n_features_selected > optimal_n_features:
+            rfe = RFE(
+                estimator=estimator, n_features_to_select=optimal_n_features, step=step
+            )
+            rfe.fit(X_processed, y)
+            selected_features = X.columns[rfe.support_].tolist()
+            n_features_selected = len(selected_features)
+
+        # Prepare results
+        results = {
+            "selected_features": selected_features,
+            "n_features_selected": n_features_selected,
+            "optimal_score": cv_scores[optimal_idx],
+            "optimal_score_std": cv_scores_std[optimal_idx],
+            "penalized_score": penalized_scores[optimal_idx],
+            "cv_scores": cv_scores.tolist(),
+            "cv_scores_std": cv_scores_std.tolist(),
+            "feature_rankings": rfecv.ranking_.tolist(),
+            "rfecv_object": rfecv,
+            "selection_params": {
+                "n_max_features": n_max_features,
+                "min_features_to_select": min_features_to_select,
+                "step": step,
+                "cv": cv,
+                "cv_variance_penalty": cv_variance_penalty,
+                "scoring": scoring,
+                "task_type": task_type,
+                "random_state": random_state,
+            },
+        }
+
+        if verbose:
+            print("Wrapper Feature Selection Summary:")
+            print("=" * 50)
+            print(f"Task type: {task_type}")
+            print(f"Total features analyzed: {len(X.columns)}")
+            print(f"Maximum features considered: {n_max_features}")
+            print(f"Optimal features selected: {n_features_selected}")
+            print(
+                f"Optimal CV score: {results['optimal_score']:.4f} (±{results['optimal_score_std']:.4f})"
+            )
+            print(f"Penalized score: {results['penalized_score']:.4f}")
+            print(f"Selected features: {selected_features}")
+
+        if visualize:
+            PreProcessor._plot_wrapper_feature_selection(
+                feature_counts,
+                cv_scores,
+                cv_scores_std,
+                optimal_idx,
+                n_max_features,
+                cv_variance_penalty,
+            )
+
+        return results
+
+    @staticmethod
+    def _plot_wrapper_feature_selection(
+        feature_counts,
+        cv_scores,
+        cv_scores_std,
+        optimal_idx,
+        n_max_features,
+        cv_variance_penalty,
+    ):
+        """
+        Create visualization for wrapper feature selection results.
+
+        Parameters
+        ----------
+        feature_counts : range
+            Range of feature counts tested
+        cv_scores : array-like
+            Mean cross-validation scores
+        cv_scores_std : array-like
+            Standard deviations of cross-validation scores
+        optimal_idx : int
+            Index of optimal feature count
+        n_max_features : int
+            Maximum number of features considered
+        cv_variance_penalty : float
+            Variance penalty applied
+        """
+        # Get matplotlib default colors
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        MPL_BLUE = colors[0]
+        MPL_RED = colors[3]
+        MPL_GREEN = colors[2]
+        MPL_GRAY = "#666666"
+
+        plt.figure(figsize=(12, 6))
+
+        # Plot CV scores with error bars
+        plt.errorbar(
+            feature_counts,
+            cv_scores,
+            yerr=cv_scores_std,
+            color=MPL_BLUE,
+            marker="o",
+            linestyle="-",
+            linewidth=2,
+            markersize=4,
+            label="CV Score (mean ± std)",
+            capsize=3,
+        )
+
+        # Plot penalized scores
+        penalized_scores = cv_scores - cv_variance_penalty * cv_scores_std
+        plt.plot(
+            feature_counts,
+            penalized_scores,
+            color=MPL_GREEN,
+            marker="s",
+            linestyle="--",
+            linewidth=2,
+            markersize=4,
+            label=f"Penalized Score (penalty={cv_variance_penalty})",
+        )
+
+        # Highlight optimal point
+        optimal_n_features = feature_counts[optimal_idx]
+        plt.axvline(
+            x=optimal_n_features,
+            color=MPL_RED,
+            linestyle="--",
+            linewidth=2,
+            label=f"Optimal: {optimal_n_features} features",
+        )
+
+        # Highlight max features limit if applicable
+        if n_max_features < max(feature_counts):
+            plt.axvline(
+                x=n_max_features,
+                color=MPL_GRAY,
+                linestyle=":",
+                linewidth=2,
+                label=f"Max features limit: {n_max_features}",
+            )
+
+        plt.xlabel("Number of Features")
+        plt.ylabel("Cross-Validation Score")
+        plt.title("Wrapper Feature Selection: Performance vs Number of Features")
+        plt.grid(True, alpha=0.3)
+        plt.legend()
+
+        # Add text box with optimal results
+        optimal_score = cv_scores[optimal_idx]
+        optimal_std = cv_scores_std[optimal_idx]
+        penalized_score = penalized_scores[optimal_idx]
+
+        text_str = (
+            f"Optimal Features: {optimal_n_features}\n"
+            f"CV Score: {optimal_score:.4f} (±{optimal_std:.4f})\n"
+            f"Penalized Score: {penalized_score:.4f}"
+        )
+
+        plt.text(
+            0.02,
+            0.98,
+            text_str,
+            transform=plt.gca().transAxes,
+            verticalalignment="top",
+            horizontalalignment="left",
+            bbox=dict(boxstyle="round", facecolor="white", alpha=0.8),
+        )
+
+        plt.tight_layout()
+        plt.show()
 
     @staticmethod
     def mlflow_input_prep(data: pd.DataFrame) -> pd.DataFrame:

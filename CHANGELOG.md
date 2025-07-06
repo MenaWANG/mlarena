@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.6] - unreleased
+
+### Added
+- **NEW**: Wrapper-based feature selection in `PreProcessor` class:
+  - Added `wrapper_feature_selection` static method using Recursive Feature Elimination (RFE)
+  - Intelligent task type detection (classification/regression)
+  - Variance penalty for stable feature selection
+  - Comprehensive visualization of selection process
+  - Returns detailed results including:
+    - Selected features and rankings
+    - Cross-validation scores
+    - Performance metrics
+  - Smart default for maximum features to avoid overfitting (n_samples/10)
+  - Extensive test coverage 
+  - Demo added in the 2.advanced_usage notebook
+
+
 ## [0.3.5] - 2025-07-02
 
 ### Added

@@ -859,7 +859,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             more stable (lower variance) feature sets. The penalized score is calculated as:
             penalized_score = mean_score - cv_variance_penalty * std_score
         scoring : str, optional
-            Scoring metric for cross-validation. If None, uses the estimator's default scorer.
+            Scoring metric for cross-validation.
+            If None, uses "auc" for classification and "rmse" for regressor.
+            Utilize `sklearn.metrics.get_scorer_names()` to find all supported metrics.
         random_state : int, default=42
             Random state for reproducibility.
         visualize : bool, default=True
@@ -937,9 +939,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         n_max_features = min(n_max_features, len(X.columns))
         n_max_features = max(n_max_features, min_features_to_select)
 
-        # Detect task type and set up cross-validation
-        n_unique_y = y.nunique()
-        if n_unique_y == 2:
+        if hasattr(estimator, "predict_proba"):
             task_type = "classification"
             cv_strategy = StratifiedKFold(
                 n_splits=cv, shuffle=True, random_state=random_state
@@ -947,6 +947,13 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         else:
             task_type = "regression"
             cv_strategy = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+
+        if not scoring:
+            scoring = (
+                "roc_auc"
+                if task_type == "classification"
+                else "neg_root_mean_squared_error"
+            )
 
         # Prepare data - handle missing values for RFE
         X_processed = X.copy()
@@ -1135,6 +1142,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             linestyle="--",
             linewidth=2,
             label=f"Optimal: {optimal_n_features} features",
+            alpha = 0.6
         )
 
         # Highlight max features limit if applicable

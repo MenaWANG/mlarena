@@ -46,9 +46,10 @@ Add wrapper-based feature selection capability to the MLArena package, integrate
 - [x] Performance validation tests
 
 ### Step 5: Further optimization
-- [ ] Set default scoring to be AUC and RMSE respectively
-- [ ] Consider whether it is a good idea to offer default estimator
-- [ ] Consider use estimator attribute for task detection 
+- [x] Set default scoring to be AUC and RMSE respectively
+- [x] Consider whether it is a good idea to offer default estimator
+- [x] Consider use estimator attribute for task detection 
+- [ ] Handle cases where y is not a pandas series elegantly
 
 ### Step 6: MLPipeline Integration
 - [ ] Add optional `feature_selection_params` to `MLPipeline.tune()`

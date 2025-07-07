@@ -18,7 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Selected features and rankings
     - Cross-validation scores
     - Performance metrics
-  - Smart default for maximum features to avoid overfitting (n_samples/10)
+  - Maximum features parameter with smart default to avoid overfitting
+    - The function will look for the best features set within the `n_max_features` constraint
+    - n_max_features can be specified by the user, or 
+    - If left unspecified, automatically set to be n_samples/10
   - Extensive test coverage 
   - Demo added in the 2.advanced_usage notebook
 

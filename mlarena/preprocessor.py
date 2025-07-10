@@ -205,7 +205,11 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
                     (
                         "target_encoder",
-                        TargetEncoder(smooth=self.target_encode_smooth, cv=5),
+                        TargetEncoder(
+                            smooth=self.target_encode_smooth,
+                            cv=5,
+                            target_type=self.target_type,
+                        ),
                     ),
                 ]
             )
@@ -1142,7 +1146,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             linestyle="--",
             linewidth=2,
             label=f"Optimal: {optimal_n_features} features",
-            alpha = 0.6
+            alpha=0.6,
         )
 
         # Highlight max features limit if applicable

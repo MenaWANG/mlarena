@@ -205,7 +205,11 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     ("imputer", SimpleImputer(strategy=self.cat_impute_strategy)),
                     (
                         "target_encoder",
-                        TargetEncoder(smooth=self.target_encode_smooth, cv=5),
+                        TargetEncoder(
+                            smooth=self.target_encode_smooth,
+                            cv=5,
+                            target_type=self.target_type,
+                        ),
                     ),
                 ]
             )
@@ -816,7 +820,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
     def wrapper_feature_selection(
         X: pd.DataFrame,
         y: pd.Series,
-        estimator,
+        model,
         n_max_features: int = None,
         min_features_to_select: int = 2,
         step: int = 1,
@@ -840,7 +844,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             Input features for feature selection.
         y : pd.Series
             Target variable.
-        estimator : sklearn estimator
+        model : sklearn estimator
             A supervised learning estimator with a fit method that provides information
             about feature importance either through a coef_ attribute or through a
             feature_importances_ attribute.
@@ -859,7 +863,9 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             more stable (lower variance) feature sets. The penalized score is calculated as:
             penalized_score = mean_score - cv_variance_penalty * std_score
         scoring : str, optional
-            Scoring metric for cross-validation. If None, uses the estimator's default scorer.
+            Scoring metric for cross-validation.
+            If None, uses "auc" for classification and "negative rmse" for regressor.
+            Utilize `sklearn.metrics.get_scorer_names()` to find all supported metrics.
         random_state : int, default=42
             Random state for reproducibility.
         visualize : bool, default=True
@@ -896,7 +902,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         >>> # Perform feature selection
         >>> results = PreProcessor.wrapper_feature_selection(
         ...     X_df, y_series,
-        ...     estimator=RandomForestClassifier(random_state=42),
+        ...     model=RandomForestClassifier(random_state=42),
         ...     n_max_features=10
         ... )
         >>>
@@ -913,6 +919,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
           but also stable across different data splits
         - Visualization shows the trade-off between number of features and model performance
         """
+        # TODO:Handle cases where y is not a pandas series elegantly
         # Input validation
         if not isinstance(X, pd.DataFrame):
             raise ValueError("X must be a pandas DataFrame")
@@ -937,9 +944,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         n_max_features = min(n_max_features, len(X.columns))
         n_max_features = max(n_max_features, min_features_to_select)
 
-        # Detect task type and set up cross-validation
-        n_unique_y = y.nunique()
-        if n_unique_y == 2:
+        if hasattr(model, "predict_proba"):
             task_type = "classification"
             cv_strategy = StratifiedKFold(
                 n_splits=cv, shuffle=True, random_state=random_state
@@ -948,9 +953,15 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             task_type = "regression"
             cv_strategy = KFold(n_splits=cv, shuffle=True, random_state=random_state)
 
+        if not scoring:
+            scoring = (
+                "roc_auc"
+                if task_type == "classification"
+                else "neg_root_mean_squared_error"
+            )
+
         # Prepare data - handle missing values for RFE
         X_processed = X.copy()
-
         # Simple preprocessing for missing values
         for col in X_processed.columns:
             if X_processed[col].dtype in ["object", "category"]:
@@ -960,15 +971,20 @@ class PreProcessor(BaseEstimator, TransformerMixin):
                     X_processed[col] = X_processed[col].fillna(mode_val[0])
                 else:
                     X_processed[col] = X_processed[col].fillna("missing")
-                # Convert to numeric codes for RFE
+                # Convert to numeric codes for RFE while remain 1:1 mapping
                 X_processed[col] = pd.Categorical(X_processed[col]).codes
             else:
                 # For numeric, fill with median
                 X_processed[col] = X_processed[col].fillna(X_processed[col].median())
+            # scaling
+            if X_processed[col].dtype in ["int64", "float64"]:
+                X_processed[col] = (
+                    X_processed[col] - X_processed[col].mean()
+                ) / X_processed[col].std()
 
         # Perform RFECV
         rfecv = RFECV(
-            estimator=estimator,
+            estimator=model,
             min_features_to_select=min_features_to_select,
             step=step,
             cv=cv_strategy,
@@ -1010,7 +1026,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         # If the RFECV selected more features than our optimum, re-run with fixed number
         if n_features_selected > optimal_n_features:
             rfe = RFE(
-                estimator=estimator, n_features_to_select=optimal_n_features, step=step
+                estimator=model, n_features_to_select=optimal_n_features, step=step
             )
             rfe.fit(X_processed, y)
             selected_features = X.columns[rfe.support_].tolist()
@@ -1135,6 +1151,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             linestyle="--",
             linewidth=2,
             label=f"Optimal: {optimal_n_features} features",
+            alpha=0.6,
         )
 
         # Highlight max features limit if applicable

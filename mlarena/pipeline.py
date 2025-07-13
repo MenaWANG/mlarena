@@ -427,7 +427,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         nrmse_mean = rmse / y_true_mean * 100  # Normalized by mean
         nrmse_std = rmse / y_true_std * 100  # Normalized by standard deviation
-        nrmse_iqr = rmse / iqr * 100  # Normalized by interquartile range
+        if iqr != 0:
+            nrmse_iqr = rmse / iqr * 100  # Normalized by interquartile range
+        else:
+            nrmse_iqr = float("nan")
 
         # MAPE (excluding observations where y_true is zero)
         non_zero = y_true != 0

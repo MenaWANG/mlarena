@@ -919,6 +919,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
           but also stable across different data splits
         - Visualization shows the trade-off between number of features and model performance
         """
+        # TODO:Handle cases where y is not a pandas series elegantly
         # Input validation
         if not isinstance(X, pd.DataFrame):
             raise ValueError("X must be a pandas DataFrame")

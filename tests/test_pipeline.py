@@ -6,10 +6,12 @@ Test script for MLPipeline class.
 from typing import Any
 
 import matplotlib
+import matplotlib.pyplot as plt
 
 # Third-party imports
 import numpy as np
 import pandas as pd
+import pytest
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -19,6 +21,13 @@ from sklearn.tree import DecisionTreeRegressor
 from mlarena import MLPipeline, PreProcessor
 
 matplotlib.use("Agg")  # Use non-interactive backend for testing
+
+
+@pytest.fixture(autouse=True)
+def close_figures():
+    """Automatically close matplotlib figures after each test."""
+    yield
+    plt.close("all")
 
 
 # Custom model class without verbose parameter for testing

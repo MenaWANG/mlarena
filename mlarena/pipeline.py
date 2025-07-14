@@ -1026,6 +1026,29 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         return results
 
     @staticmethod
+    def _supports_verbose(algorithm):
+        """
+        Check if an algorithm supports the verbose parameter.
+
+        Parameters
+        ----------
+        algorithm : class
+            ML algorithm class to check.
+
+        Returns
+        -------
+        bool
+            True if the algorithm supports verbose parameter, False otherwise.
+        """
+        import inspect
+
+        try:
+            sig = inspect.signature(algorithm.__init__)
+            return "verbose" in sig.parameters
+        except (ValueError, AttributeError):
+            return False
+
+    @staticmethod
     def tune(
         X,
         y,
@@ -1082,7 +1105,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         n_warmup_steps : int, default=0
             Number of steps per trial to run before pruning.
         verbose : int, default=0
-            Verbosity level.
+            Verbosity level. Only used if algorithm supports it.
         cv : int, default=5
             Number of splits for cross-validation.
         cv_variance_penalty : float, default=0.1
@@ -1136,6 +1159,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 task = "regression"
             del temp_model
 
+        # Check if algorithm supports verbose parameter
+        supports_verbose = MLPipeline._supports_verbose(algorithm)
+
         # Set default metric if not specified
         if tune_metric is None:
             tune_metric = "auc" if task == "classification" else "rmse"
@@ -1155,6 +1181,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     params[param_name] = trial.suggest_categorical(
                         param_name, param_range
                     )
+
+            # Add verbose parameter only if supported
+            if supports_verbose:
+                params["verbose"] = verbose
 
             cv_scores = []
             if task == "classification":
@@ -1181,7 +1211,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     y_fold_val = y_train_full[val_idx]
 
                 model = MLPipeline(
-                    model=algorithm(**params, verbose=verbose),
+                    model=algorithm(**params),
                     preprocessor=preprocessor,
                 )
 
@@ -1276,10 +1306,13 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         # Get best parameters
         best_params = study.best_params
+        # Add verbose parameter only if supported
+        if supports_verbose:
+            best_params["verbose"] = verbose
 
         # Train final model with best parameters on full training set
         final_model = MLPipeline(
-            model=algorithm(**best_params, verbose=verbose), preprocessor=PreProcessor()
+            model=algorithm(**best_params), preprocessor=PreProcessor()
         )
         final_model.fit(X_train_full, y_train_full)
 

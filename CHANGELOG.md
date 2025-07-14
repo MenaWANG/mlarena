@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.7] - 2025-07-14
+
+### Added
+- Enhanced algorithm compatibility in `tune` method:
+  - Added intelligent detection of verbose parameter support
+  - Gracefully handles algorithms without verbose parameter
+  - Added `_supports_verbose` helper method using Python's inspect module
+  - Added comprehensive test coverage for both verbose and non-verbose algorithms
+  - Maintains backward compatibility with existing verbose-supporting algorithms
+
+
 ## [0.3.6] - 2025-07-13
 
 ### Added

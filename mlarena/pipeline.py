@@ -349,18 +349,85 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         - Shows positive class for binary classification tasks
         """
         if self.shap_values is None:
-            print(
-                """
-                  Please explain model first by running
-                  `explain_model()` using a selected dataset
-                  """
+            warnings.warn(
+                "Please explain model first by running explain_model() using a selected dataset",
+                UserWarning,
+            )
+            return
+
+        self.shap_values.data = self.X_explain
+        if self.both_class:
+            shap.plots.waterfall(self.shap_values[:, :, 1][n - 1])
+        elif not self.both_class:
+            shap.plots.waterfall(self.shap_values[n - 1])
+
+    def explain_dependence_plot(self, feature_1, feature_2=None):
+        """
+        Generate SHAP dependence scatter plot for one or two features.
+
+        - Shows the relationship between a feature and the model's prediction
+        - Can be used to identify feature importance
+        - Can be used to identify feature interactions
+
+        Parameters
+        ----------
+        feature_1 : str
+            Name of the feature to plot.
+        feature_2 : str, optional
+            Name of the second feature to plot, this is used to show the interaction between the two features
+            If None, automatically attempts to pick out the feature column with the strongest interaction.
+
+        Returns
+        -------
+        None
+            Displays SHAP dependence scatter plot.
+
+        Notes
+        -----
+        - Requires explain_model() to be called first
+        - For one-hot encoded features, the feature name should be the encoded feature name
+
+        Raises
+        ------
+        ValueError
+            If feature_1 or feature_2 is not found in the dataset
+        UserWarning
+            If explain_model() has not been called first
+        """
+        if self.shap_values is None:
+            warnings.warn(
+                "Please explain model first by running explain_model() using a selected dataset",
+                UserWarning,
+            )
+            return
+
+        # Validate feature names
+        if feature_1 not in self.X_explain.columns:
+            raise ValueError(f"Feature '{feature_1}' not found in the dataset")
+        if feature_2 is not None and feature_2 not in self.X_explain.columns:
+            raise ValueError(f"Feature '{feature_2}' not found in the dataset")
+
+        # Get appropriate explanation based on task type
+        if self.both_class:
+            shap_values = self.shap_values.values[
+                :, :, 1
+            ]  # Get values for positive class
+            feature_data = self.X_explain
+        else:
+            shap_values = self.shap_values.values  # Get raw SHAP values
+            feature_data = self.X_explain
+
+        # Create dependence plot
+        if feature_2 is not None:
+            shap.dependence_plot(
+                feature_1,
+                shap_values,
+                feature_data,
+                interaction_index=feature_2,
+                show=True,
             )
         else:
-            self.shap_values.data = self.X_explain
-            if self.both_class:
-                shap.plots.waterfall(self.shap_values[:, :, 1][n - 1])
-            elif not self.both_class:
-                shap.plots.waterfall(self.shap_values[n - 1])
+            shap.dependence_plot(feature_1, shap_values, feature_data, show=True)
 
     def _evaluate_regression_model(self, y_true, y_pred, verbose: bool = False):
         """

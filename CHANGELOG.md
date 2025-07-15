@@ -6,7 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.3.7] - 2025-07-14
+## [0.3.9] - Unreleased
+
+### Added
+- **NEW**: Added SHAP dependence plot functionality with `explain_dependence_plot` method:
+  - Visualizes feature relationships and interactions using SHAP values
+  - Supports both single feature and interaction analysis
+  - Works with both classification and regression tasks
+  - Handles both binary and continuous target variables
+  - Proper error handling for missing features and uninitialized SHAP values
+  - Comprehensive test coverage across different algorithms:
+    - Classification algorithms tested:
+      - RandomForestClassifier
+      - DecisionTreeClassifier
+      - LogisticRegression
+      - LightGBM Classifier
+    - Regression algorithms tested:
+      - RandomForestRegressor
+      - DecisionTreeRegressor
+      - LinearRegression
+      - LightGBM Regressor
+    - Validates both single feature and interaction plots
+    - Includes error handling tests for:
+      - Non-existent features
+      - Calling before explain_model()
+      - Invalid feature combinations
+
+
+
+## [0.3.8] - 2025-07-14
 
 ### Added
 - Enhanced algorithm compatibility in `tune` method:

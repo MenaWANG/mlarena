@@ -5,6 +5,7 @@ Test script for MLPipeline class.
 # Standard library imports
 from typing import Any
 
+import lightgbm as lgb
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -15,7 +16,8 @@ import pytest
 from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.datasets import make_classification, make_regression
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.tree import DecisionTreeRegressor
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
 # Local imports
 from mlarena import MLPipeline, PreProcessor
@@ -259,6 +261,130 @@ def test_regression_pipeline():
     assert -float("inf") <= results["adj_r2"] <= 1
 
 
+def test_explain_dependence_plot():
+    """Test explain_dependence_plot with different algorithms and datasets"""
+
+    # Test classification algorithms
+    def test_classification_model(model_class, model_kwargs=None):
+        if model_kwargs is None:
+            model_kwargs = {}
+
+        # Create a small classification dataset
+        X, y = make_classification(
+            n_samples=100,  # Small dataset for quick testing
+            n_features=4,  # Few features for clarity
+            n_informative=3,
+            n_redundant=1,
+            random_state=42,
+        )
+
+        # Create meaningful feature names
+        feature_names = ["Feature_1", "Feature_2", "Feature_3", "Feature_4"]
+        X = pd.DataFrame(X, columns=feature_names)
+        y = pd.Series(y, name="target")
+
+        # Initialize and train model
+        model = model_class(**model_kwargs)
+        pipeline = MLPipeline(model=model)
+        pipeline.fit(X, y)
+
+        # Generate explanations
+        pipeline.explain_model(X)
+
+        # Test single feature plot
+        pipeline.explain_dependence_plot("Feature_1")
+
+        # Test feature interaction plot
+        pipeline.explain_dependence_plot("Feature_1", "Feature_2")
+
+        return True  # If we get here without errors, test passed
+
+    # Test regression algorithms
+    def test_regression_model(model_class, model_kwargs=None):
+        if model_kwargs is None:
+            model_kwargs = {}
+
+        # Create a small regression dataset
+        X, y = make_regression(
+            n_samples=100,  # Small dataset for quick testing
+            n_features=4,  # Few features for clarity
+            n_informative=3,
+            random_state=42,
+        )
+
+        # Create meaningful feature names
+        feature_names = ["Feature_1", "Feature_2", "Feature_3", "Feature_4"]
+        X = pd.DataFrame(X, columns=feature_names)
+        y = pd.Series(y, name="target")
+
+        # Initialize and train model
+        model = model_class(**model_kwargs)
+        pipeline = MLPipeline(model=model)
+        pipeline.fit(X, y)
+
+        # Generate explanations
+        pipeline.explain_model(X)
+
+        # Test single feature plot
+        pipeline.explain_dependence_plot("Feature_1")
+
+        # Test feature interaction plot
+        pipeline.explain_dependence_plot("Feature_1", "Feature_2")
+
+        return True  # If we get here without errors, test passed
+
+    # Test classification models
+    classification_models = [
+        (RandomForestClassifier, {"n_estimators": 10, "random_state": 42}),
+        (DecisionTreeClassifier, {"random_state": 42}),
+        (LogisticRegression, {"random_state": 42}),
+        (lgb.LGBMClassifier, {"n_estimators": 10, "random_state": 42}),
+    ]
+
+    for model_class, kwargs in classification_models:
+        assert test_classification_model(model_class, kwargs)
+
+    # Test regression models
+    regression_models = [
+        (RandomForestRegressor, {"n_estimators": 10, "random_state": 42}),
+        (DecisionTreeRegressor, {"random_state": 42}),
+        (LinearRegression, {}),
+        (lgb.LGBMRegressor, {"n_estimators": 10, "random_state": 42}),
+    ]
+
+    for model_class, kwargs in regression_models:
+        assert test_regression_model(model_class, kwargs)
+
+
+def test_explain_dependence_plot_errors():
+    """Test error handling in explain_dependence_plot"""
+
+    # Create a small dataset
+    X, y = make_classification(n_samples=100, n_features=4, random_state=42)
+    X = pd.DataFrame(X, columns=["Feature_1", "Feature_2", "Feature_3", "Feature_4"])
+    y = pd.Series(y)
+
+    # Initialize model
+    model = RandomForestClassifier(n_estimators=10, random_state=42)
+    pipeline = MLPipeline(model=model)
+    pipeline.fit(X, y)
+
+    # Test calling explain_dependence_plot before explain_model
+    with pytest.warns(UserWarning, match="Please explain model first"):
+        pipeline.explain_dependence_plot("Feature_1")
+
+    # Generate explanations
+    pipeline.explain_model(X)
+
+    # Test with non-existent feature
+    with pytest.raises(ValueError, match="not found in the dataset"):
+        pipeline.explain_dependence_plot("NonExistentFeature")
+
+    # Test with non-existent interaction feature
+    with pytest.raises(ValueError, match="not found in the dataset"):
+        pipeline.explain_dependence_plot("Feature_1", "NonExistentFeature")
+
+
 if __name__ == "__main__":
     print("Starting MLPipeline tests...")
 
@@ -281,5 +407,12 @@ if __name__ == "__main__":
     print("Running Regression Tests")
     print("=" * 50)
     test_regression_pipeline()
+
+    # Test explain_dependence_plot
+    print("\n" + "=" * 50)
+    print("Running Explain Dependence Plot Tests")
+    print("=" * 50)
+    test_explain_dependence_plot()
+    test_explain_dependence_plot_errors()
 
     print("\nAll tests completed successfully!")

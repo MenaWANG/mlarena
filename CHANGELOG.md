@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.9] - Unreleased
 
 ### Added
-- **NEW**: Added SHAP dependence plot functionality with `explain_dependence_plot` method:
+- **NEW**: Added SHAP dependence plot functionality with `explain_dependence` method:
   - Visualizes feature relationships and interactions using SHAP values
   - Supports both single feature and interaction analysis
   - Works with both classification and regression tasks

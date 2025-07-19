@@ -6,10 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [0.3.9] - Unreleased
+## [0.3.9] - 2025-07-19
 
 ### Added
-- **NEW**: Added SHAP dependence plot functionality with `explain_dependence_plot` method:
+- **NEW**: Added SHAP dependence plot functionality with `explain_dependence` method:
   - Visualizes feature relationships and interactions using SHAP values
   - Supports both single feature and interaction analysis
   - Works with both classification and regression tasks

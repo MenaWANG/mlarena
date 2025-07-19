@@ -361,7 +361,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         elif not self.both_class:
             shap.plots.waterfall(self.shap_values[n - 1])
 
-    def explain_dependence_plot(self, feature_1, feature_2=None):
+    def explain_dependence(self, feature_1, feature_2=None):
         """
         Generate SHAP dependence scatter plot for one or two features.
 

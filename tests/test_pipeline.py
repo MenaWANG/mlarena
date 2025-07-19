@@ -261,8 +261,8 @@ def test_regression_pipeline():
     assert -float("inf") <= results["adj_r2"] <= 1
 
 
-def test_explain_dependence_plot():
-    """Test explain_dependence_plot with different algorithms and datasets"""
+def test_explain_dependence():
+    """Test explain_dependence with different algorithms and datasets"""
 
     # Test classification algorithms
     def test_classification_model(model_class, model_kwargs=None):
@@ -292,10 +292,10 @@ def test_explain_dependence_plot():
         pipeline.explain_model(X)
 
         # Test single feature plot
-        pipeline.explain_dependence_plot("Feature_1")
+        pipeline.explain_dependence("Feature_1")
 
         # Test feature interaction plot
-        pipeline.explain_dependence_plot("Feature_1", "Feature_2")
+        pipeline.explain_dependence("Feature_1", "Feature_2")
 
         return True  # If we get here without errors, test passed
 
@@ -326,10 +326,10 @@ def test_explain_dependence_plot():
         pipeline.explain_model(X)
 
         # Test single feature plot
-        pipeline.explain_dependence_plot("Feature_1")
+        pipeline.explain_dependence("Feature_1")
 
         # Test feature interaction plot
-        pipeline.explain_dependence_plot("Feature_1", "Feature_2")
+        pipeline.explain_dependence("Feature_1", "Feature_2")
 
         return True  # If we get here without errors, test passed
 
@@ -371,18 +371,18 @@ def test_explain_dependence_plot_errors():
 
     # Test calling explain_dependence_plot before explain_model
     with pytest.warns(UserWarning, match="Please explain model first"):
-        pipeline.explain_dependence_plot("Feature_1")
+        pipeline.explain_dependence("Feature_1")
 
     # Generate explanations
     pipeline.explain_model(X)
 
     # Test with non-existent feature
     with pytest.raises(ValueError, match="not found in the dataset"):
-        pipeline.explain_dependence_plot("NonExistentFeature")
+        pipeline.explain_dependence("NonExistentFeature")
 
     # Test with non-existent interaction feature
     with pytest.raises(ValueError, match="not found in the dataset"):
-        pipeline.explain_dependence_plot("Feature_1", "NonExistentFeature")
+        pipeline.explain_dependence("Feature_1", "NonExistentFeature")
 
 
 if __name__ == "__main__":
@@ -408,11 +408,11 @@ if __name__ == "__main__":
     print("=" * 50)
     test_regression_pipeline()
 
-    # Test explain_dependence_plot
+    # Test explain_dependence
     print("\n" + "=" * 50)
     print("Running Explain Dependence Plot Tests")
     print("=" * 50)
-    test_explain_dependence_plot()
+    test_explain_dependence()
     test_explain_dependence_plot_errors()
 
     print("\nAll tests completed successfully!")

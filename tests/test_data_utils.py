@@ -9,6 +9,7 @@ from mlarena.utils.data_utils import (
     filter_rows_by_substring,
     find_duplicates,
     is_primary_key,
+    pivot_by_group,
     select_existing_cols,
     transform_date_cols,
     value_counts_with_pct,
@@ -878,3 +879,117 @@ def test_deduplicate_by_rank_verbose(capsys):
     captured_empty = capsys.readouterr()
 
     assert "Input DataFrame is empty" in captured_empty.out
+
+
+def test_pivot_by_group():
+    """Test pivot_by_group function with various scenarios.
+
+    Tests:
+    - Basic pivoting functionality
+    - Custom column names and separator
+    - Handling duplicates (raise vs warn)
+    - Aggregation functions
+    - Column sorting
+    - Error handling
+    """
+    # Test 1: Basic pivoting
+    df_basic = pd.DataFrame(
+        {
+            "id": ["aaa", "aaa", "bbb"],
+            "group": [1, 2, 1],
+            "surname": ["smith", "cook", "jones"],
+            "age": [25, 30, 35],
+        }
+    )
+
+    result = pivot_by_group(df_basic)
+    assert len(result) == 2  # Two unique IDs
+    assert set(result.columns) == {"id", "surname_1", "surname_2", "age_1", "age_2"}
+    assert result.loc[result["id"] == "aaa", "surname_1"].iloc[0] == "smith"
+    assert result.loc[result["id"] == "aaa", "surname_2"].iloc[0] == "cook"
+    assert pd.isna(result.loc[result["id"] == "bbb", "surname_2"].iloc[0])
+
+    # Test 2: Custom column names and separator
+    df_custom = pd.DataFrame(
+        {
+            "customer": ["C1", "C1", "C2"],
+            "visit": ["first", "second", "first"],
+            "score": [85, 90, 88],
+        }
+    )
+
+    result_custom = pivot_by_group(
+        df_custom, id_column="customer", group_column="visit", separator="."
+    )
+    assert set(result_custom.columns) == {"customer", "score.first", "score.second"}
+
+    # Test 3: Handling duplicates - raise
+    df_dups = pd.DataFrame(
+        {"id": ["aaa", "aaa", "bbb"], "group": [1, 1, 1], "value": [10, 20, 30]}
+    )
+
+    with pytest.raises(ValueError, match="Found duplicate id-group combinations"):
+        pivot_by_group(df_dups, handle_duplicates="raise")
+
+    # Test 4: Handling duplicates - warn with aggregation
+    with pytest.warns(UserWarning, match="Found .* duplicate id-group combinations"):
+        result_warn = pivot_by_group(df_dups, handle_duplicates="warn", agg_func="mean")
+        assert result_warn.loc[result_warn["id"] == "aaa", "value_1"].iloc[0] == 15.0
+
+    # Test 5: Different aggregation functions
+    df_agg = pd.DataFrame(
+        {"id": ["aaa", "aaa", "bbb"], "group": [1, 1, 1], "value": [10, 20, 30]}
+    )
+
+    with pytest.warns(UserWarning):
+        result_min = pivot_by_group(df_agg, handle_duplicates="warn", agg_func="min")
+        assert result_min.loc[result_min["id"] == "aaa", "value_1"].iloc[0] == 10.0
+
+        result_max = pivot_by_group(df_agg, handle_duplicates="warn", agg_func="max")
+        assert result_max.loc[result_max["id"] == "aaa", "value_1"].iloc[0] == 20.0
+
+    # Test 6: Column sorting
+    df_sort = pd.DataFrame(
+        {
+            "id": ["aaa", "aaa"],
+            "group": [2, 1],  # Intentionally out of order
+            "z_col": ["z2", "z1"],
+            "a_col": ["a2", "a1"],
+        }
+    )
+
+    result_sorted = pivot_by_group(df_sort, sort_columns=True)
+    result_unsorted = pivot_by_group(df_sort, sort_columns=False)
+
+    # In sorted version, a_col should come before z_col for each group
+    sorted_cols = [col for col in result_sorted.columns if col != "id"]
+    assert sorted_cols == ["a_col_1", "a_col_2", "z_col_1", "z_col_2"]
+
+    # Test 7: Error handling
+    # Invalid column names
+    with pytest.raises(ValueError, match="ID column .* not found"):
+        pivot_by_group(df_basic, id_column="invalid")
+
+    with pytest.raises(ValueError, match="Group column .* not found"):
+        pivot_by_group(df_basic, group_column="invalid")
+
+    # Invalid aggregation function
+    with pytest.raises(ValueError, match="agg_func must be one of"):
+        pivot_by_group(df_basic, agg_func="invalid")
+
+    # Invalid handle_duplicates value
+    with pytest.raises(ValueError, match="handle_duplicates must be one of"):
+        pivot_by_group(df_basic, handle_duplicates="invalid")
+
+    # Nulls in group column
+    df_nulls = pd.DataFrame(
+        {"id": ["aaa", "aaa"], "group": [1, None], "value": [10, 20]}
+    )
+    with pytest.raises(ValueError, match="Found null values in group column"):
+        pivot_by_group(df_nulls)
+
+    # Empty DataFrame
+    df_empty = pd.DataFrame()
+    result_empty = pivot_by_group(df_empty)
+    assert len(result_empty) == 0
+    assert len(result_empty.columns) == 0  

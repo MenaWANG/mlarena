@@ -14,6 +14,7 @@ __all__ = [
     "filter_columns_by_substring",
     "find_duplicates",
     "deduplicate_by_rank",
+    "pivot_by_group",
 ]
 
 
@@ -771,3 +772,158 @@ def deduplicate_by_rank(
         print(f"📊 Final dataset: {final_count} rows")
 
     return dedup_df
+
+
+def pivot_by_group(
+    data: pd.DataFrame,
+    id_column: str = "id",
+    group_column: str = "group",
+    separator: str = "_",
+    agg_func: str = "first",
+    sort_columns: bool = True,
+    handle_duplicates: str = "raise",
+) -> pd.DataFrame:
+    """
+    Pivot a DataFrame by group values, transforming data from long to wide format.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame with separate ID and group columns
+    id_column : str, default='id'
+        Name of the column that uniquely identifies each entity
+    group_column : str, default='group'
+        Name of the column containing the values to be used as column suffixes
+    separator : str, default='_'
+        Separator to use between column name and group value
+    agg_func : str, default='first'
+        Aggregation function to use when there are duplicate id-group combinations.
+        Options: 'first', 'last', 'mean', 'sum', 'min', 'max'
+    sort_columns : bool, default=True
+        Whether to sort the output columns alphabetically
+    handle_duplicates : str, default='raise'
+        How to handle duplicate id-group combinations:
+        - 'raise': Raise an error with details about duplicates
+        - 'warn': Print warning with duplicate details and apply agg_func
+
+
+    Returns
+    -------
+    pd.DataFrame
+        Pivoted DataFrame with ID as primary key and grouped columns
+
+    Raises
+    ------
+    ValueError
+        - If required columns are not found in DataFrame
+        - If group_column contains null values
+        - If handle_duplicates='raise' and duplicates are found
+        - If agg_func is not one of the supported functions
+        - If handle_duplicates is not one of 'raise' or 'warn'
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'id': ['aaa', 'aaa', 'bbb'],
+    ...     'group': [1, 2, 1],
+    ...     'surname': ['smith', 'cook', 'jones'],
+    ...     'age': [25, 30, 35]
+    ... })
+    >>> pivot_by_group(df)
+       id  surname_1  surname_2  age_1  age_2
+    0  aaa     smith      cook     25     30
+    1  bbb     jones      NaN     35    NaN
+
+    >>> # Handle duplicates with aggregation
+    >>> df_dups = pd.DataFrame({
+    ...     'id': ['aaa', 'aaa', 'bbb'],
+    ...     'group': [1, 1, 1],
+    ...     'value': [10, 20, 30]
+    ... })
+    >>> pivot_by_group(df_dups, handle_duplicates='warn', agg_func='mean')
+       id  value_1
+    0  aaa     15.0
+    1  bbb     30.0
+    """
+    # Handle empty DataFrame first
+    if data.empty:
+        return pd.DataFrame()
+
+    # Input validation
+    if id_column not in data.columns:
+        raise ValueError(f"ID column '{id_column}' not found in DataFrame")
+    if group_column not in data.columns:
+        raise ValueError(f"Group column '{group_column}' not found in DataFrame")
+
+    # Validate aggregation function
+    valid_agg_funcs = ["first", "last", "mean", "sum", "min", "max"]
+    if agg_func not in valid_agg_funcs:
+        raise ValueError(f"agg_func must be one of {valid_agg_funcs}")
+
+    # Validate handle_duplicates
+    valid_duplicate_handlers = ["raise", "warn"]
+    if handle_duplicates not in valid_duplicate_handlers:
+        raise ValueError(f"handle_duplicates must be one of {valid_duplicate_handlers}")
+
+    # Handle nulls in group column
+    if data[group_column].isna().any():
+        raise ValueError(f"Found null values in group column '{group_column}'")
+
+    # Check for duplicates using is_primary_key
+    is_unique = is_primary_key(data=data, cols=[id_column, group_column], verbose=False)
+
+    if not is_unique:
+        duplicate_counts = (
+            data.groupby([id_column, group_column])
+            .size()
+            .reset_index(name="count")
+            .query("count > 1")
+        )
+
+        if handle_duplicates == "raise":
+            raise ValueError(
+                "ℹ️ Found duplicate id-group combinations. "
+                f"Clean up dups before pivoting, or set handle_duplicates='warn' and aggregate duplicates using '{agg_func}'."
+            )
+        elif handle_duplicates == "warn":
+            import warnings
+
+            warnings.warn(
+                f"ℹ️ Found {len(duplicate_counts)} duplicate id-group combinations. "
+                f"Aggregating using {agg_func}."
+            )
+
+    # Get columns to pivot (exclude ID and group columns)
+    value_cols = [col for col in data.columns if col not in [id_column, group_column]]
+
+    # Melt the DataFrame to long format
+    df_melted = data.melt(
+        id_vars=[id_column, group_column],
+        value_vars=value_cols,
+        var_name="field",
+        value_name="_temp_value_",
+    )
+
+    # Create new column names with group values
+    df_melted["new_field"] = (
+        df_melted["field"] + separator + df_melted[group_column].astype(str)
+    )
+
+    # Pivot to get the final structure
+    result = df_melted.pivot_table(
+        index=id_column, columns="new_field", values="_temp_value_", aggfunc=agg_func
+    ).reset_index()
+
+    # Clean up column names
+    result.columns.name = None
+
+    # Sort columns if requested
+    if sort_columns:
+        # Keep id_column as first column
+        other_cols = sorted(col for col in result.columns if col != id_column)
+        result = result[[id_column] + other_cols]
+
+    # Remove columns with all NaN values
+    result = result.dropna(axis=1, how="all")
+
+    return result

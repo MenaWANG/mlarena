@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+import numpy as np
 import pandas as pd
 
 __all__ = [
@@ -15,6 +16,7 @@ __all__ = [
     "find_duplicates",
     "deduplicate_by_rank",
     "pivot_by_group",
+    "clean_null_representations",
 ]
 
 
@@ -927,3 +929,187 @@ def pivot_by_group(
     result = result.dropna(axis=1, how="all")
 
     return result
+
+
+def clean_null_representations(
+    data: pd.DataFrame,
+    numeric_sentinel_values: Optional[dict] = None,
+    numeric_range_limits: Optional[dict] = None,
+    replace_inf: bool = True,
+    zero_as_null_cols: Optional[List[str]] = None,
+    custom_string_nulls: Optional[List[str]] = None,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """
+    Clean null representations in both numeric and categorical columns.
+
+    This function standardizes various null representations across different data types:
+    - Categorical columns: Converts string nulls ('nan', 'NULL', etc.) to None
+    - Numeric columns: Converts inf, sentinel values, and out-of-range values to NaN
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame to clean
+    numeric_sentinel_values : dict, optional
+        Dictionary mapping column names to lists of values that should be treated as null.
+        Example: {'age': [-1, 999], 'score': [-999, 9999]}
+    numeric_range_limits : dict, optional
+        Dictionary mapping column names to min/max valid ranges. Values outside
+        these ranges will be converted to NaN.
+        Example: {'age': {'min': 0, 'max': 150}, 'percentage': {'min': 0, 'max': 100}}
+    replace_inf : bool, default True
+        Whether to replace infinite values (inf, -inf) with NaN in numeric columns
+    zero_as_null_cols : List[str], optional
+        List of numeric column names where zero values should be treated as null.
+        Example: ['optional_id', 'bonus_amount']
+    custom_string_nulls : List[str], optional
+        Additional string representations to treat as null beyond the default list.
+        Default nulls: ['nan', 'NaN', 'None', 'null', 'NULL', '', '<NA>', 'N/A', 'n/a']
+        Example: ['missing', 'unknown', '--', 'TBD']
+    verbose : bool, default False
+        If True, print information about the cleaning process.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with standardized null representations
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'name': ['John', 'nan', None, 'Alice'],
+    ...     'age': [25, -1, 30, np.inf],
+    ...     'score': [85.5, -999, np.nan, 88.0],
+    ...     'status': ['active', 'NULL', '', 'inactive']
+    ... })
+
+    >>> # Define custom cleaning rules
+    >>> sentinel_values = {
+    ...     'age': [-1, 999],
+    ...     'score': [-999, 9999]
+    ... }
+    >>> range_limits = {
+    ...     'age': {'min': 0, 'max': 120},
+    ...     'score': {'min': 0, 'max': 100}
+    ... }
+    >>> custom_nulls = ['missing', 'unknown', '--']
+    >>>
+    >>> cleaned_df = clean_null_representations(
+    ...     df,
+    ...     numeric_sentinel_values=sentinel_values,
+    ...     numeric_range_limits=range_limits,
+    ...     custom_string_nulls=custom_nulls,
+    ...     verbose=True
+    ... )
+
+    Notes
+    -----
+    - The function preserves original data types where possible
+    - Numeric columns use np.nan for null values
+    - Categorical columns use None for null values
+    - The function creates a copy of the input DataFrame
+    - Processing order: inf replacement → sentinel values → range limits → zero replacement
+
+    See Also
+    --------
+    drop_fully_null_cols : Drop columns where all values are missing/null
+    value_counts_with_pct : Calculate value counts including null values
+    """
+    df_clean = data.copy()
+
+    # Default string null representations
+    default_string_nulls = [
+        "nan",
+        "NaN",
+        "None",
+        "null",
+        "NULL",
+        "",
+        "<NA>",
+        "N/A",
+        "n/a",
+    ]
+    string_nulls_to_replace = default_string_nulls + (custom_string_nulls or [])
+
+    # Get column types
+    numeric_cols = df_clean.select_dtypes(include=["number"]).columns
+    categorical_cols = df_clean.select_dtypes(
+        include=["object", "category", "string"]
+    ).columns
+
+    if verbose:
+        print(
+            f"🔍 Found {len(numeric_cols)} numeric columns and {len(categorical_cols)} categorical columns"
+        )
+
+    # === CLEAN CATEGORICAL COLUMNS ===
+    if len(categorical_cols) > 0:
+        if verbose:
+            print(f"🧹 Cleaning categorical columns: {list(categorical_cols)}")
+            print(f"   Replacing values: {string_nulls_to_replace}")
+
+        df_clean[categorical_cols] = df_clean[categorical_cols].apply(
+            lambda col: col.where(
+                ~col.astype(str).str.strip().isin(string_nulls_to_replace), None
+            )
+        )
+
+    # === CLEAN NUMERIC COLUMNS ===
+    for col in numeric_cols:
+        if verbose:
+            print(f"\n🔢 Cleaning numeric column: {col}")
+
+        # 1. Replace infinity values
+        if replace_inf:
+            inf_mask = np.isinf(df_clean[col])
+            inf_count = inf_mask.sum()
+            if inf_count > 0 and verbose:
+                print(f"   Replaced {inf_count} infinite values")
+            df_clean[col] = df_clean[col].replace([np.inf, -np.inf], np.nan)
+
+        # 2. Replace sentinel values
+        if numeric_sentinel_values and col in numeric_sentinel_values:
+            sentinel_mask = df_clean[col].isin(numeric_sentinel_values[col])
+            sentinel_count = sentinel_mask.sum()
+            if sentinel_count > 0 and verbose:
+                print(
+                    f"   Replaced {sentinel_count} sentinel values: {numeric_sentinel_values[col]}"
+                )
+            df_clean[col] = df_clean[col].replace(numeric_sentinel_values[col], np.nan)
+
+        # 3. Apply range limits
+        if numeric_range_limits and col in numeric_range_limits:
+            limits = numeric_range_limits[col]
+            original_valid = df_clean[col].notna().sum()
+
+            if "min" in limits:
+                df_clean[col] = df_clean[col].where(
+                    df_clean[col] >= limits["min"], np.nan
+                )
+            if "max" in limits:
+                df_clean[col] = df_clean[col].where(
+                    df_clean[col] <= limits["max"], np.nan
+                )
+
+            new_valid = df_clean[col].notna().sum()
+            if verbose and original_valid != new_valid:
+                print(f"   Replaced {original_valid - new_valid} out-of-range values")
+                if "min" in limits:
+                    print(f"   - Below minimum ({limits['min']})")
+                if "max" in limits:
+                    print(f"   - Above maximum ({limits['max']})")
+
+        # 4. Replace zeros if specified
+        if zero_as_null_cols and col in zero_as_null_cols:
+            zero_mask = df_clean[col] == 0
+            zero_count = zero_mask.sum()
+            if zero_count > 0 and verbose:
+                print(f"   Replaced {zero_count} zero values")
+            df_clean[col] = df_clean[col].replace(0, np.nan)
+
+    if verbose:
+        total_nulls = df_clean.isnull().sum().sum()
+        print(f"\n✨ Cleaning complete! Total null values: {total_nulls:,}")
+
+    return df_clean

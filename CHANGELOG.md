@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Duplicate id-group combinations
   - Extensive test coverage including edge cases and error conditions
 
+- **NEW**: Added `clean_null_representations` function to data_utils for standardizing null values:
+  - Comprehensive cleaning of both numeric and categorical columns
+  - Handles multiple null representations:
+    - Categorical: Converts string nulls ('nan', 'NULL', etc.) to None
+    - Numeric: Converts inf, sentinel values, and out-of-range values to NaN
+  - Flexible configuration options:
+    - Custom sentinel values per column (e.g., -999, 9999)
+    - Range validation with min/max limits
+    - Zero-as-null handling for specific columns
+    - Custom string null patterns beyond defaults
+  - Detailed progress reporting with verbose mode
+  - Preserves original data types where possible
+  - Comprehensive test coverage for all features
+
 
 ## [0.3.9] - 2025-07-19
 

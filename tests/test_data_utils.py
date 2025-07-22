@@ -3,6 +3,7 @@ import pytest
 
 from mlarena.utils.data_utils import (
     clean_dollar_cols,
+    clean_null_representations,
     deduplicate_by_rank,
     drop_fully_null_cols,
     filter_columns_by_substring,
@@ -992,4 +993,102 @@ def test_pivot_by_group():
     df_empty = pd.DataFrame()
     result_empty = pivot_by_group(df_empty)
     assert len(result_empty) == 0
-    assert len(result_empty.columns) == 0  
+    assert len(result_empty.columns) == 0
+
+
+def test_clean_null_representations_basic():
+    """Test basic null cleaning functionality."""
+    import numpy as np
+
+    # Create test data with various null representations
+    df = pd.DataFrame(
+        {
+            "str_col": ["valid", "nan", "NULL", "N/A", ""],
+            "num_col": [1.0, np.inf, -999, 0, np.nan],
+        }
+    )
+
+    # Clean with basic settings
+    cleaned = clean_null_representations(
+        df, numeric_sentinel_values={"num_col": [-999]}, zero_as_null_cols=["num_col"]
+    )
+
+    # Check string column cleaning
+    assert (
+        cleaned["str_col"].isna().sum() == 4
+    )  # 'nan', 'NULL', 'N/A', and '' should be null
+    assert cleaned["str_col"].notna().sum() == 1  # Only 'valid' remains
+
+    # Check numeric column cleaning
+    assert cleaned["num_col"].isna().sum() == 4  # inf, -999, 0, and nan should be null
+    assert cleaned["num_col"].notna().sum() == 1  # Only 1.0 remains
+
+
+def test_clean_null_representations_range_limits():
+    """Test range limit functionality."""
+    # Create test data with out-of-range values
+    df = pd.DataFrame({"age": [25, -5, 150, 30], "score": [85, 120, -10, 90]})
+
+    # Define range limits
+    range_limits = {"age": {"min": 0, "max": 120}, "score": {"min": 0, "max": 100}}
+
+    # Clean with range limits
+    cleaned = clean_null_representations(df, numeric_range_limits=range_limits)
+
+    # Check age column
+    assert cleaned["age"].isna().sum() == 2  # -5 and 150 should be null
+    assert cleaned["age"].notna().sum() == 2  # 25 and 30 remain
+
+    # Check score column
+    assert cleaned["score"].isna().sum() == 2  # 120 and -10 should be null
+    assert cleaned["score"].notna().sum() == 2  # 85 and 90 remain
+
+
+def test_clean_null_representations_custom_nulls():
+    """Test custom string null values."""
+    # Create test data with custom null representations
+    df = pd.DataFrame(
+        {
+            "status": ["active", "unknown", "TBD", "active"],
+            "category": ["A", "missing", "B", "--"],
+        }
+    )
+
+    # Clean with custom null strings
+    cleaned = clean_null_representations(
+        df, custom_string_nulls=["unknown", "TBD", "missing", "--"]
+    )
+
+    # Check status column
+    assert cleaned["status"].isna().sum() == 2  # 'unknown' and 'TBD' should be null
+    assert cleaned["status"].notna().sum() == 2  # two 'active' remain
+
+    # Check category column
+    assert cleaned["category"].isna().sum() == 2  # 'missing' and '--' should be null
+    assert cleaned["category"].notna().sum() == 2  # 'A' and 'B' remain
+
+
+def test_clean_null_representations_whitespace():
+    """Test handling of whitespace in null string representations."""
+    df = pd.DataFrame(
+        {
+            "col1": ["valid", " null ", "  NULL  ", " N/A ", "\tnull\t", "valid"],
+            "col2": ["A", "null", " null", "null ", " NULL ", "B"],
+        }
+    )
+
+    cleaned = clean_null_representations(df)
+
+    # Check that all variations of null with whitespace are properly cleaned
+    assert (
+        cleaned["col1"].isna().sum() == 4
+    )  # All variations of null/NULL/N/A should be null
+    assert cleaned["col1"].notna().sum() == 2  # Only 'valid' entries remain
+    assert list(cleaned["col1"].dropna()) == ["valid", "valid"]
+
+    # Check second column similarly
+    assert (
+        cleaned["col2"].isna().sum() == 4
+    )  # All variations of null/NULL should be null
+    assert cleaned["col2"].notna().sum() == 2  # Only 'A' and 'B' remain
+    assert list(cleaned["col2"].dropna()) == ["A", "B"]

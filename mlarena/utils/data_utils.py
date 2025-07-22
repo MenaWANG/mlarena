@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+import numpy as np
 import pandas as pd
 
 __all__ = [
@@ -14,6 +15,8 @@ __all__ = [
     "filter_columns_by_substring",
     "find_duplicates",
     "deduplicate_by_rank",
+    "pivot_by_group",
+    "clean_null_representations",
 ]
 
 
@@ -771,3 +774,342 @@ def deduplicate_by_rank(
         print(f"📊 Final dataset: {final_count} rows")
 
     return dedup_df
+
+
+def pivot_by_group(
+    data: pd.DataFrame,
+    id_column: str = "id",
+    group_column: str = "group",
+    separator: str = "_",
+    agg_func: str = "first",
+    sort_columns: bool = True,
+    handle_duplicates: str = "raise",
+) -> pd.DataFrame:
+    """
+    Pivot a DataFrame by group values, transforming data from long to wide format.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame with separate ID and group columns
+    id_column : str, default='id'
+        Name of the column that uniquely identifies each entity
+    group_column : str, default='group'
+        Name of the column containing the values to be used as column suffixes
+    separator : str, default='_'
+        Separator to use between column name and group value
+    agg_func : str, default='first'
+        Aggregation function to use when there are duplicate id-group combinations.
+        Options: 'first', 'last', 'mean', 'sum', 'min', 'max'
+    sort_columns : bool, default=True
+        Whether to sort the output columns alphabetically
+    handle_duplicates : str, default='raise'
+        How to handle duplicate id-group combinations:
+        - 'raise': Raise an error with details about duplicates
+        - 'warn': Print warning with duplicate details and apply agg_func
+
+
+    Returns
+    -------
+    pd.DataFrame
+        Pivoted DataFrame with ID as primary key and grouped columns
+
+    Raises
+    ------
+    ValueError
+        - If required columns are not found in DataFrame
+        - If group_column contains null values
+        - If handle_duplicates='raise' and duplicates are found
+        - If agg_func is not one of the supported functions
+        - If handle_duplicates is not one of 'raise' or 'warn'
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'id': ['aaa', 'aaa', 'bbb'],
+    ...     'group': [1, 2, 1],
+    ...     'surname': ['smith', 'cook', 'jones'],
+    ...     'age': [25, 30, 35]
+    ... })
+    >>> pivot_by_group(df)
+       id  surname_1  surname_2  age_1  age_2
+    0  aaa     smith      cook     25     30
+    1  bbb     jones      NaN     35    NaN
+
+    >>> # Handle duplicates with aggregation
+    >>> df_dups = pd.DataFrame({
+    ...     'id': ['aaa', 'aaa', 'bbb'],
+    ...     'group': [1, 1, 1],
+    ...     'value': [10, 20, 30]
+    ... })
+    >>> pivot_by_group(df_dups, handle_duplicates='warn', agg_func='mean')
+       id  value_1
+    0  aaa     15.0
+    1  bbb     30.0
+    """
+    # Handle empty DataFrame first
+    if data.empty:
+        return pd.DataFrame()
+
+    # Input validation
+    if id_column not in data.columns:
+        raise ValueError(f"ID column '{id_column}' not found in DataFrame")
+    if group_column not in data.columns:
+        raise ValueError(f"Group column '{group_column}' not found in DataFrame")
+
+    # Validate aggregation function
+    valid_agg_funcs = ["first", "last", "mean", "sum", "min", "max"]
+    if agg_func not in valid_agg_funcs:
+        raise ValueError(f"agg_func must be one of {valid_agg_funcs}")
+
+    # Validate handle_duplicates
+    valid_duplicate_handlers = ["raise", "warn"]
+    if handle_duplicates not in valid_duplicate_handlers:
+        raise ValueError(f"handle_duplicates must be one of {valid_duplicate_handlers}")
+
+    # Handle nulls in group column
+    if data[group_column].isna().any():
+        raise ValueError(f"Found null values in group column '{group_column}'")
+
+    # Check for duplicates using is_primary_key
+    is_unique = is_primary_key(data=data, cols=[id_column, group_column], verbose=False)
+
+    if not is_unique:
+        duplicate_counts = (
+            data.groupby([id_column, group_column])
+            .size()
+            .reset_index(name="count")
+            .query("count > 1")
+        )
+
+        if handle_duplicates == "raise":
+            raise ValueError(
+                "ℹ️ Found duplicate id-group combinations. "
+                f"Clean up dups before pivoting, or set handle_duplicates='warn' and aggregate duplicates using '{agg_func}'."
+            )
+        elif handle_duplicates == "warn":
+            import warnings
+
+            warnings.warn(
+                f"ℹ️ Found {len(duplicate_counts)} duplicate id-group combinations. "
+                f"Aggregating using {agg_func}."
+            )
+
+    # Get columns to pivot (exclude ID and group columns)
+    value_cols = [col for col in data.columns if col not in [id_column, group_column]]
+
+    # Melt the DataFrame to long format
+    df_melted = data.melt(
+        id_vars=[id_column, group_column],
+        value_vars=value_cols,
+        var_name="field",
+        value_name="_temp_value_",
+    )
+
+    # Create new column names with group values
+    df_melted["new_field"] = (
+        df_melted["field"] + separator + df_melted[group_column].astype(str)
+    )
+
+    # Pivot to get the final structure
+    result = df_melted.pivot_table(
+        index=id_column, columns="new_field", values="_temp_value_", aggfunc=agg_func
+    ).reset_index()
+
+    # Clean up column names
+    result.columns.name = None
+
+    # Sort columns if requested
+    if sort_columns:
+        # Keep id_column as first column
+        other_cols = sorted(col for col in result.columns if col != id_column)
+        result = result[[id_column] + other_cols]
+
+    # Remove columns with all NaN values
+    result = result.dropna(axis=1, how="all")
+
+    return result
+
+
+def clean_null_representations(
+    data: pd.DataFrame,
+    numeric_sentinel_values: Optional[dict] = None,
+    numeric_range_limits: Optional[dict] = None,
+    replace_inf: bool = True,
+    zero_as_null_cols: Optional[List[str]] = None,
+    custom_string_nulls: Optional[List[str]] = None,
+    verbose: bool = False,
+) -> pd.DataFrame:
+    """
+    Clean null representations in both numeric and categorical columns.
+
+    This function standardizes various null representations across different data types:
+    - Categorical columns: Converts string nulls ('nan', 'NULL', etc.) to None
+    - Numeric columns: Converts inf, sentinel values, and out-of-range values to NaN
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Input DataFrame to clean
+    numeric_sentinel_values : dict, optional
+        Dictionary mapping column names to lists of values that should be treated as null.
+        Example: {'age': [-1, 999], 'score': [-999, 9999]}
+    numeric_range_limits : dict, optional
+        Dictionary mapping column names to min/max valid ranges. Values outside
+        these ranges will be converted to NaN.
+        Example: {'age': {'min': 0, 'max': 150}, 'percentage': {'min': 0, 'max': 100}}
+    replace_inf : bool, default True
+        Whether to replace infinite values (inf, -inf) with NaN in numeric columns
+    zero_as_null_cols : List[str], optional
+        List of numeric column names where zero values should be treated as null.
+        Example: ['optional_id', 'bonus_amount']
+    custom_string_nulls : List[str], optional
+        Additional string representations to treat as null beyond the default list.
+        Default nulls: ['nan', 'NaN', 'None', 'null', 'NULL', '', '<NA>', 'N/A', 'n/a']
+        Example: ['missing', 'unknown', '--', 'TBD']
+    verbose : bool, default False
+        If True, print information about the cleaning process.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with standardized null representations
+
+    Examples
+    --------
+    >>> df = pd.DataFrame({
+    ...     'name': ['John', 'nan', None, 'Alice'],
+    ...     'age': [25, -1, 30, np.inf],
+    ...     'score': [85.5, -999, np.nan, 88.0],
+    ...     'status': ['active', 'NULL', '', 'inactive']
+    ... })
+
+    >>> # Define custom cleaning rules
+    >>> sentinel_values = {
+    ...     'age': [-1, 999],
+    ...     'score': [-999, 9999]
+    ... }
+    >>> range_limits = {
+    ...     'age': {'min': 0, 'max': 120},
+    ...     'score': {'min': 0, 'max': 100}
+    ... }
+    >>> custom_nulls = ['missing', 'unknown', '--']
+    >>>
+    >>> cleaned_df = clean_null_representations(
+    ...     df,
+    ...     numeric_sentinel_values=sentinel_values,
+    ...     numeric_range_limits=range_limits,
+    ...     custom_string_nulls=custom_nulls,
+    ...     verbose=True
+    ... )
+
+    Notes
+    -----
+    - The function preserves original data types where possible
+    - Numeric columns use np.nan for null values
+    - Categorical columns use None for null values
+    - The function creates a copy of the input DataFrame
+    - Processing order: inf replacement → sentinel values → range limits → zero replacement
+
+    See Also
+    --------
+    drop_fully_null_cols : Drop columns where all values are missing/null
+    value_counts_with_pct : Calculate value counts including null values
+    """
+    df_clean = data.copy()
+
+    # Default string null representations
+    default_string_nulls = [
+        "nan",
+        "NaN",
+        "None",
+        "null",
+        "NULL",
+        "",
+        "<NA>",
+        "N/A",
+        "n/a",
+    ]
+    string_nulls_to_replace = default_string_nulls + (custom_string_nulls or [])
+
+    # Get column types
+    numeric_cols = df_clean.select_dtypes(include=["number"]).columns
+    categorical_cols = df_clean.select_dtypes(
+        include=["object", "category", "string"]
+    ).columns
+
+    if verbose:
+        print(
+            f"🔍 Found {len(numeric_cols)} numeric columns and {len(categorical_cols)} categorical columns"
+        )
+
+    # === CLEAN CATEGORICAL COLUMNS ===
+    if len(categorical_cols) > 0:
+        if verbose:
+            print(f"🧹 Cleaning categorical columns: {list(categorical_cols)}")
+            print(f"   Replacing values: {string_nulls_to_replace}")
+
+        df_clean[categorical_cols] = df_clean[categorical_cols].apply(
+            lambda col: col.where(
+                ~col.astype(str).str.strip().isin(string_nulls_to_replace), None
+            )
+        )
+
+    # === CLEAN NUMERIC COLUMNS ===
+    for col in numeric_cols:
+        if verbose:
+            print(f"\n🔢 Cleaning numeric column: {col}")
+
+        # 1. Replace infinity values
+        if replace_inf:
+            inf_mask = np.isinf(df_clean[col])
+            inf_count = inf_mask.sum()
+            if inf_count > 0 and verbose:
+                print(f"   Replaced {inf_count} infinite values")
+            df_clean[col] = df_clean[col].replace([np.inf, -np.inf], np.nan)
+
+        # 2. Replace sentinel values
+        if numeric_sentinel_values and col in numeric_sentinel_values:
+            sentinel_mask = df_clean[col].isin(numeric_sentinel_values[col])
+            sentinel_count = sentinel_mask.sum()
+            if sentinel_count > 0 and verbose:
+                print(
+                    f"   Replaced {sentinel_count} sentinel values: {numeric_sentinel_values[col]}"
+                )
+            df_clean[col] = df_clean[col].replace(numeric_sentinel_values[col], np.nan)
+
+        # 3. Apply range limits
+        if numeric_range_limits and col in numeric_range_limits:
+            limits = numeric_range_limits[col]
+            original_valid = df_clean[col].notna().sum()
+
+            if "min" in limits:
+                df_clean[col] = df_clean[col].where(
+                    df_clean[col] >= limits["min"], np.nan
+                )
+            if "max" in limits:
+                df_clean[col] = df_clean[col].where(
+                    df_clean[col] <= limits["max"], np.nan
+                )
+
+            new_valid = df_clean[col].notna().sum()
+            if verbose and original_valid != new_valid:
+                print(f"   Replaced {original_valid - new_valid} out-of-range values")
+                if "min" in limits:
+                    print(f"   - Below minimum ({limits['min']})")
+                if "max" in limits:
+                    print(f"   - Above maximum ({limits['max']})")
+
+        # 4. Replace zeros if specified
+        if zero_as_null_cols and col in zero_as_null_cols:
+            zero_mask = df_clean[col] == 0
+            zero_count = zero_mask.sum()
+            if zero_count > 0 and verbose:
+                print(f"   Replaced {zero_count} zero values")
+            df_clean[col] = df_clean[col].replace(0, np.nan)
+
+    if verbose:
+        total_nulls = df_clean.isnull().sum().sum()
+        print(f"\n✨ Cleaning complete! Total null values: {total_nulls:,}")
+
+    return df_clean

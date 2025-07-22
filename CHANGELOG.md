@@ -6,6 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.3.10] - Unreleased
+
+### Added
+- **NEW**: Added `pivot_by_group` function to data_utils for reshaping data from long to wide format:
+  - Transforms data by pivoting values based on group column into suffixed columns
+  - Intelligent duplicate handling with 'raise' or 'warn' options
+  - Supports multiple aggregation functions ('first', 'last', 'mean', 'sum', 'min', 'max')
+  - Optional column sorting for consistent output structure
+  - Comprehensive error handling for:
+    - Missing or invalid columns
+    - Null values in group column
+    - Duplicate id-group combinations
+  - Extensive test coverage including edge cases and error conditions
+
+- **NEW**: Added `clean_null_representations` function to data_utils for standardizing null values:
+  - Comprehensive cleaning of both numeric and categorical columns
+  - Handles multiple null representations:
+    - Categorical: Converts string nulls ('nan', 'NULL', etc.) to None
+    - Numeric: Converts inf, sentinel values, and out-of-range values to NaN
+  - Flexible configuration options:
+    - Custom sentinel values per column (e.g., -999, 9999)
+    - Range validation with min/max limits
+    - Zero-as-null handling for specific columns
+    - Custom string null patterns beyond defaults
+  - Detailed progress reporting with verbose mode
+  - Preserves original data types where possible
+  - Comprehensive test coverage for all features
+
+
 ## [0.3.9] - 2025-07-19
 
 ### Added

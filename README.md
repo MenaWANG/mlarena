@@ -22,24 +22,29 @@ Read about the concepts and methodologies behind MLArena through these articles:
 
 2. [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96?source=friends_link&sk=ebe917c37719516a5b5170efc1bd0b32) - Published in Towards Data Science
    > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
+  
+For quick guide over the package 
+
+3. [Build Algorithm-Agnostic ML Pipelines in a Breeze](https://contributor.insightmediagroup.io/build-algorithm-agnostic-ml-pipelines-in-a-breeze/) - Published in Towards Data Science
+    > This article discussed some key challenges in algorithm-agnostic ML Pipeline building and demonstractes how MLarena can help to address them. Although more functionalities have been added after the publication of the article on 7 July 2025, it is nonetheless a good overview of MLarena's core functionalies and a good quick guide for starting with the package. 
 
 ## Installation
 
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.3.9
+%pip install mlarena==0.3.10
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.3.9 --no-deps
+%pip install mlarena==0.3.10 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.3.9 --no-deps
+%pip install mlarena==0.3.10 --no-deps
 %pip install optuna==3.6.1
 ```
 

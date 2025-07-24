@@ -26,6 +26,7 @@ Read about the concepts and methodologies behind MLArena through these articles:
 For quick guide over the package 
 
 3. [Build Algorithm-Agnostic ML Pipelines in a Breeze](https://contributor.insightmediagroup.io/build-algorithm-agnostic-ml-pipelines-in-a-breeze/) - Published in Towards Data Science
+
     > This article discussed some key challenges in algorithm-agnostic ML Pipeline building and demonstractes how MLarena can help to address them. Although more functionalities have been added after the publication of the article on 7 July 2025, it is nonetheless a good overview of MLarena's core functionalies and a good quick guide for starting with the package. 
 
 ## Installation

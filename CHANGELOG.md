@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+
+## [0.3.11] - Unreleased
+
+### Added
+- **NEW**: Enhanced power analysis capabilities in `stats_utils`:
+  - Added comprehensive power analysis functions:
+    - `power_analysis_numeric`: Calculate power for numeric outcomes (t-tests)
+    - `power_analysis_proportion`: Calculate power for proportion tests
+    - `sample_size_numeric`: Calculate required sample size for numeric tests
+    - `sample_size_proportion`: Calculate required sample size for proportion tests
+  - All above functions support:
+    - Two-sided and one-sided hypothesis testing
+    - Different test types (two-sample, one-sample, paired)
+    - Customizable significance levels (alpha)
+    - Clear documentation with practical examples
+  - Added `numeric_effectsize` function for computing Cohen's d:
+    - Flexible input options (mean difference or separate means)
+    - Support for both pooled and separate standard deviations
+    - Comprehensive validation and error handling
+    - Clear documentation of statistical assumptions
+
+
 ## [0.3.10] - 2025-07-23
 
 ### Added

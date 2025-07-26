@@ -26,6 +26,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Support for both pooled and separate standard deviations
     - Comprehensive validation and error handling
     - Clear documentation of statistical assumptions
+  - Added extensive test coverage:
+    - Precise validation of effect size calculations with exact formulas
+    - Accurate power calculations verified against statsmodels implementations
+    - Comprehensive error handling and input validation tests
+    - Real-world scenarios with practical sample sizes and effect sizes
+    - Edge cases and boundary conditions for all functions
+
+
 
 
 ## [0.3.10] - 2025-07-23

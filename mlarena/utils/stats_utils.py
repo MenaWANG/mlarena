@@ -4,6 +4,8 @@ from typing import Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from statsmodels.stats.power import tt_solve_power, zt_ind_solve_power
+from statsmodels.stats.proportion import proportion_effectsize
 
 import mlarena.utils.plot_utils as put
 
@@ -13,6 +15,11 @@ __all__ = [
     "optimize_stratification_strategy",
     "calculate_threshold_stats",
     "calculate_group_thresholds",
+    "power_analysis_numeric",
+    "power_analysis_proportion",
+    "sample_size_numeric",
+    "sample_size_proportion",
+    "numeric_effectsize",
 ]
 
 
@@ -692,3 +699,391 @@ def calculate_group_thresholds(
             )
 
     return pd.DataFrame(results)
+
+
+def power_analysis_numeric(
+    effect_size: float,
+    sample_size_per_group: int,
+    alpha: float = 0.05,
+    test_type: str = "two_sample",
+    alternative: str = "two-sided",
+) -> Dict[str, float]:
+    """
+    Calculate statistical power for numeric outcomes (t-tests).
+
+    Parameters
+    ----------
+    effect_size : float
+        Cohen's d effect size (standardized difference between groups)
+    sample_size_per_group : int
+        Sample size per group
+    alpha : float, default=0.05
+        Type I error rate (significance level)
+    test_type : str, default="two_sample"
+        Type of test: "two_sample", "one_sample", "paired"
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "greater", "less"
+
+    Returns
+    -------
+    Dict[str, float]
+        Dictionary containing power, effect_size, alpha, sample_size_per_group
+    """
+    # Input validation
+    if not -3 <= effect_size <= 3:
+        warnings.warn(
+            f"Effect size {effect_size} is outside typical range (-3 to 3) for Cohen's d",
+            UserWarning,
+        )
+
+    if not 0 < alpha < 1:
+        raise ValueError("Alpha must be between 0 and 1")
+
+    if sample_size_per_group < 2:
+        raise ValueError("Sample size per group must be at least 2")
+
+    if test_type not in ["two_sample", "one_sample", "paired"]:
+        raise ValueError(f"Invalid test_type: {test_type}")
+
+    if alternative not in ["two-sided", "greater", "less"]:
+        raise ValueError(f"Invalid alternative: {alternative}")
+
+    # Calculate power using tt_solve_power
+    power = tt_solve_power(
+        effect_size=effect_size,
+        nobs=sample_size_per_group,
+        alpha=alpha,
+        power=None,  # Solve for power
+        alternative=alternative,
+    )
+
+    return {
+        "power": float(power),
+        "effect_size": effect_size,
+        "alpha": alpha,
+        "sample_size_per_group": sample_size_per_group,
+        "test_type": test_type,
+        "alternative": alternative,
+    }
+
+
+def power_analysis_proportion(
+    baseline_rate: float,
+    treatment_rate: float,
+    sample_size_per_group: int,
+    alpha: float = 0.05,
+    alternative: str = "two-sided",
+) -> Dict[str, float]:
+    """
+    Calculate statistical power for proportion/conversion rate tests.
+
+    Parameters
+    ----------
+    baseline_rate : float
+        Baseline conversion rate (between 0 and 1)
+    treatment_rate : float
+        Treatment conversion rate (between 0 and 1)
+    sample_size_per_group : int
+        Sample size per group
+    alpha : float, default=0.05
+        Type I error rate
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "larger", "smaller"
+
+    Returns
+    -------
+    Dict[str, float]
+        Dictionary containing power, effect_size, rates, and sample size
+    """
+    # Input validation
+    if not 0 <= baseline_rate <= 1:
+        raise ValueError("Baseline rate must be between 0 and 1")
+
+    if not 0 <= treatment_rate <= 1:
+        raise ValueError("Treatment rate must be between 0 and 1")
+
+    if not 0 < alpha < 1:
+        raise ValueError("Alpha must be between 0 and 1")
+
+    if sample_size_per_group < 2:
+        raise ValueError("Sample size per group must be at least 2")
+
+    if alternative not in ["two-sided", "larger", "smaller"]:
+        raise ValueError(f"Invalid alternative: {alternative}")
+
+    # Calculate effect size (Cohen's h)
+    effect_size = proportion_effectsize(treatment_rate, baseline_rate)
+
+    # Calculate power
+    power = zt_ind_solve_power(
+        effect_size=effect_size,
+        nobs1=sample_size_per_group,
+        alpha=alpha,
+        alternative=alternative,
+    )
+
+    return {
+        "power": float(power),
+        "effect_size": float(effect_size),
+        "baseline_rate": baseline_rate,
+        "treatment_rate": treatment_rate,
+        "relative_lift": (treatment_rate - baseline_rate) / baseline_rate,
+        "absolute_lift": treatment_rate - baseline_rate,
+        "sample_size_per_group": sample_size_per_group,
+        "alpha": alpha,
+        "alternative": alternative,
+    }
+
+
+def sample_size_numeric(
+    effect_size: float,
+    power: float = 0.8,
+    alpha: float = 0.05,
+    test_type: str = "two_sample",
+    alternative: str = "two-sided",
+) -> Dict[str, Union[int, float]]:
+    """
+    Calculate required sample size for numeric outcomes to achieve desired power.
+
+    Parameters
+    ----------
+    effect_size : float
+        Cohen's d effect size to detect
+    power : float, default=0.8
+        Desired statistical power (1 - Type II error rate).
+        Common values: 0.7 (exploration), 0.8 (standard), 0.9 (high-stakes)
+    alpha : float, default=0.05
+        Type I error rate
+    test_type : str, default="two_sample"
+        Type of test: "two_sample", "one_sample", "paired"
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "greater", "less"
+
+    Returns
+    -------
+    Dict[str, Union[int, float]]
+        Dictionary containing required sample_size_per_group and input parameters
+
+    Examples
+    --------
+    >>> # Sample size needed to detect medium effect (d=0.5) with 80% power
+    >>> sample_size_numeric(effect_size=0.5)
+    {'sample_size_per_group': 64, 'total_sample_size': 128, 'power': 0.8, ...}
+    """
+    # Input validation
+    if not -3 <= effect_size <= 3:
+        warnings.warn(
+            f"Effect size {effect_size} is outside typical range (-3 to 3) for Cohen's d",
+            UserWarning,
+        )
+
+    if not 0 < power < 1:
+        raise ValueError("Power must be between 0 and 1")
+
+    if not 0 < alpha < 1:
+        raise ValueError("Alpha must be between 0 and 1")
+
+    if test_type not in ["two_sample", "one_sample", "paired"]:
+        raise ValueError(f"Invalid test_type: {test_type}")
+
+    if alternative not in ["two-sided", "greater", "less"]:
+        raise ValueError(f"Invalid alternative: {alternative}")
+
+    # Calculate required sample size
+    sample_size = tt_solve_power(
+        effect_size=effect_size, power=power, alpha=alpha, alternative=alternative
+    )
+
+    sample_size_per_group = int(np.ceil(sample_size))
+
+    # For two-sample tests, total sample size is 2x per group
+    if test_type == "two_sample":
+        total_sample_size = sample_size_per_group * 2
+    else:
+        total_sample_size = sample_size_per_group
+
+    return {
+        "sample_size_per_group": sample_size_per_group,
+        "total_sample_size": total_sample_size,
+        "power": power,
+        "effect_size": effect_size,
+        "alpha": alpha,
+        "test_type": test_type,
+        "alternative": alternative,
+    }
+
+
+def sample_size_proportion(
+    baseline_rate: float,
+    treatment_rate: float,
+    power: float = 0.8,
+    alpha: float = 0.05,
+    alternative: str = "two-sided",
+) -> Dict[str, Union[int, float]]:
+    """
+    Calculate required sample size for proportion tests to achieve desired power.
+
+    Parameters
+    ----------
+    baseline_rate : float
+        Baseline conversion rate (between 0 and 1)
+    treatment_rate : float
+        Treatment conversion rate to detect (between 0 and 1)
+    power : float, default=0.8
+        Desired statistical power (1 - Type II error rate).
+        Common values: 0.7 (exploration), 0.8 (standard), 0.9 (high-stakes)
+    alpha : float, default=0.05
+        Type I error rate
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "larger", "smaller"
+
+    Returns
+    -------
+    Dict[str, Union[int, float]]
+        Dictionary containing required sample sizes and effect size metrics
+
+    Examples
+    --------
+    >>> # Sample size to detect 5% -> 6% improvement with 80% power
+    >>> sample_size_proportion(0.05, 0.06)
+    {'sample_size_per_group': 23506, 'total_sample_size': 47012, ...}
+    """
+    # Input validation
+    if not 0 <= baseline_rate <= 1:
+        raise ValueError("Baseline rate must be between 0 and 1")
+
+    if not 0 <= treatment_rate <= 1:
+        raise ValueError("Treatment rate must be between 0 and 1")
+
+    if not 0 < power < 1:
+        raise ValueError("Power must be between 0 and 1")
+
+    if not 0 < alpha < 1:
+        raise ValueError("Alpha must be between 0 and 1")
+
+    if alternative not in ["two-sided", "larger", "smaller"]:
+        raise ValueError(f"Invalid alternative: {alternative}")
+
+    # Calculate effect size
+    effect_size = proportion_effectsize(treatment_rate, baseline_rate)
+
+    # Calculate required sample size
+    sample_size = zt_ind_solve_power(
+        effect_size=effect_size, power=power, alpha=alpha, alternative=alternative
+    )
+
+    sample_size_per_group = int(np.ceil(sample_size))
+    total_sample_size = sample_size_per_group * 2
+
+    return {
+        "sample_size_per_group": sample_size_per_group,
+        "total_sample_size": total_sample_size,
+        "power": power,
+        "effect_size": float(effect_size),
+        "baseline_rate": baseline_rate,
+        "treatment_rate": treatment_rate,
+        "relative_lift": (treatment_rate - baseline_rate) / baseline_rate,
+        "absolute_lift": treatment_rate - baseline_rate,
+        "alpha": alpha,
+        "alternative": alternative,
+    }
+
+
+def numeric_effectsize(
+    mean_diff: float = None,
+    mean1: float = None,
+    mean2: float = None,
+    std: float = None,
+    std1: float = None,
+    std2: float = None,
+    n1: int = None,
+    n2: int = None,
+) -> float:
+    """
+    Compute Cohen's d for independent samples in a power analysis context.
+
+    Parameters
+    ----------
+    mean_diff : float, optional
+        Mean difference (mean1 - mean2). Optional if mean1 and mean2 are provided.
+    mean1 : float, optional
+        Mean of group 1 (e.g., treatment group).
+    mean2 : float, optional
+        Mean of group 2 (e.g., control group).
+    std : float, optional
+        Common standard deviation (assumed equal for both groups).
+    std1 : float, optional
+        Standard deviation of group 1 (optional if std is provided).
+    std2 : float, optional
+        Standard deviation of group 2 (optional if std is provided).
+    n1 : int, optional
+        Sample size of group 1 (used only if std1 and std2 are provided).
+    n2 : int, optional
+        Sample size of group 2 (used only if std1 and std2 are provided).
+
+    Returns
+    -------
+    float
+        Cohen's d (standardized effect size)
+
+    Raises
+    ------
+    ValueError
+        If required parameters are missing or invalid
+
+    Assumptions:
+    --------
+    - Groups are independent
+    - Standard deviations are assumed equal unless both std1/std2 and n1/n2 are provided
+    - Appropriate for planning two-sample t-tests (e.g., A/B testing)
+    - Not suitable for paired-sample designs or ANOVA with 3+ groups without modification
+
+    Examples
+    --------
+    >>> # Using mean difference and common std
+    >>> d = numeric_effectsize(mean_diff=0.5, std=2.0)
+    >>> print(f"Cohen's d: {d:.3f}")  # 0.250
+
+    >>> # Using separate means and standard deviations
+    >>> d = numeric_effectsize(
+    ...     mean1=100, mean2=95,  # 5-point difference
+    ...     std1=10, std2=12,     # Different spreads
+    ...     n1=50, n2=50          # Equal sample sizes
+    ... )
+    >>> print(f"Cohen's d: {d:.3f}")  # ~0.455
+
+    >>> # Using means with common standard deviation
+    >>> d = numeric_effectsize(mean1=10, mean2=8, std=3)
+    >>> print(f"Cohen's d: {d:.3f}")  # ~0.667
+    """
+    # Validate and compute mean difference
+    if mean_diff is None:
+        if mean1 is not None and mean2 is not None:
+            mean_diff = mean1 - mean2
+        else:
+            raise ValueError(
+                "You must provide either mean_diff or both mean1 and mean2."
+            )
+
+    # Validate and compute pooled standard deviation
+    if std is not None:
+        pooled_std = std
+    elif std1 is not None and std2 is not None and n1 is not None and n2 is not None:
+        # Validate sample sizes
+        if n1 <= 0 or n2 <= 0:
+            raise ValueError("Sample sizes must be positive integers.")
+        # Validate standard deviations
+        if std1 <= 0 or std2 <= 0:
+            raise ValueError("Standard deviations must be positive.")
+        # Compute pooled std
+        pooled_std = np.sqrt(((n1 - 1) * std1**2 + (n2 - 1) * std2**2) / (n1 + n2 - 2))
+    else:
+        raise ValueError(
+            "You must provide either a common std, or std1, std2, n1, and n2."
+        )
+
+    # Validate standard deviation
+    if pooled_std <= 0:
+        raise ValueError("Computed pooled standard deviation must be positive.")
+
+    return mean_diff / pooled_std

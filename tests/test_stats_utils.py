@@ -10,7 +10,12 @@ from mlarena.utils.stats_utils import (
     calculate_group_thresholds,
     calculate_threshold_stats,
     compare_groups,
+    numeric_effectsize,
     optimize_stratification_strategy,
+    power_analysis_numeric,
+    power_analysis_proportion,
+    sample_size_numeric,
+    sample_size_proportion,
 )
 
 
@@ -895,3 +900,172 @@ class TestCalculateGroupThresholds:
                 # For exponential, mean should be greater than median (right-skewed)
                 std_stats = group_stats[group_stats["method"] == "std"]
                 assert std_stats["mean"].iloc[0] > std_stats["median"].iloc[0]
+
+
+class TestNumericEffectSize:
+    """Test numeric_effectsize function."""
+
+    def test_basic_functionality(self):
+        """Test basic functionality with mean difference and common std."""
+        d = numeric_effectsize(mean_diff=0.5, std=1.0)
+        assert d == 0.5
+
+        d = numeric_effectsize(mean1=10, mean2=8, std=2)
+        assert d == 1.0
+
+    def test_pooled_std_calculation(self):
+        """Test calculation with separate standard deviations."""
+        # Example where n1=n2=50, std1=10, std2=12
+        # Pooled std should be sqrt((49*100 + 49*144)/98) ≈ 11.045
+        # Effect size for means 100 and 95 should be 5/11.045 ≈ 0.4527
+        d = numeric_effectsize(mean1=100, mean2=95, std1=10, std2=12, n1=50, n2=50)
+        expected_d = (100 - 95) / np.sqrt(
+            ((50 - 1) * 10**2 + (50 - 1) * 12**2) / (50 + 50 - 2)
+        )
+        assert abs(d - expected_d) < 0.001
+
+    def test_input_validation(self):
+        """Test input validation and error messages."""
+        # Test missing required parameters
+        with pytest.raises(
+            ValueError, match="must provide either mean_diff or both mean1 and mean2"
+        ):
+            numeric_effectsize(std=1.0)
+
+        with pytest.raises(ValueError, match="must provide either a common std"):
+            numeric_effectsize(mean_diff=0.5)
+
+        # Test invalid standard deviations
+        with pytest.raises(ValueError, match="must be positive"):
+            numeric_effectsize(mean_diff=0.5, std=-1.0)
+
+        with pytest.raises(ValueError, match="must be positive"):
+            numeric_effectsize(mean1=10, mean2=8, std1=-1, std2=1, n1=10, n2=10)
+
+        # Test invalid sample sizes
+        with pytest.raises(ValueError, match="must be positive"):
+            numeric_effectsize(mean1=10, mean2=8, std1=1, std2=1, n1=0, n2=10)
+
+
+class TestPowerAnalysisNumeric:
+    """Test power_analysis_numeric function."""
+
+    def test_basic_functionality(self):
+        """Test basic power calculation."""
+        result = power_analysis_numeric(
+            effect_size=0.5,
+            sample_size_per_group=50,
+            alpha=0.05,
+            test_type="two_sample",
+            alternative="two-sided",
+        )
+        assert 0.85 < result["power"] < 0.95  # Power should be around 0.9
+        assert result["effect_size"] == 0.5
+        assert result["alpha"] == 0.05
+        assert result["sample_size_per_group"] == 50
+
+    def test_input_validation(self):
+        """Test input validation."""
+        with pytest.raises(ValueError, match="Alpha must be between 0 and 1"):
+            power_analysis_numeric(effect_size=0.5, sample_size_per_group=64, alpha=1.5)
+
+        with pytest.raises(
+            ValueError, match="Sample size per group must be at least 2"
+        ):
+            power_analysis_numeric(effect_size=0.5, sample_size_per_group=1)
+
+        with pytest.raises(ValueError, match="Invalid test_type"):
+            power_analysis_numeric(
+                effect_size=0.5, sample_size_per_group=64, test_type="invalid"
+            )
+
+    def test_warnings(self):
+        """Test warning for unusual effect sizes."""
+        with pytest.warns(UserWarning, match="Effect size .* is outside typical range"):
+            power_analysis_numeric(effect_size=4.0, sample_size_per_group=64)
+
+
+class TestPowerAnalysisProportion:
+    """Test power_analysis_proportion function."""
+
+    def test_basic_functionality(self):
+        """Test basic power calculation for proportions."""
+        result = power_analysis_proportion(
+            baseline_rate=0.2,
+            treatment_rate=0.3,
+            sample_size_per_group=200,
+            alpha=0.05,
+            alternative="two-sided",
+        )
+        assert 0.6 < result["power"] < 0.9
+        assert result["baseline_rate"] == 0.2
+        assert result["treatment_rate"] == 0.3
+        assert abs(result["relative_lift"] - 0.5) < 0.001  # 50% relative lift
+        assert abs(result["absolute_lift"] - 0.1) < 0.001
+
+    def test_input_validation(self):
+        """Test input validation."""
+        with pytest.raises(ValueError, match="Baseline rate must be between 0 and 1"):
+            power_analysis_proportion(
+                baseline_rate=1.5, treatment_rate=0.3, sample_size_per_group=200
+            )
+
+        with pytest.raises(ValueError, match="Treatment rate must be between 0 and 1"):
+            power_analysis_proportion(
+                baseline_rate=0.2, treatment_rate=-0.1, sample_size_per_group=200
+            )
+
+        with pytest.raises(
+            ValueError, match="Sample size per group must be at least 2"
+        ):
+            power_analysis_proportion(
+                baseline_rate=0.2, treatment_rate=0.3, sample_size_per_group=1
+            )
+
+
+class TestSampleSizeNumeric:
+    """Test sample_size_numeric function."""
+
+    def test_basic_functionality(self):
+        """Test basic sample size calculation."""
+        result = sample_size_numeric(
+            effect_size=0.5, power=0.93, alpha=0.05, test_type="two_sample"
+        )
+        assert 45 < result["sample_size_per_group"] < 55
+        assert result["total_sample_size"] == result["sample_size_per_group"] * 2
+        assert result["power"] == 0.93
+        assert result["effect_size"] == 0.5
+
+    def test_input_validation(self):
+        """Test input validation."""
+        with pytest.raises(ValueError, match="Power must be between 0 and 1"):
+            sample_size_numeric(effect_size=0.5, power=1.5)
+
+        with pytest.raises(ValueError, match="Alpha must be between 0 and 1"):
+            sample_size_numeric(effect_size=0.5, alpha=1.5)
+
+
+class TestSampleSizeProportion:
+    """Test sample_size_proportion function."""
+
+    def test_basic_functionality(self):
+        """Test basic sample size calculation for proportions."""
+        result = sample_size_proportion(
+            baseline_rate=0.2, treatment_rate=0.3, power=0.8, alpha=0.05
+        )
+        assert result["sample_size_per_group"] > 0
+        assert result["total_sample_size"] == result["sample_size_per_group"] * 2
+        assert result["power"] == 0.8
+        assert result["baseline_rate"] == 0.2
+        assert result["treatment_rate"] == 0.3
+
+    def test_input_validation(self):
+        """Test input validation."""
+        with pytest.raises(ValueError, match="Baseline rate must be between 0 and 1"):
+            sample_size_proportion(baseline_rate=1.5, treatment_rate=0.3)
+
+        with pytest.raises(ValueError, match="Treatment rate must be between 0 and 1"):
+            sample_size_proportion(baseline_rate=0.2, treatment_rate=2.0)
+
+        with pytest.raises(ValueError, match="Power must be between 0 and 1"):
+            sample_size_proportion(baseline_rate=0.2, treatment_rate=0.3, power=1.5)

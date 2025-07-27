@@ -34,18 +34,18 @@ For quick guide over the package
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.3.10
+%pip install mlarena==0.3.11
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.3.10 --no-deps
+%pip install mlarena==0.3.11 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.3.10 --no-deps
+%pip install mlarena==0.3.11 --no-deps
 %pip install optuna==3.6.1
 ```
 
@@ -174,10 +174,43 @@ Some handy utilities for data validation, cleaning and manipulations. Pls see [3
 
 **Utils**
 - Advanced plotting utilities
-  - Box plots with scatter overlay for detailed distribution analysis
-  - Time series metrics visualization with optional event markers
-  - Stacked bar for categorical distributions over time with flexible aggregation
-  - Numeric distribution tracking over time with flexible aggregation
+  - Distribution analysis
+    - `plot_box_scatter`: Box plots with scatter overlay and statistical testing
+      - Optional point coloring by category
+      - Built-in statistical tests (ANOVA, Welch, Kruskal)
+      - Customizable point jittering and transparency
+  - Time series visualization
+    - `plot_metric_event_over_time`: Track metrics with event annotations
+      - Support for dual y-axes
+      - Automatic date formatting based on time range
+      - Customizable event markers and labels
+      - Min/max value annotations
+    - `plot_distribution_over_time`: Track distributions over time
+      - Box plots with scatter overlay for each time period
+      - Optional point coloring by category
+      - Flexible time aggregation (hourly/daily/monthly/yearly)
+      - Summary statistics for each period
+    - `plot_stacked_bar_over_time`: Track categorical distributions
+      - Percentage or count-based stacking
+      - Flexible time aggregation
+      - Custom category labeling
+      - Automatic legend and color management
+  - Categorical analysis
+    - `plot_stacked_bar`: Stacked bar charts with statistical testing
+      - Built-in chi-square and G-tests
+      - Percentage or count-based visualization
+      - Custom category labeling
+- Statistical analysis utilities
+  - Group comparison tools
+    - `compare_groups`: Statistical testing across groups with visualization
+    - `add_stratified_groups`: Create balanced groups with stratification
+    - `optimize_stratification_strategy`: Find optimal stratification columns
+  - Power analysis and sample size calculation
+    - `power_analysis_numeric`: Power calculation for t-tests
+    - `power_analysis_proportion`: Power calculation for proportion tests
+    - `sample_size_numeric`: Required sample size for numeric outcomes
+    - `sample_size_proportion`: Required sample size for proportion tests
+    - `numeric_effectsize`: Cohen's d effect size calculation
 - Data manipulation tools
   - Standardized dollar amount cleaning for financial analysis
   - Value counts with percentage calculation for categorical analysis

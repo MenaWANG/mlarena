@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.3.11] - Unreleased
+## [0.3.11] - 2025-07-27
 
 ### Added
 - **NEW**: Enhanced power analysis capabilities in `stats_utils`:

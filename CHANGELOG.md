@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.1] - unreleased
+
+### Added
+- **NEW**: Added influence analysis capabilities in `stats_utils`:
+  - Added `calculate_cooks_like_influence` function:
+    - Extends Cook's Distance concept to any scikit-learn compatible model
+    - Identifies influential observations that significantly impact model behavior
+    - Supports both regression and classification tasks
+    - Features efficient computation with selective point analysis
+    - Includes visualization of influence scores with reference thresholds
+    - Provides progress tracking for long computations
+  - Added `get_normal_data` function for robust model training:
+    - Identifies and filters out highly influential observations
+    - Returns cleaned dataset suitable for more robust model training
+    - Preserves input data types (DataFrame/Series or ndarray)
+    - Includes detailed reporting of filtered points
+  - Both functions support:
+    - Efficient processing with `max_loo_points` parameter
+    - Multiple methods for point selection ('percentile' or 'isolation_forest')
+    - Comprehensive visualization options
+    - Detailed progress reporting
+
 
 ## [0.3.11] - 2025-07-27
 
@@ -32,8 +54,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Comprehensive error handling and input validation tests
     - Real-world scenarios with practical sample sizes and effect sizes
     - Edge cases and boundary conditions for all functions
-
-
 
 
 ## [0.3.10] - 2025-07-23

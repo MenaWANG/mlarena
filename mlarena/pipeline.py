@@ -1435,8 +1435,12 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         if use_spark:
             # First check if Spark tuning is available
             if not MLPipeline.can_use_spark_tuning():
-                print("⚠️  Spark tuning requested but not available in this environment.")
-                print("   To use Spark tuning, ensure you're running on Databricks or have mlflow[pyspark] installed.")
+                print(
+                    "⚠️  Spark tuning requested but not available in this environment."
+                )
+                print(
+                    "   To use Spark tuning, ensure you're running on Databricks or have mlflow[pyspark] installed."
+                )
                 print("   Falling back to standard Optuna.")
                 use_spark = False
             else:
@@ -1447,6 +1451,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     # Set up study name
                     if study_name is None:
                         import time
+
                         study_name = f"mlarena-spark-tuning-{int(time.time())}"
 
                     # Set up MLflow storage

@@ -1116,6 +1116,61 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             return False
 
     @staticmethod
+    def _check_spark_availability():
+        """
+        Check if Spark and MLflow Spark support are available.
+
+        Returns
+        -------
+        dict
+            Dictionary with availability status and detected environment info.
+        """
+        result = {
+            "spark_available": False,
+            "mlflow_spark_available": False,
+            "is_databricks": False,
+            "environment": "unknown",
+        }
+
+        try:
+            # Check if we're on Databricks
+            import os
+
+            if "DATABRICKS_RUNTIME_VERSION" in os.environ:
+                result["is_databricks"] = True
+                result["environment"] = "databricks"
+
+            # Check basic Spark availability
+            import pyspark
+
+            result["spark_available"] = True
+
+            # Check MLflow Spark support
+            from mlflow.pyspark.optuna.study import MlflowSparkStudy
+
+            result["mlflow_spark_available"] = True
+
+        except ImportError:
+            pass
+        except Exception:
+            pass
+
+        return result
+
+    @staticmethod
+    def can_use_spark_tuning():
+        """
+        Check if Spark-based hyperparameter tuning is available.
+
+        Returns
+        -------
+        bool
+            True if Spark tuning is available, False otherwise.
+        """
+        availability = MLPipeline._check_spark_availability()
+        return availability["mlflow_spark_available"]
+
+    @staticmethod
     def tune(
         X,
         y,
@@ -1138,6 +1193,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         disable_optuna_logging=True,
         configure_plotly=True,
         show_progress_bar=True,
+        use_spark=False,
+        n_jobs=None,
+        study_name=None,
+        mlflow_storage=None,
     ):
         """
         Static method to tune hyperparameters using Optuna.
@@ -1196,6 +1255,18 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             across different environments including GitHub.
         show_progress_bar : bool, default=True
             If True, displays a progress bar during optimization.
+        use_spark : bool, default=False
+            If True, uses Spark for distributed hyperparameter tuning.
+            Requires MLflow with Spark support (e.g., on Databricks).
+        n_jobs : int, optional
+            Number of parallel Spark jobs for hyperparameter tuning.
+            Only used when use_spark=True. If None, uses Spark default.
+        study_name : str, optional
+            Name for the MLflow Spark study. If None, auto-generates one.
+            Only used when use_spark=True.
+        mlflow_storage : str, optional
+            MLflow storage URI for the Spark study. If None, uses current MLflow tracking URI.
+            Only used when use_spark=True.
 
         Returns
         -------
@@ -1348,12 +1419,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             if tune_metric == "log_loss"
             else "maximize" if task == "classification" else "minimize"
         )
-        study = optuna.create_study(
-            direction=direction,
-            sampler=optuna.samplers.TPESampler(seed=random_state),
-            pruner=pruner,  # Using MedianPruner directly
-        )
 
+        # Define early stopping callback function (used by both Spark and standard Optuna)
         def early_stopping_callback(study, trial):
             if early_stopping is None:
                 return
@@ -1364,12 +1431,77 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             if (trial.number - current_best_trial) >= early_stopping:
                 study.stop()
 
-        study.optimize(
-            objective,
-            n_trials=max_evals,
-            callbacks=[early_stopping_callback],
-            show_progress_bar=show_progress_bar,
-        )
+        # Handle Spark-based optimization if requested
+        if use_spark:
+            # First check if Spark tuning is available
+            if not MLPipeline.can_use_spark_tuning():
+                print(
+                    "⚠️  Spark tuning requested but not available in this environment."
+                )
+                print(
+                    "   To use Spark tuning, ensure you're running on Databricks or have mlflow[pyspark] installed."
+                )
+                print("   Falling back to standard Optuna.")
+                use_spark = False
+            else:
+                try:
+                    import mlflow
+                    from mlflow.pyspark.optuna.study import MlflowSparkStudy
+
+                    # Set up study name
+                    if study_name is None:
+                        import time
+
+                        study_name = f"mlarena-spark-tuning-{int(time.time())}"
+
+                    # Set up MLflow storage
+                    if mlflow_storage is None:
+                        mlflow_storage = mlflow.get_tracking_uri()
+
+                    print(f"🚀 Using Spark for distributed hyperparameter tuning")
+                    print(f"   Study name: {study_name}")
+                    print(f"   MLflow storage: {mlflow_storage}")
+                    if n_jobs:
+                        print(f"   Parallel jobs: {n_jobs}")
+
+                    # Create MLflow Spark study
+                    study = MlflowSparkStudy(
+                        study_name=study_name,
+                        storage=mlflow_storage,
+                        direction=direction,
+                        sampler=optuna.samplers.TPESampler(seed=random_state),
+                        pruner=pruner,
+                    )
+
+                    # Optimize with Spark
+                    optimize_kwargs = {
+                        "n_trials": max_evals,
+                        "callbacks": [early_stopping_callback],
+                    }
+                    if n_jobs is not None:
+                        optimize_kwargs["n_jobs"] = n_jobs
+
+                    study.optimize(objective, **optimize_kwargs)
+
+                except Exception as e:
+                    print(f"⚠️  Error initializing Spark tuning: {e}")
+                    print("   Falling back to standard Optuna.")
+                    use_spark = False
+
+        # Standard Optuna optimization (fallback or when use_spark=False)
+        if not use_spark:
+            study = optuna.create_study(
+                direction=direction,
+                sampler=optuna.samplers.TPESampler(seed=random_state),
+                pruner=pruner,  # Using MedianPruner directly
+            )
+
+            study.optimize(
+                objective,
+                n_trials=max_evals,
+                callbacks=[early_stopping_callback],
+                show_progress_bar=show_progress_bar,
+            )
 
         # Get best parameters
         best_params = study.best_params
@@ -1379,7 +1511,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         # Train final model with best parameters on full training set
         final_model = MLPipeline(
-            model=algorithm(**best_params), preprocessor=PreProcessor()
+            model=algorithm(**best_params), preprocessor=preprocessor
         )
         final_model.fit(X_train_full, y_train_full)
 

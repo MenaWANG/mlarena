@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.1] - unreleased
 
 ### Added
+- **NEW**: Added Spark-based distributed hyperparameter tuning in `tune` method:
+  - Added `use_spark` parameter to enable Spark-based tuning when available
+  - Added `n_jobs` parameter for controlling parallel Spark jobs
+  - Added `study_name` and `mlflow_storage` parameters for MLflow integration
+  - Intelligent environment detection for Databricks and Spark availability
+  - Graceful fallback to standard Optuna when Spark is unavailable
+  - Comprehensive error handling and informative messages
+  - Zero overhead when not using Spark (no additional dependencies)
+  - Perfect for distributed hyperparameter optimization in Spark environments
 - **NEW**: Added influence analysis capabilities in `stats_utils`:
   - Added `calculate_cooks_like_influence` function:
     - Extends Cook's Distance concept to any scikit-learn compatible model

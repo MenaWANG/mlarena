@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.2] - unreleased
+
+### Fixed
+- Clarified parameter interaction in influence analysis (`get_normal_data`):
+  - `influence_threshold_percentile=95`: Means "identify top 5% most influential points"
+  - `max_loo_points=20`: Limits influence score calculation to at most 20 points to save compute
+  - When both are set, remove observations that fulfill both criteria. For example:
+    - With 1000 points, influence_threshold_percentile=95 would select top 50 (5%) points
+    - If max_loo_points=20, at most 20 points will be marked as influential and removed
+    - If max_loo_points=100, at most 50 points (5%) will be marked as influential and removed
+
+
 ## [0.4.1] - 2025-08-03
 
 ### Added

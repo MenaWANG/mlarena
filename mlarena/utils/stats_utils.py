@@ -1319,7 +1319,7 @@ def get_normal_data(
     model_class: type,
     X: Union[pd.DataFrame, np.ndarray],
     y: Union[pd.Series, np.ndarray],
-    influence_threshold_percentile: float = 99,
+    influence_threshold_percentile: float = 95,
     visualize_influence: bool = True,
     save_path_influence_plot: Optional[str] = None,
     max_loo_points: Optional[int] = None,
@@ -1407,15 +1407,18 @@ def get_normal_data(
     )
 
     # Calculate threshold for normal data
+    threshold = np.percentile(influence_scores, influence_threshold_percentile)
+    
+    # Create mask for normal (non-influential) points
     if max_loo_points is not None:
-        # Use only calculated scores for percentile if we didn't calculate all
-        calculated_mask = influence_scores > 0
-        threshold = np.percentile(
-            influence_scores[calculated_mask], influence_threshold_percentile
-        )
-    else:
-        threshold = np.percentile(influence_scores, influence_threshold_percentile)
-
+        # Calculate how many points the percentile would select
+        n_points_by_percentile = int(len(influence_scores) * (1 - influence_threshold_percentile/100))
+        # Take the minimum between max_loo_points and percentile-based count
+        n_influential = min(max_loo_points, n_points_by_percentile)        
+        # Sort scores and get the nth highest score as cutoff
+        sorted_scores = np.sort(influence_scores)[::-1]  # Sort descending
+        threshold = sorted_scores[n_influential - 1] if n_influential > 0 else np.inf
+        
     # Create mask for normal (non-influential) points
     normal_mask = influence_scores <= threshold
 

@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.2] - unreleased
 
+### Changed
+- Enhanced visualization in `calculate_cooks_like_influence`:
+  - Replaced line plot with comprehensive multi-panel visualization:
+    - Distribution plot showing high-influence points in target space
+    - Feature relationship plots showing how influential points relate to each feature
+    - Uses consistent color scheme with package (MPL_BLUE for normal, MPL_RED for influential points)
+    - Improved marker visibility with small y-axis offset for triangular markers
+  - Provides complete picture of influence patterns across both target and feature spaces
+  - Perfect for identifying which features contribute to high influence
+
 ### Fixed
 - Clarified parameter interaction in influence analysis (`get_normal_data`):
   - `influence_threshold_percentile=95`: Means "identify top 5% most influential points"

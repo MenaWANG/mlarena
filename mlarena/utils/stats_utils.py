@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
@@ -1181,14 +1182,14 @@ def calculate_cooks_like_influence(
 
     # 1. Train the full model
     print(f"Training full model using {model_class.__name__}...")
-    full_model = model_class(
-        random_state=(
-            random_state
-            if "random_state" in model_class.__init__.__code__.co_varnames
-            else None
-        ),
-        **model_params,
-    )
+    if random_state is not None:
+        try:
+            test_model = model_class(random_state=random_state)
+            model_params["random_state"] = random_state
+        except (TypeError, ValueError):
+            pass
+
+    full_model = model_class(**model_params)
     full_model.fit(X, y)
     y_pred_full = full_model.predict(X)
 
@@ -1249,14 +1250,7 @@ def calculate_cooks_like_influence(
             X_train_loo = X[loo_mask]
             y_train_loo = y[loo_mask]
 
-        loo_model = model_class(
-            random_state=(
-                random_state
-                if "random_state" in model_class.__init__.__code__.co_varnames
-                else None
-            ),
-            **model_params,
-        )
+        loo_model = model_class(**model_params)
         loo_model.fit(X_train_loo, y_train_loo)
 
         y_pred_loo_on_full_data = loo_model.predict(X)
@@ -1275,40 +1269,157 @@ def calculate_cooks_like_influence(
             )
 
     if visualize:
-        fig, ax = plt.subplots(figsize=(12, 6))
-        ax.plot(influence_scores)
-        ax.set_title(f"Cook's-like Influence Scores for {model_class.__name__}")
-        ax.set_xlabel("Data Point Index")
-        ax.set_ylabel("Influence Score (Sum of Squared Differences)")
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        MPL_BLUE = colors[0]  # Main distribution/points color
+        MPL_RED = colors[3]  # Highlight influential points
 
-        calculated_scores = influence_scores[loo_indices_to_process]
-        if len(calculated_scores) > 0:
-            percentile_95 = np.percentile(calculated_scores, 95)
-            ax.axhline(
-                y=percentile_95,
-                color="r",
-                linestyle="--",
-                label=f"95th Percentile ({percentile_95:.2f}) of calculated scores",
-            )
-            ax.legend()
+        # Get all features and their types if DataFrame
+        if isinstance(X, pd.DataFrame):
+            n_features = X.shape[1]
+            feature_names = X.columns
+            # Identify categorical columns (including bool)
+            cat_cols = X.select_dtypes(include=["category", "object", "bool"]).columns
         else:
-            ax.text(
-                0.5,
-                0.5,
-                "No influence scores were calculated or available for plotting.",
-                horizontalalignment="center",
-                verticalalignment="center",
-                transform=ax.transAxes,
-            )
-            ax.set_title("Influence Scores (No Data to Plot)")
+            n_features = X.shape[1]
+            feature_names = [f"Feature {i+1}" for i in range(n_features)]
+            cat_cols = []
 
-        ax.grid(True, linestyle=":", alpha=0.7)
+        # Calculate grid dimensions
+        n_scatter_rows = (n_features + 1) // 2
+        n_rows = 1 + n_scatter_rows  # 1 row for distribution plot
+        n_cols = 2
+
+        fig = plt.figure(figsize=(12, 6 * n_rows))
+        gs = fig.add_gridspec(n_rows, n_cols)
+
+        # First plot: Target Distribution (spans both columns)
+        ax_dist = fig.add_subplot(gs[0, :])
+
+        # Plot distribution
+        sns.histplot(
+            y,
+            bins=50,
+            kde=True,
+            ax=ax_dist,
+            color=MPL_BLUE,
+            alpha=0.5,
+            label="All Points",
+            stat="density",
+            edgecolor="grey",
+        )
+
+        # Get indices of influential points
+        if max_loo_points is not None:
+            n_influential = min(max_loo_points, len(influence_scores))
+            influential_indices = np.argsort(influence_scores)[-n_influential:]
+        else:
+            threshold = np.percentile(influence_scores, 95)
+            influential_indices = np.where(influence_scores >= threshold)[0]
+
+        # Add markers for influential points
+        if isinstance(y, pd.Series):
+            y_influential = y.iloc[influential_indices]
+        else:
+            y_influential = y[influential_indices]
+
+        # Get max density for marker placement
+        max_density = max(p.get_height() for p in ax_dist.patches)
+        y_offset = max_density * 0.02
+
+        ax_dist.scatter(
+            y_influential,
+            [y_offset] * len(influential_indices),
+            color=MPL_RED,
+            s=60,
+            alpha=0.85,
+            label=f"High Influence Points (n={len(influential_indices)})",
+            zorder=5,
+            marker="v",
+        )
+
+        ax_dist.set_title(
+            f"Target Distribution with High-Influence Points", fontsize=13, pad=15
+        )
+        ax_dist.set_xlabel("Target Value", fontsize=12)
+        ax_dist.set_ylabel("Density", fontsize=12)
+        ax_dist.legend()
+        sns.despine(ax=ax_dist)
+
+        # Feature scatter plots
+        row_idx = 1  # Start from second row
+        col_idx = 0
+
+        if isinstance(X, pd.DataFrame):
+            for col in feature_names:
+                ax = fig.add_subplot(gs[row_idx, col_idx])
+
+                is_categorical = col in cat_cols
+                x_data = X[col]
+
+                if is_categorical:
+                    sns.stripplot(
+                        x=x_data,
+                        y=y,
+                        ax=ax,
+                        color=MPL_BLUE,
+                        alpha=0.5,
+                        size=5,
+                        jitter=0.2,
+                    )
+
+                    # Plot influential points on top
+                    sns.stripplot(
+                        x=x_data.iloc[influential_indices],
+                        y=y_influential,
+                        ax=ax,
+                        color=MPL_RED,
+                        alpha=0.85,
+                        size=8,
+                        jitter=0.2,
+                    )
+                else:
+                    # Regular scatter for numeric features
+                    ax.scatter(x_data, y, color=MPL_BLUE, alpha=0.5, s=30)
+                    ax.scatter(
+                        x_data.iloc[influential_indices],
+                        y_influential,
+                        color=MPL_RED,
+                        s=60,
+                        alpha=0.85,
+                    )
+
+                ax.set_xlabel(col)
+                ax.set_ylabel("Target" if col_idx == 0 else "")
+                sns.despine(ax=ax)
+
+                # Update grid position
+                col_idx = (col_idx + 1) % 2
+                if col_idx == 0:
+                    row_idx += 1
+        else:
+            # Handle numpy array case (assume all numeric)
+            for i in range(n_features):
+                ax = fig.add_subplot(gs[row_idx, col_idx])
+                ax.scatter(X[:, i], y, color=MPL_BLUE, alpha=0.3, s=30)
+                ax.scatter(
+                    X[influential_indices, i],
+                    y_influential,
+                    color=MPL_RED,
+                    s=40,
+                    alpha=0.85,
+                )
+                ax.set_xlabel(f"Feature {i+1}")
+                ax.set_ylabel("Target" if col_idx == 0 else "")
+                sns.despine(ax=ax)
+
+                col_idx = (col_idx + 1) % 2
+                if col_idx == 0:
+                    row_idx += 1
+
         plt.tight_layout()
 
         if save_path:
-            plt.savefig(save_path)
-            print(f"Plot saved to {save_path}")
-
+            plt.savefig(save_path, bbox_inches="tight", dpi=300)
         plt.show()
         plt.close()
 
@@ -1319,12 +1430,12 @@ def get_normal_data(
     model_class: type,
     X: Union[pd.DataFrame, np.ndarray],
     y: Union[pd.Series, np.ndarray],
-    influence_threshold_percentile: float = 95,
+    influence_threshold_percentile: float = 99,
     visualize_influence: bool = True,
     save_path_influence_plot: Optional[str] = None,
     max_loo_points: Optional[int] = None,
     residual_outlier_method: str = "percentile",
-    residual_threshold: float = 99,
+    residual_threshold: float = 95,
     random_state: Optional[int] = None,
     **model_params: Any,
 ) -> Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray], np.ndarray]:
@@ -1356,7 +1467,7 @@ def get_normal_data(
         Passed to calculate_cooks_like_influence.
     residual_outlier_method : str, default='percentile'
         Passed to calculate_cooks_like_influence.
-    residual_threshold : float, default=99
+    residual_threshold : float, default=95
         Passed to calculate_cooks_like_influence.
     random_state : Optional[int], default=None
         Random state for reproducibility, passed to model if supported.
@@ -1408,17 +1519,19 @@ def get_normal_data(
 
     # Calculate threshold for normal data
     threshold = np.percentile(influence_scores, influence_threshold_percentile)
-    
+
     # Create mask for normal (non-influential) points
     if max_loo_points is not None:
         # Calculate how many points the percentile would select
-        n_points_by_percentile = int(len(influence_scores) * (1 - influence_threshold_percentile/100))
+        n_points_by_percentile = int(
+            len(influence_scores) * (1 - influence_threshold_percentile / 100)
+        )
         # Take the minimum between max_loo_points and percentile-based count
-        n_influential = min(max_loo_points, n_points_by_percentile)        
+        n_influential = min(max_loo_points, n_points_by_percentile)
         # Sort scores and get the nth highest score as cutoff
         sorted_scores = np.sort(influence_scores)[::-1]  # Sort descending
         threshold = sorted_scores[n_influential - 1] if n_influential > 0 else np.inf
-        
+
     # Create mask for normal (non-influential) points
     normal_mask = influence_scores <= threshold
 

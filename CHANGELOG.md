@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.2] - unreleased
 
 ### Changed
+- Enhanced residual outlier detection in `calculate_cooks_like_influence`:
+  - Added new statistical methods for outlier detection:
+    - 'zscore': Select points beyond N standard deviations
+    - 'iqr': Select points beyond N times the interquartile range (Tukey's method)
+    - 'mad': Select points beyond N times the median absolute deviation
+  - Changed default residual_threshold from 99 to 95 for wider coverage
+  - Clear documentation with examples for each method
+
 - Enhanced visualization in `calculate_cooks_like_influence`:
   - Replaced line plot with comprehensive multi-panel visualization:
     - Distribution plot showing high-influence points in target space

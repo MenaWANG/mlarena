@@ -1103,7 +1103,7 @@ def calculate_cooks_like_influence(
     save_path: Optional[str] = None,
     max_loo_points: Optional[int] = None,
     residual_outlier_method: str = "percentile",
-    residual_threshold: float = 99,
+    residual_threshold: float = 95,
     random_state: Optional[int] = None,
     **model_params: Any,
 ) -> np.ndarray:
@@ -1137,10 +1137,17 @@ def calculate_cooks_like_influence(
         Points are selected based on having the highest residuals.
     residual_outlier_method : str, default='percentile'
         Method to select high-residual points if max_loo_points is set.
-        Options: 'percentile' or 'isolation_forest'.
-    residual_threshold : float, default=99
-        Percentile threshold for filtering high-residual points
-        if residual_outlier_method is 'percentile'. E.g., 99 for top 1%.
+        Options:
+        - 'percentile': Select points above a percentile threshold
+        - 'zscore': Select points beyond N standard deviations
+        - 'iqr': Select points beyond N times the interquartile range (Tukey's method)
+        - 'mad': Select points beyond N times the median absolute deviation
+    residual_threshold : float, default=95
+        Threshold value that varies by method:
+        - For 'percentile': percentile threshold (e.g., 99 for top 1%)
+        - For 'zscore': number of standard deviations (e.g., 3)
+        - For 'iqr': multiplier for IQR (e.g., 1.5 for standard Tukey's method)
+        - For 'mad': number of MAD units (e.g., 3.5)
     random_state : Optional[int], default=None
         Random state for reproducibility, passed to model if supported.
     **model_params : Any
@@ -1216,20 +1223,46 @@ def calculate_cooks_like_influence(
             print(
                 f"  Selected {len(loo_indices_to_process)} points based on {residual_threshold}th percentile of residuals."
             )
-        elif residual_outlier_method == "isolation_forest":
-            iso_forest = IsolationForest(
-                random_state=random_state, contamination="auto"
-            )
-            iso_forest.fit(residuals.reshape(-1, 1))
-            outlier_scores = iso_forest.decision_function(residuals.reshape(-1, 1))
-            top_indices_by_iso_forest = np.argsort(outlier_scores)[:max_loo_points]
-            loo_indices_to_process = top_indices_by_iso_forest
+        elif residual_outlier_method == "zscore":
+            z_scores = np.abs((residuals - np.mean(residuals)) / np.std(residuals))
+            high_residual_indices = np.where(z_scores >= residual_threshold)[0]
+            if len(high_residual_indices) > max_loo_points:
+                top_indices = np.argsort(z_scores)[::-1][:max_loo_points]
+                loo_indices_to_process = top_indices
+            else:
+                loo_indices_to_process = high_residual_indices
             print(
-                f"  Selected {len(loo_indices_to_process)} points based on Isolation Forest on residuals."
+                f"  Selected {len(loo_indices_to_process)} points with z-scores >= {residual_threshold}."
+            )
+        elif residual_outlier_method == "iqr":
+            q1, q3 = np.percentile(residuals, [25, 75])
+            iqr = q3 - q1
+            threshold = q3 + (residual_threshold * iqr)
+            high_residual_indices = np.where(residuals >= threshold)[0]
+            if len(high_residual_indices) > max_loo_points:
+                top_indices = np.argsort(residuals)[::-1][:max_loo_points]
+                loo_indices_to_process = top_indices
+            else:
+                loo_indices_to_process = high_residual_indices
+            print(
+                f"  Selected {len(loo_indices_to_process)} points outside {residual_threshold} * IQR."
+            )
+        elif residual_outlier_method == "mad":
+            median = np.median(residuals)
+            mad = np.median(np.abs(residuals - median))
+            threshold = median + (residual_threshold * mad)
+            high_residual_indices = np.where(residuals >= threshold)[0]
+            if len(high_residual_indices) > max_loo_points:
+                top_indices = np.argsort(residuals)[::-1][:max_loo_points]
+                loo_indices_to_process = top_indices
+            else:
+                loo_indices_to_process = high_residual_indices
+            print(
+                f"  Selected {len(loo_indices_to_process)} points outside {residual_threshold} * MAD."
             )
         else:
             raise ValueError(
-                "Invalid residual_outlier_method. Choose 'percentile' or 'isolation_forest'."
+                "Invalid residual_outlier_method. Choose from: 'percentile', 'zscore', 'iqr', or 'mad'."
             )
 
     loo_indices_to_process = np.array(loo_indices_to_process)

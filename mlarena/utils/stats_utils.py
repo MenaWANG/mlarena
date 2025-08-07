@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.ensemble import IsolationForest
+
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from statsmodels.stats.power import tt_solve_power, zt_ind_solve_power
@@ -24,7 +24,7 @@ __all__ = [
     "sample_size_numeric",
     "sample_size_proportion",
     "numeric_effectsize",
-    "calculate_cooks_like_influence",
+    "calculate_cooks_d_like_influence",
     "get_normal_data",
 ]
 
@@ -1095,18 +1095,18 @@ def numeric_effectsize(
     return mean_diff / pooled_std
 
 
-def calculate_cooks_like_influence(
+def calculate_cooks_d_like_influence(
     model_class: type,
     X: Union[pd.DataFrame, np.ndarray],
     y: Union[pd.Series, np.ndarray],
     visualize: bool = True,
     save_path: Optional[str] = None,
     max_loo_points: Optional[int] = None,
-    residual_outlier_method: str = "percentile",
-    residual_threshold: float = 95,
+    influence_outlier_method: str = "percentile",
+    influence_outlier_threshold: float = 99,
     random_state: Optional[int] = None,
     **model_params: Any,
-) -> np.ndarray:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Calculates a Cook's-like influence score for each data point for any scikit-learn compatible model.
     This is an extension of Cook's Distance that works with any ML model, not just linear regression.
@@ -1134,20 +1134,25 @@ def calculate_cooks_like_influence(
         If provided, saves the plot to this file path. Requires visualize=True.
     max_loo_points : Optional[int], default=None
         If specified, only perform LOO calculations for this many points.
-        Points are selected based on having the highest residuals.
-    residual_outlier_method : str, default='percentile'
-        Method to select high-residual points if max_loo_points is set.
+        Points are selected based on having the highest absolute residuals.
+        This is purely for computational efficiency and does not affect
+        which points are considered influential.
+    influence_outlier_method : str, default='percentile'
+        Method to identify influential points (outliers) based on influence scores.
         Options:
         - 'percentile': Select points above a percentile threshold
-        - 'zscore': Select points beyond N standard deviations
-        - 'iqr': Select points beyond N times the interquartile range (Tukey's method)
-        - 'mad': Select points beyond N times the median absolute deviation
-    residual_threshold : float, default=95
-        Threshold value that varies by method:
-        - For 'percentile': percentile threshold (e.g., 99 for top 1%)
-        - For 'zscore': number of standard deviations (e.g., 3)
-        - For 'iqr': multiplier for IQR (e.g., 1.5 for standard Tukey's method)
-        - For 'mad': number of MAD units (e.g., 3.5)
+        - 'zscore': Select points beyond N standard deviations from the mean
+        Note: When max_loo_points is set, only 'percentile' method is available
+        since other methods require all influence scores to be calculated.
+    influence_outlier_threshold : float, default=99
+        Threshold for identifying influential points:
+        - For 'percentile': Points above this percentile are marked influential
+          (e.g., 95 means top 5% most influential points)
+        - For 'zscore': Points with absolute z-scores above this value are marked influential
+          (e.g., 3 means points more than 3 standard deviations from the mean)
+        When max_loo_points is set:
+        - The number of influential points will be capped at max_loo_points
+        - Uncalculated points are assumed to have zero influence
     random_state : Optional[int], default=None
         Random state for reproducibility, passed to model if supported.
     **model_params : Any
@@ -1155,34 +1160,44 @@ def calculate_cooks_like_influence(
 
     Returns
     -------
-    np.ndarray
-        Array of influence scores, one for each data point.
-        Higher scores indicate more influential points.
+    Tuple[np.ndarray, np.ndarray, np.ndarray]
+        - influence_scores: Array of influence scores, one for each data point.
+          Higher scores indicate more influential points.
+        - influential_indices: Array of indices for points identified as influential
+          based on the specified method and threshold, and are capped at max_loo_points.
+        - normal_indices: Array of indices for non-influential points (complement of influential_indices).
+          When max_loo_points is set, this properly accounts for uncalculated points.
 
     Examples
     --------
-    >>> from sklearn.linear_model import LinearRegression
-    >>> X = pd.DataFrame({'feature1': [1, 2, 3, 4, 100], 'feature2': [1, 2, 3, 4, 0]})
-    >>> y = pd.Series([1, 2, 3, 4, 100])
-    >>> scores = calculate_cooks_like_influence(LinearRegression, X, y)
-    >>> print("Most influential point index:", scores.argmax())
-    Most influential point index: 4
-
-    >>> # Using with a more complex model
     >>> from lightgbm import LGBMRegressor
-    >>> scores = calculate_cooks_like_influence(
+    >>> # Example 1: Using percentile method with max_loo_points
+    >>> scores1, infl_idx1, normal_idx1 = calculate_cooks_like_influence(
     ...     LGBMRegressor,
     ...     X,
     ...     y,
-    ...     max_loo_points=2,  # Only analyze top 2 most residual points
-    ...     residual_outlier_method='isolation_forest'
+    ...     max_loo_points=20,  # Only analyze top 2 points with highest residuals
+    ...     influence_outlier_threshold=95  # Mark top 5% as influential (but capped at max_loo_points)
     ... )
+    >>> # Train model on normal points only
+    >>> X_normal, y_normal = X.iloc[normal_idx1], y.iloc[normal_idx1]
+
+    >>> # Example 2: Using z-score method on all points
+    >>> scores2, infl_idx2, normal_idx2 = calculate_cooks_like_influence(
+    ...     LGBMRegressor,
+    ...     X,
+    ...     y,
+    ...     influence_outlier_method='zscore',
+    ...     influence_outlier_threshold=3  # Mark points > 3 std devs from mean as influential
+    ... )
+    >>> print(f"Points with influence scores > 3 std devs: {infl_idx2}")
+    >>> print(f"Points for normal training: {normal_idx2}")
 
     Notes
     -----
     - For large datasets, consider using max_loo_points to reduce computation time
     - The influence score is proportional to the mean squared difference in predictions
-    - The score is scaled by n_samples to make it comparable across different dataset sizes
+    - The score is scaled by n_samples to make it more comparable across different dataset sizes
     """
     n_samples = X.shape[0]
     influence_scores = np.zeros(n_samples)
@@ -1204,66 +1219,16 @@ def calculate_cooks_like_influence(
     residuals = np.abs(y - y_pred_full)
 
     # Determine which points to perform LOO on
-    loo_indices_to_process = []
     if max_loo_points is None or max_loo_points >= n_samples:
         loo_indices_to_process = np.arange(n_samples)
         print("Performing Cook's-like influence calculation for ALL points.")
     else:
         print(
-            f"Identifying up to {max_loo_points} points with highest residuals for LOO calculation..."
+            f"Selecting {max_loo_points} points with highest absolute residuals for LOO calculation..."
         )
-        if residual_outlier_method == "percentile":
-            threshold_value = np.percentile(residuals, residual_threshold)
-            high_residual_indices = np.where(residuals >= threshold_value)[0]
-            if len(high_residual_indices) > max_loo_points:
-                top_indices = np.argsort(residuals)[::-1][:max_loo_points]
-                loo_indices_to_process = top_indices
-            else:
-                loo_indices_to_process = high_residual_indices
-            print(
-                f"  Selected {len(loo_indices_to_process)} points based on {residual_threshold}th percentile of residuals."
-            )
-        elif residual_outlier_method == "zscore":
-            z_scores = np.abs((residuals - np.mean(residuals)) / np.std(residuals))
-            high_residual_indices = np.where(z_scores >= residual_threshold)[0]
-            if len(high_residual_indices) > max_loo_points:
-                top_indices = np.argsort(z_scores)[::-1][:max_loo_points]
-                loo_indices_to_process = top_indices
-            else:
-                loo_indices_to_process = high_residual_indices
-            print(
-                f"  Selected {len(loo_indices_to_process)} points with z-scores >= {residual_threshold}."
-            )
-        elif residual_outlier_method == "iqr":
-            q1, q3 = np.percentile(residuals, [25, 75])
-            iqr = q3 - q1
-            threshold = q3 + (residual_threshold * iqr)
-            high_residual_indices = np.where(residuals >= threshold)[0]
-            if len(high_residual_indices) > max_loo_points:
-                top_indices = np.argsort(residuals)[::-1][:max_loo_points]
-                loo_indices_to_process = top_indices
-            else:
-                loo_indices_to_process = high_residual_indices
-            print(
-                f"  Selected {len(loo_indices_to_process)} points outside {residual_threshold} * IQR."
-            )
-        elif residual_outlier_method == "mad":
-            median = np.median(residuals)
-            mad = np.median(np.abs(residuals - median))
-            threshold = median + (residual_threshold * mad)
-            high_residual_indices = np.where(residuals >= threshold)[0]
-            if len(high_residual_indices) > max_loo_points:
-                top_indices = np.argsort(residuals)[::-1][:max_loo_points]
-                loo_indices_to_process = top_indices
-            else:
-                loo_indices_to_process = high_residual_indices
-            print(
-                f"  Selected {len(loo_indices_to_process)} points outside {residual_threshold} * MAD."
-            )
-        else:
-            raise ValueError(
-                "Invalid residual_outlier_method. Choose from: 'percentile', 'zscore', 'iqr', or 'mad'."
-            )
+        # Sort by absolute residuals and take top max_loo_points
+        loo_indices_to_process = np.argsort(residuals)[::-1][:max_loo_points]
+        print(f"Selected {len(loo_indices_to_process)} points for analysis.")
 
     loo_indices_to_process = np.array(loo_indices_to_process)
 
@@ -1299,6 +1264,54 @@ def calculate_cooks_like_influence(
         ) - 1:
             print(
                 f"  Processed {i_idx + 1}/{len(loo_indices_to_process)} selected samples."
+            )
+
+    # Identify influential points based on influence scores
+    if max_loo_points is not None:
+        # When max_loo_points is set:
+        # 1. We assume uncalculated points have influence=0
+        # 2. We can only use percentile method
+        # 3. We cap the number of influential points at max_loo_points
+        if influence_outlier_method != "percentile":
+            warnings.warn(
+                "When max_loo_points is set, only 'percentile' method is supported for influence outlier detection. "
+                "Other methods require all influence scores to be calculated. Falling back to 'percentile'."
+            )
+        
+        # Calculate how many points the percentile would select
+        n_points_by_percentile = int(n_samples * (1 - influence_outlier_threshold / 100))
+        # Take the minimum between max_loo_points and percentile-based count
+        n_influential = min(max_loo_points, n_points_by_percentile)
+        # Sort scores and get indices of top influential points
+        influential_indices = np.argsort(influence_scores)[::-1][:n_influential]
+        
+        print(
+            f"Identified {len(influential_indices)} influential points "                
+        )
+        if max_loo_points < n_points_by_percentile:
+            print(
+                f"""Top {100 * influence_outlier_threshold}% threshold would have chosen {n_points_by_percentile} observations, but
+                    this is capped at max_loo_points of {max_loo_points}. Consider increasing max_loo_points or decreasing the threshold."""
+            )
+    else:
+        # When all points are calculated, we can use any method
+        if influence_outlier_method == "percentile":
+            threshold = np.percentile(influence_scores, influence_outlier_threshold)
+            influential_indices = np.where(influence_scores >= threshold)[0]
+            print(
+                f"Identified {len(influential_indices)} points above the "
+                f"{influence_outlier_threshold}th percentile threshold."
+            )
+        elif influence_outlier_method == "zscore":
+            z_scores = (influence_scores - np.mean(influence_scores)) / np.std(influence_scores)
+            influential_indices = np.where(np.abs(z_scores) >= influence_outlier_threshold)[0]
+            print(
+                f"Identified {len(influential_indices)} points with absolute z-scores >= "
+                f"{influence_outlier_threshold} standard deviations."
+            )
+        else:
+            raise ValueError(
+                "Invalid influence_outlier_method. Choose from: 'percentile' or 'zscore'."
             )
 
     if visualize:
@@ -1340,14 +1353,6 @@ def calculate_cooks_like_influence(
             stat="density",
             edgecolor="grey",
         )
-
-        # Get indices of influential points
-        if max_loo_points is not None:
-            n_influential = min(max_loo_points, len(influence_scores))
-            influential_indices = np.argsort(influence_scores)[-n_influential:]
-        else:
-            threshold = np.percentile(influence_scores, 95)
-            influential_indices = np.where(influence_scores >= threshold)[0]
 
         # Add markers for influential points
         if isinstance(y, pd.Series):
@@ -1456,28 +1461,30 @@ def calculate_cooks_like_influence(
         plt.show()
         plt.close()
 
-    return influence_scores
+    # Calculate normal indices as the complement of influential indices
+    normal_mask = ~np.isin(np.arange(n_samples), influential_indices)
+    normal_indices = np.where(normal_mask)[0]
+    
+    return influence_scores, influential_indices, normal_indices
 
 
 def get_normal_data(
     model_class: type,
     X: Union[pd.DataFrame, np.ndarray],
     y: Union[pd.Series, np.ndarray],
-    influence_threshold_percentile: float = 99,
-    visualize_influence: bool = True,
-    save_path_influence_plot: Optional[str] = None,
+    influence_outlier_method: str = "percentile",
+    influence_outlier_threshold: float = 99,
     max_loo_points: Optional[int] = None,
-    residual_outlier_method: str = "percentile",
-    residual_threshold: float = 95,
     random_state: Optional[int] = None,
     **model_params: Any,
-) -> Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray], np.ndarray]:
+) -> Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray]]:
     """
-    Identifies influential data points using the Cook's-like approach and returns
-    the 'normal' (non-influential) subset of data for model training.
+    Identifies and removes influential points from the dataset using Cook's D-like influence scores.
 
-    This function helps in creating more robust models by identifying and optionally
-    removing observations that have an unusually large influence on the model's behavior.
+    .. warning::
+        This function is deprecated and will be removed in a future version.
+        Use `calculate_cooks_d_like_influence()` instead, which returns both influence scores
+        and indices, allowing more flexibility in how you handle influential points.
 
     Parameters
     ----------
@@ -1488,20 +1495,13 @@ def get_normal_data(
         The feature matrix.
     y : Union[pd.Series, np.ndarray]
         The target vector.
-    influence_threshold_percentile : float, default=99
-        The percentile threshold for influence scores. Points with influence scores
-        above this percentile will be considered influential and excluded from
-        the 'normal' dataset. Default is 99 (top 1% influential).
-    visualize_influence : bool, default=True
-        If True, plots the influence scores.
-    save_path_influence_plot : Optional[str], default=None
-        If provided, saves the influence plot to this path.
+    influence_outlier_method : str, default='percentile'
+        Method to identify influential points. See `calculate_cooks_d_like_influence()`.
+    influence_outlier_threshold : float, default=99
+        Threshold for identifying influential points. See `calculate_cooks_d_like_influence()`.
     max_loo_points : Optional[int], default=None
-        Passed to calculate_cooks_like_influence.
-    residual_outlier_method : str, default='percentile'
-        Passed to calculate_cooks_like_influence.
-    residual_threshold : float, default=95
-        Passed to calculate_cooks_like_influence.
+        If specified, only calculate influence scores for this many points.
+        See `calculate_cooks_d_like_influence()`.
     random_state : Optional[int], default=None
         Random state for reproducibility, passed to model if supported.
     **model_params : Any
@@ -1509,79 +1509,66 @@ def get_normal_data(
 
     Returns
     -------
-    Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray], np.ndarray]
+    Tuple[Union[pd.DataFrame, np.ndarray], Union[pd.Series, np.ndarray]]
         A tuple containing:
         - X_normal: Features of non-influential points
         - y_normal: Target values of non-influential points
-        - influence_scores: The full array of calculated influence scores
 
     Examples
     --------
     >>> from sklearn.linear_model import LinearRegression
     >>> X = pd.DataFrame({'feature1': [1, 2, 3, 4, 100], 'feature2': [1, 2, 3, 4, 0]})
     >>> y = pd.Series([1, 2, 3, 4, 100])
-    >>> X_normal, y_normal, scores = get_normal_data(
+    >>> # This will show a deprecation warning
+    >>> X_normal, y_normal = get_normal_data(
     ...     LinearRegression,
     ...     X,
     ...     y,
-    ...     influence_threshold_percentile=95  # Remove top 5% influential points
+    ...     influence_outlier_threshold=99  # Remove top 1% influential points
     ... )
     >>> print(f"Original data size: {len(y)}, Normal data size: {len(y_normal)}")
+    
+    # Recommended way using calculate_cooks_d_like_influence:
+    >>> scores, infl_idx, normal_idx = calculate_cooks_d_like_influence(
+    ...     LinearRegression, X, y, influence_outlier_threshold=99
+    ... )
+    >>> X_normal, y_normal = X.iloc[normal_idx], y.iloc[normal_idx]
 
     Notes
     -----
-    - The function preserves the input data type (DataFrame/Series or ndarray)
-    - Consider the trade-off between removing influential points and maintaining
-      sufficient data for model training
-    - Investigate removed points for potential data quality issues or important
-      edge cases before discarding them
+    This function is deprecated. Use `calculate_cooks_d_like_influence()` instead,
+    which provides more flexibility in how you handle influential points.
     """
-    # Calculate influence scores
-    influence_scores = calculate_cooks_like_influence(
+    warnings.warn(
+        "get_normal_data() is deprecated and will be removed in a future version. "
+        "Use calculate_cooks_d_like_influence() instead, which returns both influence scores "
+        "and indices, allowing more flexibility in how you handle influential points.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+
+    # Get influence scores and indices
+    _, _, normal_indices = calculate_cooks_d_like_influence(
         model_class=model_class,
         X=X,
         y=y,
-        visualize=visualize_influence,
-        save_path=save_path_influence_plot,
+        visualize=False,  # Don't show visualization by default
+        influence_outlier_method=influence_outlier_method,
+        influence_outlier_threshold=influence_outlier_threshold,
         max_loo_points=max_loo_points,
-        residual_outlier_method=residual_outlier_method,
-        residual_threshold=residual_threshold,
         random_state=random_state,
         **model_params,
     )
 
-    # Calculate threshold for normal data
-    threshold = np.percentile(influence_scores, influence_threshold_percentile)
-
-    # Create mask for normal (non-influential) points
-    if max_loo_points is not None:
-        # Calculate how many points the percentile would select
-        n_points_by_percentile = int(
-            len(influence_scores) * (1 - influence_threshold_percentile / 100)
-        )
-        # Take the minimum between max_loo_points and percentile-based count
-        n_influential = min(max_loo_points, n_points_by_percentile)
-        # Sort scores and get the nth highest score as cutoff
-        sorted_scores = np.sort(influence_scores)[::-1]  # Sort descending
-        threshold = sorted_scores[n_influential - 1] if n_influential > 0 else np.inf
-
-    # Create mask for normal (non-influential) points
-    normal_mask = influence_scores <= threshold
-
-    # Return appropriate type based on input
+    # Return normal subset based on input type
     if isinstance(X, pd.DataFrame):
-        X_normal = X.iloc[normal_mask]
+        X_normal = X.iloc[normal_indices]
     else:
-        X_normal = X[normal_mask]
+        X_normal = X[normal_indices]
 
     if isinstance(y, pd.Series):
-        y_normal = y.iloc[normal_mask]
+        y_normal = y.iloc[normal_indices]
     else:
-        y_normal = y[normal_mask]
+        y_normal = y[normal_indices]
 
-    print(
-        f"Identified {(~normal_mask).sum()} influential points above the {influence_threshold_percentile}th percentile threshold."
-    )
-    print(f"Returning {normal_mask.sum()} normal points for model training.")
-
-    return X_normal, y_normal, influence_scores
+    return X_normal, y_normal

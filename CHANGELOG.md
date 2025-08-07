@@ -9,15 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.2] - unreleased
 
 ### Changed
-- Enhanced residual outlier detection in `calculate_cooks_like_influence`:
-  - Added new statistical methods for outlier detection:
-    - 'zscore': Select points beyond N standard deviations
-    - 'iqr': Select points beyond N times the interquartile range (Tukey's method)
-    - 'mad': Select points beyond N times the median absolute deviation
-  - Changed default residual_threshold from 99 to 95 for wider coverage
-  - Clear documentation with examples for each method
+- Renamed to `calculate_cooks_d_like_influence` for technical accuracy
+- Improved influence point selection:
+  - Simplified point selection for LOO analysis to use direct residual sorting
+  - Added clear influence-based outlier detection with new parameters:
+    - `influence_outlier_method`: Method to identify influential points ('percentile' or 'zscore')
+    - `influence_outlier_threshold`: Threshold for marking points as influential (e.g., 95 for top 5%)
+  - Better handling of max_loo_points:
+    - Points are selected purely by residual magnitude for efficiency
+    - Number of influential points is capped at max_loo_points
+    - Clear warnings when not all influence scores are calculated
+  - Improved documentation with clear examples and parameter descriptions
+  - Now returns influence scores, influential indices, and normal indices for better usability
+  - Deprecated get_normal_data() in favor of the more flexible calculate_cooks_d_like_influence()
 
-- Enhanced visualization in `calculate_cooks_like_influence`:
+- Enhanced visualization in `calculate_cooks_d_like_influence`:
   - Replaced line plot with comprehensive multi-panel visualization:
     - Distribution plot showing high-influence points in target space
     - Feature relationship plots showing how influential points relate to each feature
@@ -25,15 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Improved marker visibility with small y-axis offset for triangular markers
   - Provides complete picture of influence patterns across both target and feature spaces
   - Perfect for identifying which features contribute to high influence
-
-### Fixed
-- Clarified parameter interaction in influence analysis (`get_normal_data`):
-  - `influence_threshold_percentile=95`: Means "identify top 5% most influential points"
-  - `max_loo_points=20`: Limits influence score calculation to at most 20 points to save compute
-  - When both are set, remove observations that fulfill both criteria. For example:
-    - With 1000 points, influence_threshold_percentile=95 would select top 50 (5%) points
-    - If max_loo_points=20, at most 20 points will be marked as influential and removed
-    - If max_loo_points=100, at most 50 points (5%) will be marked as influential and removed
 
 
 ## [0.4.1] - 2025-08-03

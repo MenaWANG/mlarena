@@ -24,13 +24,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Deprecated get_normal_data() in favor of the more flexible calculate_cooks_d_like_influence()
 
 - Enhanced visualization in `calculate_cooks_d_like_influence`:
-  - Replaced line plot with comprehensive multi-panel visualization:
-    - Distribution plot showing high-influence points in target space
-    - Feature relationship plots showing how influential points relate to each feature
-    - Uses consistent color scheme with package (MPL_BLUE for normal, MPL_RED for influential points)
-    - Improved marker visibility with small y-axis offset for triangular markers
-  - Provides complete picture of influence patterns across both target and feature spaces
-  - Perfect for identifying which features contribute to high influence
+  - Comprehensive multi-panel visualization with three key components:
+    1. Influence Score Distribution (when not using max_loo_points):
+       - Shows distribution of influence scores with KDE curve
+       - Marks threshold used for influential point detection
+       - Helps understand score distribution and optimize threshold selection
+    2. Target Distribution:
+       - Shows high-influence points in target space
+       - Triangular markers with y-axis offset for better visibility
+    3. Feature Relationships:
+       - Shows how influential points relate to each feature
+       - Adapts visualization for categorical vs numeric features
+  - Uses consistent color scheme (MPL_BLUE for normal, MPL_RED for influential, MPL_YELLOW for distribution)
+  - Provides complete picture of influence patterns across influence scores, target, and feature spaces
+  - Enable informed decisions about how best to handle influential observations in each use case
 
 
 ## [0.4.1] - 2025-08-03

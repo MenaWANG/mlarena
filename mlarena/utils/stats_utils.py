@@ -1318,6 +1318,50 @@ def calculate_cooks_d_like_influence(
         colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
         MPL_BLUE = colors[0]  # Main distribution/points color
         MPL_RED = colors[3]  # Highlight influential points
+        MPL_YELLOW = colors[1]  # For influence score distribution
+        
+        # If not using max_loo_points, show influence score distribution
+        if max_loo_points is None:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            
+            sns.histplot(
+                influence_scores,
+                bins=50,
+                kde=True,
+                ax=ax,
+                color=MPL_YELLOW,
+                alpha=0.5,
+                stat="density",
+                edgecolor="grey",
+            )
+            
+            # Add vertical line for threshold
+            if influence_outlier_method == "percentile":
+                threshold = np.percentile(influence_scores, influence_outlier_threshold)
+                ax.axvline(
+                    x=threshold,
+                    color=MPL_RED,
+                    linestyle="--",
+                    label=f"{influence_outlier_threshold}th Percentile",
+                )
+            elif influence_outlier_method == "zscore":
+                z_scores = (influence_scores - np.mean(influence_scores)) / np.std(influence_scores)
+                threshold = influence_outlier_threshold * np.std(influence_scores) + np.mean(influence_scores)
+                ax.axvline(
+                    x=threshold,
+                    color=MPL_RED,
+                    linestyle="--",
+                    label=f"{influence_outlier_threshold} Standard Deviations",
+                )
+            
+            ax.set_title("Distribution of Influence Scores", fontsize=13, pad=15)
+            ax.set_xlabel("Influence Score", fontsize=12)
+            ax.set_ylabel("Density", fontsize=12)
+            ax.legend()
+            sns.despine(ax=ax)
+            plt.tight_layout()
+            plt.show()
+            plt.close()
 
         # Get all features and their types if DataFrame
         if isinstance(X, pd.DataFrame):

@@ -1,5 +1,6 @@
 import warnings
 from typing import Any, Dict, List, Optional, Tuple, Union
+import inspect
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -1117,7 +1118,7 @@ def calculate_cooks_d_like_influence(
        - Remove the point
        - Train a new model
        - Calculate how much the predictions change across all points
-    3. The influence score is proportional to how much the model's predictions change when the point is removed
+    3. The influence score is the mean squared difference in predictions between the full model and the leave-one-out model.
 
     Parameters
     ----------
@@ -1172,7 +1173,7 @@ def calculate_cooks_d_like_influence(
     --------
     >>> from lightgbm import LGBMRegressor
     >>> # Example 1: Using percentile method with max_loo_points
-    >>> scores1, infl_idx1, normal_idx1 = calculate_cooks_like_influence(
+    >>> scores1, infl_idx1, normal_idx1 = calculate_cooks_d_like_influence(
     ...     LGBMRegressor,
     ...     X,
     ...     y,
@@ -1183,7 +1184,7 @@ def calculate_cooks_d_like_influence(
     >>> X_normal, y_normal = X.iloc[normal_idx1], y.iloc[normal_idx1]
 
     >>> # Example 2: Using z-score method on all points
-    >>> scores2, infl_idx2, normal_idx2 = calculate_cooks_like_influence(
+    >>> scores2, infl_idx2, normal_idx2 = calculate_cooks_d_like_influence(
     ...     LGBMRegressor,
     ...     X,
     ...     y,
@@ -1197,7 +1198,6 @@ def calculate_cooks_d_like_influence(
     -----
     - For large datasets, consider using max_loo_points to reduce computation time
     - The influence score is proportional to the mean squared difference in predictions
-    - The score is scaled by n_samples to make it more comparable across different dataset sizes
     """
     n_samples = X.shape[0]
     influence_scores = np.zeros(n_samples)
@@ -1205,11 +1205,9 @@ def calculate_cooks_d_like_influence(
     # 1. Train the full model
     print(f"Training full model using {model_class.__name__}...")
     if random_state is not None:
-        try:
-            test_model = model_class(random_state=random_state)
+        sig = inspect.signature(model_class.__init__)
+        if "random_state" in sig.parameters:
             model_params["random_state"] = random_state
-        except (TypeError, ValueError):
-            pass
 
     full_model = model_class(**model_params)
     full_model.fit(X, y)
@@ -1217,6 +1215,7 @@ def calculate_cooks_d_like_influence(
 
     # Calculate initial residuals
     residuals = np.abs(y - y_pred_full)
+    
 
     # Determine which points to perform LOO on
     if max_loo_points is None or max_loo_points >= n_samples:
@@ -1243,9 +1242,12 @@ def calculate_cooks_d_like_influence(
 
         if isinstance(X, pd.DataFrame):
             X_train_loo = X.iloc[loo_mask]
-            y_train_loo = y.iloc[loo_mask] if isinstance(y, pd.Series) else y[loo_mask]
         else:
             X_train_loo = X[loo_mask]
+
+        if isinstance(y, pd.Series):
+            y_train_loo = y.iloc[loo_mask]
+        else:
             y_train_loo = y[loo_mask]
 
         loo_model = model_class(**model_params)
@@ -1253,18 +1255,15 @@ def calculate_cooks_d_like_influence(
 
         y_pred_loo_on_full_data = loo_model.predict(X)
         influence_scores[original_data_index] = (
-            mean_squared_error(y_pred_full, y_pred_loo_on_full_data) * n_samples
+            mean_squared_error(y_pred_full, y_pred_loo_on_full_data) 
         )
 
         # Reset mask for next iteration
         loo_mask[original_data_index] = True
 
-        if (i_idx + 1) % (len(loo_indices_to_process) // 10 + 1) == 0 or i_idx == len(
-            loo_indices_to_process
-        ) - 1:
-            print(
-                f"  Processed {i_idx + 1}/{len(loo_indices_to_process)} selected samples."
-            )
+        if len(loo_indices_to_process) >= 20:
+            if (i_idx + 1) % (len(loo_indices_to_process) // 10 + 1) == 0 or i_idx == len(loo_indices_to_process) - 1:
+                print(f"  Processed {i_idx + 1}/{len(loo_indices_to_process)} selected samples.")
 
     # Identify influential points based on influence scores
     if max_loo_points is not None:
@@ -1279,7 +1278,7 @@ def calculate_cooks_d_like_influence(
             )
         
         # Calculate how many points the percentile would select
-        n_points_by_percentile = int(n_samples * (1 - influence_outlier_threshold / 100))
+        n_points_by_percentile = max(1, int(n_samples * (1 - influence_outlier_threshold / 100)))
         # Take the minimum between max_loo_points and percentile-based count
         n_influential = min(max_loo_points, n_points_by_percentile)
         # Sort scores and get indices of top influential points
@@ -1290,7 +1289,7 @@ def calculate_cooks_d_like_influence(
         )
         if max_loo_points < n_points_by_percentile:
             print(
-                f"""Top {100 * influence_outlier_threshold}% threshold would have chosen {n_points_by_percentile} observations, but
+                f"""Top {influence_outlier_threshold}% threshold would have chosen {n_points_by_percentile} observations, but
                     this is capped at max_loo_points of {max_loo_points}. Consider increasing max_loo_points or decreasing the threshold."""
             )
     else:

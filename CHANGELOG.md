@@ -6,6 +6,40 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.2] - 2025-08-10
+
+### Changed
+- Renamed `calculate_cooks_like_influence`to `calculate_cooks_d_like_influence` for technical accuracy
+- Improved influence point selection:
+  - Simplified point selection for LOO analysis to use direct residual sorting
+  - Added clear influence-based outlier detection with new parameters:
+    - `influence_outlier_method`: Method to identify influential points ('percentile' or 'zscore')
+    - `influence_outlier_threshold`: Threshold for marking points as influential (e.g., 95 for top 5%)
+  - Better handling of max_loo_points:
+    - Points are selected purely by residual magnitude for efficiency
+    - Number of influential points is capped at max_loo_points
+    - Clear warnings when not all influence scores are calculated
+  - Improved documentation with clear examples and parameter descriptions
+  - Now returns influence scores, influential indices, and normal indices for better usability
+  - Deprecated get_normal_data() in favor of the more flexible calculate_cooks_d_like_influence()
+
+- Enhanced visualization in `calculate_cooks_d_like_influence`:
+  - Comprehensive multi-panel visualization with three key components:
+    1. Influence Score Distribution:
+       - Shows distribution of influence scores with KDE curve
+       - Marks threshold used for influential point detection
+       - Helps understand score distribution and optimize threshold selection
+    2. Target Distribution:
+       - Shows high-influence points in target space
+       - Triangular markers with y-axis offset for better visibility
+    3. Feature Relationships:
+       - Shows how influential points relate to each feature
+       - Adapts visualization for categorical vs numeric features
+  - Uses color scheme consistent with other plotting functions in the package 
+  - Provides complete picture of influence patterns across influence scores, target, and feature spaces
+  - Enable informed decisions about how best to handle influential observations in each use case
+
+
 ## [0.4.1] - 2025-08-03
 
 ### Added

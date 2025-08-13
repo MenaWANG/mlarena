@@ -1176,11 +1176,9 @@ def calculate_cooks_d_like_influence(
     ...     LGBMRegressor,
     ...     X,
     ...     y,
-    ...     max_loo_points=20,  # Only analyze top 2 points with highest residuals
+    ...     max_loo_points=20,  # Only analyze top 20 points with highest residuals
     ...     influence_outlier_threshold=95  # Mark top 5% as influential (but capped at max_loo_points)
     ... )
-    >>> # Train model on normal points only
-    >>> X_normal, y_normal = X.iloc[normal_idx1], y.iloc[normal_idx1]
 
     >>> # Example 2: Using z-score method on all points
     >>> scores2, infl_idx2, normal_idx2 = calculate_cooks_d_like_influence(
@@ -1191,18 +1189,16 @@ def calculate_cooks_d_like_influence(
     ...     influence_outlier_threshold=3  # Mark points > 3 std devs from mean as influential
     ... )
     >>> print(f"Points with influence scores > 3 std devs: {infl_idx2}")
-    >>> print(f"Points for normal training: {normal_idx2}")
 
     Notes
     -----
     - For large datasets, consider using max_loo_points to reduce computation time
-    - The influence score is proportional to the mean squared difference in predictions
+    - User can set influence_outlier_threshold, but it is capped at max_loo_points
     """
     n_samples = X.shape[0]
     influence_scores = np.zeros(n_samples)
 
-    # 1. Train the full model
-    print(f"Training full model using {model_class.__name__}...")
+    # Train the full model
     if random_state is not None:
         sig = inspect.signature(model_class.__init__)
         if "random_state" in sig.parameters:
@@ -1229,9 +1225,6 @@ def calculate_cooks_d_like_influence(
 
     loo_indices_to_process = np.array(loo_indices_to_process)
 
-    print(
-        f"Calculating Cook's-like influence for {len(loo_indices_to_process)} selected points using {model_class.__name__}..."
-    )
     # Using boolean mask for efficient pandas subsetting
     loo_mask = np.ones(n_samples, dtype=bool)
 
@@ -1259,6 +1252,7 @@ def calculate_cooks_d_like_influence(
         # Reset mask for next iteration
         loo_mask[original_data_index] = True
 
+        # Print progress every 10% of the way through the loop if there are at least 20 points
         if len(loo_indices_to_process) >= 20:
             if (i_idx + 1) % (
                 len(loo_indices_to_process) // 10 + 1
@@ -1325,76 +1319,6 @@ def calculate_cooks_d_like_influence(
         MPL_RED = colors[3]  # Highlight influential points
         MPL_YELLOW = colors[1]  # For influence score distribution
 
-        # Influence score distribution
-        fig, ax = plt.subplots(figsize=(10, 6))
-
-        # Plot all points in a single histogram
-        sns.histplot(
-            influence_scores,
-            bins=50,
-            kde=True,
-            ax=ax,
-            color=MPL_YELLOW,
-            alpha=0.5,
-            stat="density",
-            edgecolor="grey",
-        )
-
-        # Add vertical line for threshold
-        if influence_outlier_method == "percentile":
-            # Calculate threshold from all points to match point selection
-            threshold = np.percentile(influence_scores, influence_outlier_threshold)
-            ax.axvline(
-                x=threshold,
-                color=MPL_RED,
-                linestyle="--",
-                label=f"{influence_outlier_threshold}th Percentile",
-            )
-        elif influence_outlier_method == "zscore" and max_loo_points is None:
-            z_scores = (influence_scores - np.mean(influence_scores)) / np.std(
-                influence_scores
-            )
-            threshold = influence_outlier_threshold * np.std(
-                influence_scores
-            ) + np.mean(influence_scores)
-            ax.axvline(
-                x=threshold,
-                color=MPL_RED,
-                linestyle="--",
-                label=f"{influence_outlier_threshold} Standard Deviations",
-            )
-
-        ax.set_title("Distribution of Influence Scores", fontsize=13, pad=15)
-        ax.set_xlabel("Influence Score", fontsize=12)
-        ax.set_ylabel("Density", fontsize=12)
-        ax.legend()
-
-        # Add note about uncalculated points if max_loo_points is set
-        if max_loo_points is not None:
-            n_uncalculated = n_samples - len(loo_indices_to_process)
-            note = (
-                f"Note: The influence scores \n of {n_uncalculated:,} points ({n_uncalculated/n_samples*100:.1f}%) \n"
-                "were not calculated\n"
-                f"due to max_loo_points ({max_loo_points}) \n and are shown as 0."
-            )
-            ax.text(
-                0.98,
-                0.75,
-                note,
-                transform=ax.transAxes,
-                horizontalalignment="right",
-                verticalalignment="bottom",
-                fontsize=10,
-                style="italic",
-                color="dimgray",
-                bbox=dict(facecolor="white", alpha=0.8, edgecolor="none"),
-            )
-
-        sns.despine(ax=ax)
-        plt.tight_layout()
-        plt.show()
-        plt.close()
-
         # Get all features and their types if DataFrame
         if isinstance(X, pd.DataFrame):
             n_features = X.shape[1]
@@ -1408,16 +1332,102 @@ def calculate_cooks_d_like_influence(
 
         # Calculate grid dimensions
         n_scatter_rows = (n_features + 1) // 2
-        n_rows = 1 + n_scatter_rows  # 1 row for distribution plot
+        n_rows = 2 + n_scatter_rows  # 2 rows for distributions + scatter plots
         n_cols = 2
 
         fig = plt.figure(figsize=(12, 6 * n_rows))
-        gs = fig.add_gridspec(n_rows, n_cols)
+        # Add height ratios to give more space to distribution plots and add spacing between subplots
+        gs = fig.add_gridspec(
+            n_rows,
+            n_cols,
+            height_ratios=[1.2, 1.2]
+            + [1] * n_scatter_rows,  # Make distribution plots slightly larger
+            hspace=0.4,
+        )  # Increase vertical spacing between subplots
 
-        # First plot: Target Distribution (spans both columns)
-        ax_dist = fig.add_subplot(gs[0, :])
+        # Influence Score Distribution (spans both columns)
+        ax_infl = fig.add_subplot(gs[0, :])
 
-        # Plot distribution
+        # Plot influence score distribution
+        sns.histplot(
+            influence_scores,
+            bins=50,
+            kde=True,
+            ax=ax_infl,
+            color=MPL_YELLOW,
+            alpha=0.5,
+            stat="density",
+            edgecolor="grey",
+        )
+
+        # Add vertical line for threshold
+        if influence_outlier_method == "percentile":
+            if max_loo_points is not None:
+                # When max_loo_points is set, use the same threshold logic as when identifying influential points
+                n_points_by_percentile = max(
+                    1, int(n_samples * (1 - influence_outlier_threshold / 100))
+                )
+                n_influential = min(max_loo_points, n_points_by_percentile)
+                # Get the threshold as the score at the n_influential position
+                sorted_scores = np.sort(influence_scores)[
+                    ::-1
+                ]  # Sort in descending order
+                threshold = sorted_scores[n_influential - 1]
+            else:
+                # When all scores are calculated, use regular percentile
+                threshold = np.percentile(influence_scores, influence_outlier_threshold)
+
+            ax_infl.axvline(
+                x=threshold,
+                color=MPL_RED,
+                linestyle="--",
+                label=f"{influence_outlier_threshold}th Percentile",
+            )
+        elif influence_outlier_method == "zscore" and max_loo_points is None:
+            z_scores = (influence_scores - np.mean(influence_scores)) / np.std(
+                influence_scores
+            )
+            threshold = influence_outlier_threshold * np.std(
+                influence_scores
+            ) + np.mean(influence_scores)
+            ax_infl.axvline(
+                x=threshold,
+                color=MPL_RED,
+                linestyle="--",
+                label=f"{influence_outlier_threshold} Standard Deviations",
+            )
+
+        ax_infl.set_title("Distribution of Influence Scores", fontsize=13, pad=15)
+        ax_infl.set_xlabel("Influence Score", fontsize=12)
+        ax_infl.set_ylabel("Density", fontsize=12)
+        ax_infl.legend()
+
+        # Add note about uncalculated points if max_loo_points is set
+        if max_loo_points is not None:
+            n_uncalculated = n_samples - len(loo_indices_to_process)
+            note = (
+                f"Note: The influence scores \n of {n_uncalculated:,} points ({n_uncalculated/n_samples*100:.1f}%) \n"
+                "were not calculated\n"
+                f"due to max_loo_points ({max_loo_points}) \n and are shown as 0."
+            )
+            ax_infl.text(
+                0.98,
+                0.75,
+                note,
+                transform=ax_infl.transAxes,
+                horizontalalignment="right",
+                verticalalignment="bottom",
+                fontsize=10,
+                style="italic",
+                color="dimgray",
+                bbox=dict(facecolor="white", alpha=0.8, edgecolor="none"),
+            )
+        sns.despine(ax=ax_infl)
+
+        # Target Distribution (spans both columns)
+        ax_dist = fig.add_subplot(gs[1, :])
+
+        # Plot target distribution
         sns.histplot(
             y,
             bins=50,
@@ -1460,7 +1470,7 @@ def calculate_cooks_d_like_influence(
         sns.despine(ax=ax_dist)
 
         # Feature scatter plots
-        row_idx = 1  # Start from second row
+        row_idx = 2  # Start from third row (after both distributions)
         col_idx = 0
 
         if isinstance(X, pd.DataFrame):

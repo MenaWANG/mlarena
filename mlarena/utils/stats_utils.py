@@ -1384,14 +1384,16 @@ def calculate_cooks_d_like_influence(
         n_rows = 2 + n_scatter_rows  # 2 rows for distributions + scatter plots
         n_cols = 2
 
-        fig = plt.figure(figsize=(12, 6 * n_rows))
-        # Add height ratios to give more space to distribution plots and add spacing between subplots
+        # Create figure with constrained_layout for better automatic spacing
+        fig = plt.figure(figsize=(12, 6 * n_rows), constrained_layout=True)
+
+        # Add height ratios to give more space to distribution plots
         gs = fig.add_gridspec(
             n_rows,
             n_cols,
             height_ratios=[1.2, 1.2]
             + [1] * n_scatter_rows,  # Make distribution plots slightly larger
-            hspace=0.4,
+            hspace=0.1,
         )  # Increase vertical spacing between subplots
 
         # Influence Score Distribution (spans both columns)
@@ -1615,10 +1617,8 @@ def calculate_cooks_d_like_influence(
                 if col_idx == 0:
                     row_idx += 1
 
-        plt.tight_layout()
-
         if save_path:
-            plt.savefig(save_path, bbox_inches="tight", dpi=300)
+            plt.savefig(save_path, dpi=300)  # constrained_layout handles spacing
         plt.show()
         plt.close()
 

@@ -1142,15 +1142,19 @@ def calculate_cooks_d_like_influence(
         Options:
         - 'percentile': Select points above a percentile threshold
         - 'zscore': Select points beyond N standard deviations from the mean
-        Note: When max_loo_points is set, only 'percentile' method is available
+        - 'top_k': Select the K points with highest influence scores
+        - 'iqr': Select points above Q3 + k * IQR threshold
+        Note: When max_loo_points is set, only 'percentile' and 'top_k' methods are available
         since other methods require all influence scores to be calculated.
-    influence_outlier_threshold : float, default=99
+    influence_outlier_threshold : float or int, default=99
         Threshold for identifying influential points:
         - For 'percentile': Points above this percentile are marked influential
           (e.g., 95 means top 5% most influential points)
         - For 'zscore': Points with absolute z-scores above this value are marked influential
           (e.g., 3 means points more than 3 standard deviations from the mean)
-        When max_loo_points is set:
+        - For 'top_k': Number of most influential points to select (integer)
+        - For 'iqr': Multiplier k for Q3 + k*IQR threshold (typically 1.5 or 3.0)
+        Note: When max_loo_points is set:
         - The number of influential points will be capped at max_loo_points
         - Uncalculated points are assumed to have zero influence
     random_state : Optional[int], default=None
@@ -1221,7 +1225,6 @@ def calculate_cooks_d_like_influence(
         )
         # Sort by absolute residuals and take top max_loo_points
         loo_indices_to_process = np.argsort(residuals)[::-1][:max_loo_points]
-        print(f"Selected {len(loo_indices_to_process)} points for analysis.")
 
     loo_indices_to_process = np.array(loo_indices_to_process)
 
@@ -1265,29 +1268,51 @@ def calculate_cooks_d_like_influence(
     if max_loo_points is not None:
         # When max_loo_points is set:
         # 1. We assume uncalculated points have influence=0
-        # 2. We can only use percentile method
+        # 2. We can only use percentile or top_k methods
         # 3. We cap the number of influential points at max_loo_points
-        if influence_outlier_method != "percentile":
+        if influence_outlier_method not in ["percentile", "top_k"]:
             warnings.warn(
-                "When max_loo_points is set, only 'percentile' method is supported for influence outlier detection. "
-                "Other methods require all influence scores to be calculated. Falling back to 'percentile'."
+                "When max_loo_points is set, only 'percentile' and 'top_k' methods are supported "
+                "Falling back to 'percentile'."
             )
+            influence_outlier_method = "percentile"
 
-        # Calculate how many points the percentile would select from all points
-        n_points_by_percentile = max(
-            1, int(n_samples * (1 - influence_outlier_threshold / 100))
-        )
-        # Take the minimum between max_loo_points and percentile-based count
-        n_influential = min(max_loo_points, n_points_by_percentile)
-        # Sort scores and get indices of top influential points
-        influential_indices = np.argsort(influence_scores)[::-1][:n_influential]
-
-        print(f"Identified {len(influential_indices)} influential points ")
-        if max_loo_points < n_points_by_percentile:
-            print(
-                f"""Top {influence_outlier_threshold}% threshold would have chosen {n_points_by_percentile} observations, but
-                    this is capped at max_loo_points of {max_loo_points}. Consider increasing max_loo_points or decreasing the threshold."""
+        if influence_outlier_method == "percentile":
+            # Calculate how many points the percentile would select from all points
+            n_points_by_percentile = max(
+                1, int(n_samples * (1 - influence_outlier_threshold / 100))
             )
+            # Take the minimum between max_loo_points and percentile-based count
+            n_influential = min(max_loo_points, n_points_by_percentile)
+            # Sort scores and get indices of top influential points
+            influential_indices = np.argsort(influence_scores)[::-1][:n_influential]
+
+            print(f"Identified {len(influential_indices)} influential points")
+            if max_loo_points < n_points_by_percentile:
+                warnings.warn(
+                    f"Top {influence_outlier_threshold}% threshold would have chosen {n_points_by_percentile} observations, "
+                    f"but this is capped at max_loo_points of {max_loo_points}. Consider increasing max_loo_points or decreasing the threshold."
+                )
+        else:  # top_k method
+            if not isinstance(influence_outlier_threshold, (int, np.integer)):
+                raise ValueError(
+                    "For top_k method, threshold must be an integer representing K."
+                )
+            k = int(influence_outlier_threshold)
+            if k < 1:
+                raise ValueError("K must be at least 1 for top_k method.")
+
+            # Cap K at max_loo_points
+            n_influential = min(k, max_loo_points)
+            # Sort scores and get indices of top K (capped at max_loo_points)
+            influential_indices = np.argsort(influence_scores)[::-1][:n_influential]
+            print(f"Selected top {len(influential_indices)} most influential points")
+            if max_loo_points < k:
+                warnings.warn(
+                    f"Requested top {k} points but this is capped at max_loo_points of {max_loo_points}. "
+                    f"Consider increasing max_loo_points if you need more points."
+                )
+
     else:
         # When all points are calculated, we can use any method
         if influence_outlier_method == "percentile":
@@ -1308,9 +1333,33 @@ def calculate_cooks_d_like_influence(
                 f"Identified {len(influential_indices)} points with absolute z-scores >= "
                 f"{influence_outlier_threshold} standard deviations."
             )
+        elif influence_outlier_method == "top_k":
+            if not isinstance(influence_outlier_threshold, (int, np.integer)):
+                raise ValueError(
+                    "For top_k method, threshold must be an integer representing K."
+                )
+            k = int(influence_outlier_threshold)
+            if k < 1:
+                raise ValueError("K must be at least 1 for top_k method.")
+            # Sort scores in descending order and get indices of top K
+            influential_indices = np.argsort(influence_scores)[::-1][:k]
+            print(f"Selected top {len(influential_indices)} most influential points.")
+        elif influence_outlier_method == "iqr":
+            if not isinstance(influence_outlier_threshold, (int, float)):
+                raise ValueError(
+                    "For IQR method, threshold must be a number representing the IQR multiplier."
+                )
+            q1, q3 = np.percentile(influence_scores, [25, 75])
+            iqr = q3 - q1
+            threshold = q3 + influence_outlier_threshold * iqr
+            influential_indices = np.where(influence_scores >= threshold)[0]
+            print(
+                f"Identified {len(influential_indices)} points above "
+                f"Q3 + {influence_outlier_threshold}*IQR threshold."
+            )
         else:
             raise ValueError(
-                "Invalid influence_outlier_method. Choose from: 'percentile' or 'zscore'."
+                "Invalid influence_outlier_method. Choose from: 'percentile', 'zscore', 'top_k', or 'iqr'."
             )
 
     if visualize:
@@ -1395,6 +1444,32 @@ def calculate_cooks_d_like_influence(
                 color=MPL_RED,
                 linestyle="--",
                 label=f"{influence_outlier_threshold} Standard Deviations",
+            )
+        elif influence_outlier_method == "top_k":
+            # For top_k, show the threshold at the Kth point
+            k = min(
+                int(influence_outlier_threshold),
+                max_loo_points if max_loo_points is not None else len(influence_scores),
+            )
+            sorted_scores = np.sort(influence_scores)[::-1]  # Sort in descending order
+            if k <= len(sorted_scores):
+                threshold = sorted_scores[k - 1]
+                ax_infl.axvline(
+                    x=threshold,
+                    color=MPL_RED,
+                    linestyle="--",
+                    label=f"Top {k} Threshold",
+                )
+        elif influence_outlier_method == "iqr" and max_loo_points is None:
+            # For IQR method, show Q3 + k*IQR threshold
+            q1, q3 = np.percentile(influence_scores, [25, 75])
+            iqr = q3 - q1
+            threshold = q3 + influence_outlier_threshold * iqr
+            ax_infl.axvline(
+                x=threshold,
+                color=MPL_RED,
+                linestyle="--",
+                label=f"Q3 + {influence_outlier_threshold}*IQR",
             )
 
         ax_infl.set_title("Distribution of Influence Scores", fontsize=13, pad=15)

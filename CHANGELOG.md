@@ -8,6 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.3] - unreleased
 
+### Added
+- Enhanced influence point detection in `calculate_cooks_d_like_influence`:
+  - Added new methods for identifying influential points:
+    - 'top_k': Select K points with highest influence scores
+    - 'iqr': Select points above Q3 + k*IQR threshold (when max_loo_points not set)
+  - Added clear threshold visualization for all methods:
+    - Percentile: Shows percentile threshold line
+    - Z-score: Shows standard deviation threshold line
+    - Top K: Shows Kth point threshold line
+    - IQR: Shows Q3 + k*IQR threshold line
+  - Improved warning messages:
+    - Clear warnings when K exceeds max_loo_points
+    - Consistent warning format across all methods
+    - Better visibility of important messages
+
 ### Changed
 - Improved influence score visualization in `calculate_cooks_d_like_influence`:
   - Combined all plots into a single cohesive figure using GridSpec

@@ -1618,7 +1618,7 @@ def calculate_cooks_d_like_influence(
                     row_idx += 1
 
         if save_path:
-            plt.savefig(save_path, dpi=300)  # constrained_layout handles spacing
+            plt.savefig(save_path, dpi=300)  
         plt.show()
         plt.close()
 

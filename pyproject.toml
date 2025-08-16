@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mlarena"
-version = "0.4.2"
+version = "0.4.3"
 description = "An algorithm-agnostic machine learning toolkit for model training, diagnostics and optimization"
 authors = ["Mena Wang <ningwang25@gmail.com>"]
 readme = "README.md"

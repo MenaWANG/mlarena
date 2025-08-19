@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Enhanced influence point detection in `calculate_cooks_d_like_influence`:
-  - Added traditional "4 times mean" rule of thumb as new method:
+  - Added "mean_multiple" as new method for influential points detection:
     - New 'mean_multiple' method to select points with influence scores > N times the mean
     - Clear threshold visualization with mean multiple line
     - Comprehensive error handling and validation

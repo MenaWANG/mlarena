@@ -1108,7 +1108,7 @@ def calculate_cooks_d_like_influence(
     **model_params: Any,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
-    Calculates a Cook's-like influence score for each data point for any scikit-learn compatible model.
+    Calculates a Cook's-D-like influence score for each data point for any scikit-learn compatible model.
     This is an extension of Cook's Distance that works with any ML model, not just linear regression.
 
     The influence score is calculated by:
@@ -1144,6 +1144,7 @@ def calculate_cooks_d_like_influence(
         - 'zscore': Select points beyond N standard deviations from the mean
         - 'top_k': Select the K points with highest influence scores
         - 'iqr': Select points above Q3 + k * IQR threshold
+        - 'mean_multiple': Select points with influence scores > N times the mean
         Note: When max_loo_points is set, only 'percentile' and 'top_k' methods are available
         since other methods require all influence scores to be calculated.
     influence_outlier_threshold : float or int, default=99
@@ -1154,6 +1155,8 @@ def calculate_cooks_d_like_influence(
           (e.g., 3 means points more than 3 standard deviations from the mean)
         - For 'top_k': Number of most influential points to select (integer)
         - For 'iqr': Multiplier k for Q3 + k*IQR threshold (typically 1.5 or 3.0)
+        - For 'mean_multiple': Points with influence scores > N times the mean
+          (e.g., 3 as suggested in literature regarding diagnostics of linear regression)
         Note: When max_loo_points is set:
         - The number of influential points will be capped at max_loo_points
         - Uncalculated points are assumed to have zero influence
@@ -1218,7 +1221,7 @@ def calculate_cooks_d_like_influence(
     # Determine which points to perform LOO on
     if max_loo_points is None or max_loo_points >= n_samples:
         loo_indices_to_process = np.arange(n_samples)
-        print("Performing Cook's-like influence calculation for ALL points.")
+        print("Performing Cook's-D-like influence calculation for ALL points.")
     else:
         print(
             f"Selecting {max_loo_points} points with highest absolute residuals for LOO calculation..."
@@ -1357,9 +1360,21 @@ def calculate_cooks_d_like_influence(
                 f"Identified {len(influential_indices)} points above "
                 f"Q3 + {influence_outlier_threshold}*IQR threshold."
             )
+        elif influence_outlier_method == "mean_multiple":
+            if not isinstance(influence_outlier_threshold, (int, float)):
+                raise ValueError(
+                    "For mean_multiple method, threshold must be a number representing the multiplier of mean."
+                )
+            mean_score = np.mean(influence_scores)
+            threshold = influence_outlier_threshold * mean_score
+            influential_indices = np.where(influence_scores >= threshold)[0]
+            print(
+                f"Identified {len(influential_indices)} points with influence scores > "
+                f"{influence_outlier_threshold}x mean ({threshold:.3f})."
+            )
         else:
             raise ValueError(
-                "Invalid influence_outlier_method. Choose from: 'percentile', 'zscore', 'top_k', or 'iqr'."
+                "Invalid influence_outlier_method. Choose from: 'percentile', 'zscore', 'top_k', 'iqr', or 'mean_multiple'."
             )
 
     if visualize:
@@ -1473,6 +1488,16 @@ def calculate_cooks_d_like_influence(
                 linestyle="--",
                 label=f"Q3 + {influence_outlier_threshold}*IQR",
             )
+        elif influence_outlier_method == "mean_multiple" and max_loo_points is None:
+            # For mean_multiple method, show N*mean threshold
+            mean_score = np.mean(influence_scores)
+            threshold = influence_outlier_threshold * mean_score
+            ax_infl.axvline(
+                x=threshold,
+                color=MPL_RED,
+                linestyle="--",
+                label=f"{influence_outlier_threshold}x Mean",
+            )
 
         ax_infl.set_title("Distribution of Influence Scores", fontsize=13, pad=15)
         ax_infl.set_xlabel("Influence Score", fontsize=12)
@@ -1563,7 +1588,7 @@ def calculate_cooks_d_like_influence(
                         y=y,
                         ax=ax,
                         color=MPL_BLUE,
-                        alpha=0.5,
+                        alpha=0.3,
                         size=5,
                         jitter=0.2,
                     )
@@ -1580,12 +1605,12 @@ def calculate_cooks_d_like_influence(
                     )
                 else:
                     # Regular scatter for numeric features
-                    ax.scatter(x_data, y, color=MPL_BLUE, alpha=0.5, s=30)
+                    ax.scatter(x_data, y, color=MPL_BLUE, alpha=0.3, s=30)
                     ax.scatter(
                         x_data.iloc[influential_indices],
                         y_influential,
                         color=MPL_RED,
-                        s=60,
+                        s=40,
                         alpha=0.85,
                     )
 

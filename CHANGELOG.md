@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.4] - 2025-08-19 
+
+### Added
+- Enhanced influence point detection in `calculate_cooks_d_like_influence`:
+  - Added traditional "4 times mean" rule of thumb as new method:
+    - New 'mean_multiple' method to select points with influence scores > N times the mean
+    - Traditional Cook's Distance rule of thumb uses N=3
+    - Clear threshold visualization with mean multiple line
+    - Comprehensive error handling and validation
+  - Available when calculating influence scores for all points (no max_loo_points)
+
 ## [0.4.3] - 2025-08-17
 
 ### Added

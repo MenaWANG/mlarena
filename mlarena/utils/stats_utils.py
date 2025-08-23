@@ -849,7 +849,7 @@ def sample_size_numeric(
     alternative: str = "two-sided",
 ) -> Dict[str, Union[int, float]]:
     """
-    Calculate required sample size for numeric outcomes to achieve desired power.
+    Calculate required sample size for A/B testing with numeric outcomes to achieve desired power.
 
     Parameters
     ----------
@@ -927,7 +927,7 @@ def sample_size_proportion(
     alternative: str = "two-sided",
 ) -> Dict[str, Union[int, float]]:
     """
-    Calculate required sample size for proportion tests to achieve desired power.
+    Calculate required sample size for A/B testing with proportion targets to achieve desired power.
 
     Parameters
     ----------
@@ -1758,3 +1758,85 @@ def get_normal_data(
         y_normal = y[normal_indices]
 
     return X_normal, y_normal
+
+
+def mde_numeric(
+    power: float,
+    alpha: float,
+    sample_size: int,
+    alternative: str = "two-sided",
+    verbose: bool = False
+) -> float:
+    """
+    Calculate the minimum detectable effect size for numeric data.
+
+    Parameters
+    ----------
+    power : float
+        Desired statistical power (1 - Type II error rate).
+    alpha : float
+        Significance level (Type I error rate).
+    sample_size : int
+        Total sample size.
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "greater", "less".
+    verbose : bool, default=False
+        If True, provides detailed guidance on interpreting the effect size.
+
+    Returns
+    -------
+    float
+        Minimum detectable effect size (Cohen's d).
+    """
+    effect_size = tt_solve_power(
+        effect_size=None,
+        nobs=sample_size,
+        alpha=alpha,
+        power=power,
+        alternative=alternative
+    )
+    if verbose:
+        print(f"The minimum detectable effect size (Cohen's d) is {effect_size:.3f}.")
+        print("Interpretation: A small effect size is around 0.2, medium is 0.5, and large is 0.8.")
+    return effect_size
+
+
+def mde_proportion(
+    power: float,
+    alpha: float,
+    sample_size: int,
+    alternative: str = "two-sided",
+    verbose: bool = False
+) -> float:
+    """
+    Calculate the minimum detectable effect size for proportion data.
+
+    Parameters
+    ----------
+    power : float
+        Desired statistical power (1 - Type II error rate).
+    alpha : float
+        Significance level (Type I error rate).
+    sample_size : int
+        Total sample size.
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "larger", "smaller".
+    verbose : bool, default=False
+        If True, provides detailed guidance on interpreting the effect size.
+
+    Returns
+    -------
+    float
+        Minimum detectable effect size (Cohen's h).
+    """
+    effect_size = zt_ind_solve_power(
+        effect_size=None,
+        nobs1=sample_size,
+        alpha=alpha,
+        power=power,
+        alternative=alternative
+    )
+    if verbose:
+        print(f"The minimum detectable effect size (Cohen's h) is {effect_size:.3f}.")
+        print("Interpretation: Cohen's h values of 0.2, 0.5, and 0.8 correspond to small, medium, and large effects, respectively.")
+    return effect_size

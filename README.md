@@ -29,6 +29,12 @@ For quick guide over the package
 
     > This article discussed some key challenges in algorithm-agnostic ML Pipeline building and demonstractes how MLarena can help to address them. Although more functionalities have been added after the publication of the article on 7 July 2025, it is nonetheless a good overview of MLarena's core functionalies and a good quick guide for starting with the package. 
 
+On specific functionalities
+
+4. [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/)
+
+   > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in this package, and is compatiable with any sklearn style ML algorithms.
+
 ## Installation
 
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example

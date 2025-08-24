@@ -1766,7 +1766,7 @@ def mde_numeric(
     sample_size: int,
     alternative: str = "two-sided",
     std: Optional[float] = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> float:
     """
     Calculate the minimum detectable effect size for numeric data.
@@ -1796,7 +1796,7 @@ def mde_numeric(
         nobs=sample_size,
         alpha=alpha,
         power=power,
-        alternative=alternative
+        alternative=alternative,
     )
     if verbose:
         print("\n=== Minimum Detectable Effect Size (Numeric Target) ===")
@@ -1821,7 +1821,7 @@ def mde_proportion(
     sample_size: int,
     alternative: str = "two-sided",
     baseline_rate: Optional[float] = None,
-    verbose: bool = False
+    verbose: bool = False,
 ) -> float:
     """
     Calculate the minimum detectable effect size for proportion data.
@@ -1851,14 +1851,16 @@ def mde_proportion(
         nobs1=sample_size,
         alpha=alpha,
         power=power,
-        alternative=alternative
+        alternative=alternative,
     )
     if verbose:
         print("\n=== Minimum Detectable Effect Size (Proportion Target) ===")
         print(f"Effect Size (Cohen's h): {effect_size:.3f}")
         if baseline_rate is not None:
             min_detectable_diff = effect_size * baseline_rate
-            print(f"Minimum Detectable Difference: {min_detectable_diff*100:.2f} percentage points")
+            print(
+                f"Minimum Detectable Difference: {min_detectable_diff*100:.2f} percentage points"
+            )
         print("\nInterpretation:")
         print("- Small effect size: ~0.2")
         print("- Medium effect size: ~0.5")

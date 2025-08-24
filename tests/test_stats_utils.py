@@ -10,6 +10,8 @@ from mlarena.utils.stats_utils import (
     calculate_group_thresholds,
     calculate_threshold_stats,
     compare_groups,
+    mde_numeric,
+    mde_proportion,
     numeric_effectsize,
     optimize_stratification_strategy,
     power_analysis_numeric,
@@ -1069,3 +1071,39 @@ class TestSampleSizeProportion:
 
         with pytest.raises(ValueError, match="Power must be between 0 and 1"):
             sample_size_proportion(baseline_rate=0.2, treatment_rate=0.3, power=1.5)
+
+
+class TestMDENumeric:
+    """Test mde_numeric function."""
+
+    def test_basic_functionality(self):
+        """Test basic functionality of mde_numeric."""
+        result = mde_numeric(power=0.8, alpha=0.05, sample_size=100)
+        assert isinstance(result, float)
+        assert result > 0
+
+    def test_with_std(self):
+        """Test mde_numeric with standard deviation provided."""
+        result = mde_numeric(
+            power=0.8, alpha=0.05, sample_size=100, std=10, verbose=True
+        )
+        assert isinstance(result, float)
+        assert result > 0
+
+
+class TestMDEProportion:
+    """Test mde_proportion function."""
+
+    def test_basic_functionality(self):
+        """Test basic functionality of mde_proportion."""
+        result = mde_proportion(power=0.8, alpha=0.05, sample_size=100)
+        assert isinstance(result, float)
+        assert result > 0
+
+    def test_with_baseline_rate(self):
+        """Test mde_proportion with baseline rate provided."""
+        result = mde_proportion(
+            power=0.8, alpha=0.05, sample_size=100, baseline_rate=0.2, verbose=True
+        )
+        assert isinstance(result, float)
+        assert result > 0

@@ -33,7 +33,7 @@ On specific functionalities
 
 4. [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/)
 
-   > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in this package, and is compatiable with any sklearn style ML algorithms.
+   > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in the MLarena package, and is compatiable with any sklearn style ML algorithms.
 
 ## Installation
 

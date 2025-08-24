@@ -849,7 +849,7 @@ def sample_size_numeric(
     alternative: str = "two-sided",
 ) -> Dict[str, Union[int, float]]:
     """
-    Calculate required sample size for numeric outcomes to achieve desired power.
+    Calculate required sample size for A/B testing with numeric outcomes to achieve desired power.
 
     Parameters
     ----------
@@ -927,7 +927,7 @@ def sample_size_proportion(
     alternative: str = "two-sided",
 ) -> Dict[str, Union[int, float]]:
     """
-    Calculate required sample size for proportion tests to achieve desired power.
+    Calculate required sample size for A/B testing with proportion targets to achieve desired power.
 
     Parameters
     ----------
@@ -1758,3 +1758,114 @@ def get_normal_data(
         y_normal = y[normal_indices]
 
     return X_normal, y_normal
+
+
+def mde_numeric(
+    power: float,
+    alpha: float,
+    sample_size: int,
+    alternative: str = "two-sided",
+    std: Optional[float] = None,
+    verbose: bool = False,
+) -> float:
+    """
+    Calculate the minimum detectable effect size for numeric data.
+
+    Parameters
+    ----------
+    power : float
+        Desired statistical power (1 - Type II error rate).
+    alpha : float
+        Significance level (Type I error rate).
+    sample_size : int
+        Total sample size.
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "greater", "less".
+    std : float, optional
+        Estimated standard deviation of the data. If provided, calculates the minimum detectable difference in original units.
+    verbose : bool, default=False
+        If True, provides detailed guidance on interpreting the effect size.
+
+    Returns
+    -------
+    float
+        Minimum detectable effect size (Cohen's d).
+    """
+    effect_size = tt_solve_power(
+        effect_size=None,
+        nobs=sample_size,
+        alpha=alpha,
+        power=power,
+        alternative=alternative,
+    )
+    if verbose:
+        print("\n=== Minimum Detectable Effect Size (Numeric Target) ===")
+        print(f"Effect Size (Cohen's d): {effect_size:.3f}")
+        if std is not None:
+            min_detectable_diff = effect_size * std
+            print(f"Minimum Detectable Difference: {min_detectable_diff:.3f} units")
+        print("\nInterpretation:")
+        print("- Small effect size: ~0.2")
+        print("- Medium effect size: ~0.5")
+        print("- Large effect size: ~0.8")
+        print("\nAssumptions:")
+        print("- Data is normally distributed.")
+        print("- Variances are equal across groups.")
+        print("- Observations are independent.")
+    return effect_size
+
+
+def mde_proportion(
+    power: float,
+    alpha: float,
+    sample_size: int,
+    alternative: str = "two-sided",
+    baseline_rate: Optional[float] = None,
+    verbose: bool = False,
+) -> float:
+    """
+    Calculate the minimum detectable effect size for proportion data.
+
+    Parameters
+    ----------
+    power : float
+        Desired statistical power (1 - Type II error rate).
+    alpha : float
+        Significance level (Type I error rate).
+    sample_size : int
+        Total sample size.
+    alternative : str, default="two-sided"
+        Alternative hypothesis: "two-sided", "larger", "smaller".
+    baseline_rate : float, optional
+        Baseline conversion rate (between 0 and 1). If provided, calculates the minimum detectable difference in percentage points.
+    verbose : bool, default=False
+        If True, provides detailed guidance on interpreting the effect size.
+
+    Returns
+    -------
+    float
+        Minimum detectable effect size (Cohen's h).
+    """
+    effect_size = zt_ind_solve_power(
+        effect_size=None,
+        nobs1=sample_size,
+        alpha=alpha,
+        power=power,
+        alternative=alternative,
+    )
+    if verbose:
+        print("\n=== Minimum Detectable Effect Size (Proportion Target) ===")
+        print(f"Effect Size (Cohen's h): {effect_size:.3f}")
+        if baseline_rate is not None:
+            min_detectable_diff = effect_size * baseline_rate
+            print(
+                f"Minimum Detectable Difference: {min_detectable_diff*100:.2f} percentage points"
+            )
+        print("\nInterpretation:")
+        print("- Small effect size: ~0.2")
+        print("- Medium effect size: ~0.5")
+        print("- Large effect size: ~0.8")
+        print("\nAssumptions:")
+        print("- Observations follow a binomial distribution.")
+        print("- Observations are independent.")
+    return effect_size

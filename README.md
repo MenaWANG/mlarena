@@ -29,23 +29,29 @@ For quick guide over the package
 
     > This article discussed some key challenges in algorithm-agnostic ML Pipeline building and demonstractes how MLarena can help to address them. Although more functionalities have been added after the publication of the article on 7 July 2025, it is nonetheless a good overview of MLarena's core functionalies and a good quick guide for starting with the package. 
 
+On specific functionalities
+
+4. [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/)
+
+   > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in the MLarena package, and is compatiable with any sklearn style ML algorithms.
+
 ## Installation
 
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash
-%pip install mlarena==0.4.4
+%pip install mlarena==0.4.5
 ```
 
 If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
 
 ```bash
-%pip install mlarena==0.4.4 --no-deps
+%pip install mlarena==0.4.5 --no-deps
 ```
 If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
 
 ```bash
-%pip install mlarena==0.4.4 --no-deps
+%pip install mlarena==0.4.5 --no-deps
 %pip install optuna==3.6.1
 ```
 

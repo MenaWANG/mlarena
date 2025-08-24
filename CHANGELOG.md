@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
+## [0.4.5] - 2025-08-24
+
+### Added
+- Added `mde_numeric` and `mde_proportion` functions in `stats_utils`:
+  - Provide minimum detectable effect size calculations for numeric and proportion data.
+  - Include verbose mode for detailed guidance on interpreting effect sizes.
+  - When standard deviation (numeric) or baseline proportion (proportion) is provided, calculate and report the minimum detectable difference based on the effect size.
+  - Structured output with sections for effect size, interpretation, and assumptions.
+  - Professional format for verbose output, suitable for communication with business stakeholders.
+  - Cprehensive test coverage for both functions.
+
+
 ## [0.4.4] - 2025-08-19 
 
 ### Added

@@ -2,6 +2,7 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/mlarena.svg)](https://pypi.org/project/mlarena/)
+[![Downloads](https://img.shields.io/pepy/dt/mlarena)](https://pepy.tech/project/mlarena)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-pytest-blue.svg)](https://pytest.org/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -34,6 +35,10 @@ On specific functionalities
 4. [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/)
 
    > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in the MLarena package, and is compatiable with any sklearn style ML algorithms.
+
+5. [When a Difference Actually Makes a Difference](https://towardsdatascience.com/when-a-difference-actually-makes-a-difference/)
+
+   > This article offers actional steps for business decision makers to analyze group differences and avoid costly data misinterpretations. It demonstrates how three distinct business realities can hide behind a single bar chart, and offers a method to reveal the full story for more informed decision-making. This technique, including the visualization and statistical testing, is implemented as a helper function `plot_box_scatter` in the MLarena package. 
 
 ## Installation
 

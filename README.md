@@ -36,6 +36,10 @@ On specific functionalities
 
    > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in the MLarena package, and is compatiable with any sklearn style ML algorithms.
 
+5. [When a Difference Actually Makes a Difference](https://towardsdatascience.com/when-a-difference-actually-makes-a-difference/)
+
+   > This article offers actional steps for business decision makers to analyze group differences and avoid costly data misinterpretations. It demonstrates how three distinct business realities can hide behind a single bar chart, and offers a method to reveal the full story for more informed decision-making. This technique, including the visualization and statistical testing, is implemented as a helper function `plot_box_scatter` in the MLarena package. 
+
 ## Installation
 
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example

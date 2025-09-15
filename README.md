@@ -16,29 +16,30 @@ It blends smart automation that embeds ML best practices with comprehensive tool
 
 ## Publications
 
-Read about the concepts and methodologies behind MLArena through these articles:
 
-1. [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535?source=friends_link&sk=a43a376c46116970cd983420cfd68afe) - Published in Towards Data Science
-   > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
+For a quick guide over the package 
 
-2. [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96?source=friends_link&sk=ebe917c37719516a5b5170efc1bd0b32) - Published in Towards Data Science
-   > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
-  
-For quick guide over the package 
-
-3. [Build Algorithm-Agnostic ML Pipelines in a Breeze](https://towardsdatascience.com/build-algorithm-agnostic-ml-pipelines-in-a-breeze/) - Published in Towards Data Science
+- [Build Algorithm-Agnostic ML Pipelines in a Breeze](https://towardsdatascience.com/build-algorithm-agnostic-ml-pipelines-in-a-breeze/) - Published in Towards Data Science
 
     > This article discussed some key challenges in algorithm-agnostic ML Pipeline building and demonstractes how MLarena can help to address them. Although more functionalities have been added after the publication of the article on 7 July 2025, it is nonetheless a good overview of MLarena's core functionalies and a good quick guide for starting with the package. 
 
 On specific functionalities
 
-4. [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/)
+- [Help Your Model Learn the True Signal](https://towardsdatascience.com/help-your-model-learn-the-true-signal/) - Published in Towards Data Science
 
    > This article explores the challenges of investigating data points that disproportionately disrupt a model's ability to learn the dominant signal. By leveraging an algorithm-agnostic approach inspired by Cook's Distance, it provides a method to effectively identify and diagnose these disruptive data points, ensuring that models capture stable, generalizable patterns. This technique is implemented as a helper function `calculate_cooks_d_like_influence` in the MLarena package, and is compatiable with any sklearn style ML algorithms.
 
-5. [When a Difference Actually Makes a Difference](https://towardsdatascience.com/when-a-difference-actually-makes-a-difference/)
+- [When a Difference Actually Makes a Difference](https://towardsdatascience.com/when-a-difference-actually-makes-a-difference/) - Published in Towards Data Science
 
    > This article offers actional steps for business decision makers to analyze group differences and avoid costly data misinterpretations. It demonstrates how three distinct business realities can hide behind a single bar chart, and offers a method to reveal the full story for more informed decision-making. This technique, including the visualization and statistical testing, is implemented as a helper function `plot_box_scatter` in the MLarena package. 
+
+The concepts and methodologies behind MLArena:
+
+- [Algorithm-Agnostic Model Building with MLflow](https://medium.com/data-science/algorithm-agnostic-model-building-with-mlflow-b106a5a29535?source=friends_link&sk=a43a376c46116970cd983420cfd68afe) - Published in Towards Data Science
+   > A foundational guide demonstrating how to build algorithm-agnostic ML pipelines using mlflow.pyfunc. The article explores creating generic model wrappers, encapsulating preprocessing logic, and leveraging MLflow's unified model representation for seamless algorithm transitions.
+
+- [Explainable Generic ML Pipeline with MLflow](https://medium.com/data-science/explainable-generic-ml-pipeline-with-mlflow-2494ca1b3f96?source=friends_link&sk=ebe917c37719516a5b5170efc1bd0b32) - Published in Towards Data Science
+   > An advanced implementation guide that extends the generic ML pipeline with more sophisticated preprocessing and SHAP-based model explanations. The article demonstrates how to build a production-ready pipeline that supports both classification and regression tasks, handles feature preprocessing, and provides interpretable model insights while maintaining algorithm agnosticism.
 
 ## Installation
 

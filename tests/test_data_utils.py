@@ -498,7 +498,7 @@ def test_find_duplicates():
     - Empty DataFrame input
     - Various data types
     """
-    # Test 1: Basic duplicate finding with single column
+    # Test 1: Basic duplicate finding with single column (both string and list input)
     df_basic = pd.DataFrame(
         {
             "id": [1, 2, 3, 4, 5],
@@ -507,11 +507,16 @@ def test_find_duplicates():
         }
     )
 
-    result = find_duplicates(df_basic, ["name"])
-    assert len(result) == 4  # 2 Alice rows + 2 Bob rows
-    assert list(result.columns) == ["count", "name", "id", "age"]
-    assert set(result["name"]) == {"Alice", "Bob"}
-    assert all(result["count"] == 2)
+    # Test with string input
+    result_str = find_duplicates(df_basic, "name")
+    assert len(result_str) == 4  # 2 Alice rows + 2 Bob rows
+    assert list(result_str.columns) == ["count", "name", "id", "age"]
+    assert set(result_str["name"]) == {"Alice", "Bob"}
+    assert all(result_str["count"] == 2)
+
+    # Test with list input (should be equivalent)
+    result_list = find_duplicates(df_basic, ["name"])
+    pd.testing.assert_frame_equal(result_str, result_list)
 
     # Test 2: Multiple column combinations
     result_multi = find_duplicates(df_basic, ["name", "age"])

@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.6] - Not released
+
+### Changed
+- Enhanced `find_duplicates` function to accept both string and list inputs for the `cols` parameter:
+  - Added support for single column as string (e.g., `find_duplicates(df, "name")`)
+  - Maintains existing list input support (e.g., `find_duplicates(df, ["name", "age"])`)
+  - Consistent with other functions like `is_primary_key` and `value_counts_with_pct`
+  - Added test coverage to verify both input types produce identical results
+
+
 
 ## [0.4.5] - 2025-08-24
 

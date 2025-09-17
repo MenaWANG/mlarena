@@ -594,7 +594,7 @@ def filter_columns_by_substring(
     return data[matching_cols]
 
 
-def find_duplicates(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
+def find_duplicates(df: pd.DataFrame, cols: Union[str, List[str]]) -> pd.DataFrame:
     """
     Function to find duplicate rows based on specified columns.
 
@@ -602,8 +602,8 @@ def find_duplicates(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     ----------
     df : pd.DataFrame
         The DataFrame to check.
-    cols : List[str]
-        List of column names to check for duplicates.
+    cols : str or List[str]
+        Column name or list of column names to check for duplicates.
 
     Returns
     -------
@@ -620,23 +620,28 @@ def find_duplicates(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     ...     'name': ['Alice', 'Bob', 'Alice', 'Charlie', 'Bob'],
     ...     'age': [25, 30, 25, 35, 35]
     ... })
-    >>> find_duplicates(df, ['name'])
+    >>> # Single column as string
+    >>> find_duplicates(df, 'name')
        count   name  id  age
     0      2  Alice   1   25
     1      2  Alice   3   25
     2      2    Bob   2   30
     3      2    Bob   5   35
 
+    >>> # Multiple columns as list
     >>> find_duplicates(df, ['name', 'age'])
        count   name  age  id
     0      2  Alice   25   1
     1      2  Alice   25   3
     """
+    # Convert single string to list
+    cols_list = [cols] if isinstance(cols, str) else cols
+
     # Remove rows with NULLs in any of the specified columns
-    filtered_df = df.dropna(subset=cols)
+    filtered_df = df.dropna(subset=cols_list)
 
     # Group by the specified columns and count occurrences
-    dup_counts = filtered_df.groupby(cols).size().reset_index(name="count")
+    dup_counts = filtered_df.groupby(cols_list).size().reset_index(name="count")
 
     # Keep only groups with count > 1
     duplicates = dup_counts[dup_counts["count"] > 1]
@@ -644,19 +649,19 @@ def find_duplicates(df: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
     if duplicates.empty:
         # No duplicates found
         return pd.DataFrame(
-            columns=["count"] + cols + [c for c in df.columns if c not in cols]
+            columns=["count"] + cols_list + [c for c in df.columns if c not in cols_list]
         )
 
     # Merge to get full rows
     result = (
-        pd.merge(duplicates, filtered_df, on=cols, how="inner")
-        .sort_values(by=cols)
+        pd.merge(duplicates, filtered_df, on=cols_list, how="inner")
+        .sort_values(by=cols_list)
         .reset_index(drop=True)
     )
 
     # Reorder columns: count + specified cols + other cols
-    other_cols = [c for c in df.columns if c not in cols]
-    result = result[["count"] + cols + other_cols]
+    other_cols = [c for c in df.columns if c not in cols_list]
+    result = result[["count"] + cols_list + other_cols]
 
     return result
 

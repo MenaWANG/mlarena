@@ -649,7 +649,9 @@ def find_duplicates(df: pd.DataFrame, cols: Union[str, List[str]]) -> pd.DataFra
     if duplicates.empty:
         # No duplicates found
         return pd.DataFrame(
-            columns=["count"] + cols_list + [c for c in df.columns if c not in cols_list]
+            columns=["count"]
+            + cols_list
+            + [c for c in df.columns if c not in cols_list]
         )
 
     # Merge to get full rows

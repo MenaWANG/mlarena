@@ -462,6 +462,13 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - n_features: Number of features
             - sample_to_feature_ratio: Ratio of training samples to features
             - mape_excluded_count: Number of observations excluded from MAPE calculation
+        
+        Notes
+        -----       
+        Adjusted R² penalizes the number of predictors used to fit the model by scaling down the original R². 
+        Therefore, when reporting adjusted R² on new (test) data, we apply the same penalty 
+        based on the training set characteristics (n_train_samples, n_features), 
+        because the penalty should reflect the complexity of the fitted model relative to the data on which it was trained.
         """
         # Basic metrics
         rmse = np.sqrt(mean_squared_error(y_true, y_pred))

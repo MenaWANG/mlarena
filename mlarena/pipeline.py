@@ -563,7 +563,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         }
 
         if verbose:
-            print("\n=== Regression Model Evaluation ===")
+            print("\n=== Regression Metrics & Diagnostics ===")
 
             print("\n1. Error Metrics")
             print("-" * 40)
@@ -599,10 +599,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 f"• vs Median:    {rmse_improvement_over_median:.1f}%      (RMSE improvement)"
             )
 
-            show_warnings = mape_excluded_count > 0 or sample_to_feature_ratio <= 10
+            show_warnings = mape_excluded_count > 0 or sample_to_feature_ratio < 10
 
             if show_warnings:
-                print("\n4. Model Evaluation Diagnostics")
+                print("\n4. Warnings & Notes")
                 print("-" * 40)
                 if sample_to_feature_ratio < 10:
                     print(
@@ -662,6 +662,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         y_pred = (y_pred_proba >= threshold).astype(int)
 
         n_test_samples = len(y_true)  # test set size
+        # indicating how many training observations are available per feature
         sample_to_feature_ratio = (
             self.n_train_samples / self.n_features
             if self.n_features > 0
@@ -691,7 +692,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         }
 
         if verbose:
-            print("\n=== Classification Model Evaluation ===")
+            print("\n=== Classification Metrics & Diagnostics ===")
 
             print("\n1. Evaluation Parameters")
             print("-" * 40)
@@ -744,7 +745,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             )
 
             if show_warnings:
-                print("\n4. Model Evaluation Diagnostics")
+                print("\n4. Warnings & Notes")
                 print("-" * 40)
 
                 if sample_to_feature_ratio < 10:

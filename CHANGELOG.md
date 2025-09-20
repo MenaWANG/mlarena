@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Maintains existing list input support (e.g., `find_duplicates(df, ["name", "age"])`)
   - Consistent with other functions like `is_primary_key` and `value_counts_with_pct`
   - Added test coverage to verify both input types produce identical results
-
+- Added tips in docstring for `calculate_cooks_d_like_influence` function to explain estimator consistency
+- Added note in docstring for adjusted R² to explain the penalty based on training set characteristics
+- Improved headings in the evaluation reports for regression and classification models
 
 
 ## [0.4.5] - 2025-08-24

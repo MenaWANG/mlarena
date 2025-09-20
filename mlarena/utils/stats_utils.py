@@ -1201,6 +1201,8 @@ def calculate_cooks_d_like_influence(
     -----
     - For large datasets, consider using max_loo_points to reduce computation time
     - User can set influence_outlier_threshold, but it is capped at max_loo_points
+    - Consider using the same estimator you will use after managing the influential points, as
+      this ensures consistency and makes the influence detection more relevant to your final analysis
     """
     n_samples = X.shape[0]
     influence_scores = np.zeros(n_samples)

@@ -1199,6 +1199,8 @@ def calculate_cooks_d_like_influence(
 
     Notes
     -----
+    - Understand the theory and implementation design to better harness the power of this function:
+      https://towardsdatascience.com/help-your-model-learn-the-true-signal/
     - For large datasets, consider using max_loo_points to reduce computation time
     - User can set influence_outlier_threshold, but it is capped at max_loo_points
     - Consider using the same estimator you will use after managing the influential points, as

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added tips in docstring for `calculate_cooks_d_like_influence` function to explain estimator consistency
 - Added note in docstring for adjusted R² to explain the penalty based on training set characteristics
 - Improved headings in the evaluation reports for regression and classification models
+- Added note in docstring for `mde_numeric` and `mde_proportion` functions' to clarify equal sample size assumption
 
 
 ## [0.4.5] - 2025-08-24

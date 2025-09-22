@@ -1782,7 +1782,7 @@ def mde_numeric(
     alpha : float
         Significance level (Type I error rate).
     sample_size : int
-        Total sample size.
+        Number of observations per group.
     alternative : str, default="two-sided"
         Alternative hypothesis: "two-sided", "greater", "less".
     std : float, optional
@@ -1794,6 +1794,10 @@ def mde_numeric(
     -------
     float
         Minimum detectable effect size (Cohen's d).
+
+    Notes
+    -----
+    This function assumes equal sample sizes between groups.
     """
     effect_size = tt_solve_power(
         effect_size=None,
@@ -1837,7 +1841,7 @@ def mde_proportion(
     alpha : float
         Significance level (Type I error rate).
     sample_size : int
-        Total sample size.
+        Number of observations per group
     alternative : str, default="two-sided"
         Alternative hypothesis: "two-sided", "larger", "smaller".
     baseline_rate : float, optional
@@ -1849,6 +1853,10 @@ def mde_proportion(
     -------
     float
         Minimum detectable effect size (Cohen's h).
+
+    Notes
+    -----
+    This function assumes equal sample sizes between groups.
     """
     effect_size = zt_ind_solve_power(
         effect_size=None,

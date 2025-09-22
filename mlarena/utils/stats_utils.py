@@ -1199,6 +1199,8 @@ def calculate_cooks_d_like_influence(
 
     Notes
     -----
+    - Understand the theory and implementation design to better harness the power of this function:
+      https://towardsdatascience.com/help-your-model-learn-the-true-signal/
     - For large datasets, consider using max_loo_points to reduce computation time
     - User can set influence_outlier_threshold, but it is capped at max_loo_points
     - Consider using the same estimator you will use after managing the influential points, as
@@ -1780,7 +1782,7 @@ def mde_numeric(
     alpha : float
         Significance level (Type I error rate).
     sample_size : int
-        Total sample size.
+        Number of observations per group.
     alternative : str, default="two-sided"
         Alternative hypothesis: "two-sided", "greater", "less".
     std : float, optional
@@ -1792,6 +1794,10 @@ def mde_numeric(
     -------
     float
         Minimum detectable effect size (Cohen's d).
+
+    Notes
+    -----
+    This function assumes equal sample sizes between groups.
     """
     effect_size = tt_solve_power(
         effect_size=None,
@@ -1835,7 +1841,7 @@ def mde_proportion(
     alpha : float
         Significance level (Type I error rate).
     sample_size : int
-        Total sample size.
+        Number of observations per group
     alternative : str, default="two-sided"
         Alternative hypothesis: "two-sided", "larger", "smaller".
     baseline_rate : float, optional
@@ -1847,6 +1853,10 @@ def mde_proportion(
     -------
     float
         Minimum detectable effect size (Cohen's h).
+
+    Notes
+    -----
+    This function assumes equal sample sizes between groups.
     """
     effect_size = zt_ind_solve_power(
         effect_size=None,

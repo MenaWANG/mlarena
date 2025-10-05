@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.6] - Not released
 
+### Added
+- Added `read_csv_with_encoding` function to `data_utils` for robust CSV file reading:
+  - Automatically tries multiple character encodings when CSV encoding is unknown
+  - Supports custom encoding lists, verbose mode, and all pandas.read_csv parameters
+  - Useful for data from various sources or regions with different encodings
+  - Added comprehensive unit tests covering various encoding scenarios
+
 ### Changed
 - Enhanced `find_duplicates` function to accept both string and list inputs for the `cols` parameter:
   - Added support for single column as string (e.g., `find_duplicates(df, "name")`)
@@ -16,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added tips in docstring for `calculate_cooks_d_like_influence` function to explain estimator consistency
 - Added note in docstring for adjusted R² to explain the penalty based on training set characteristics
 - Improved headings in the evaluation reports for regression and classification models
-- Added note in docstring for `mde_numeric` and `mde_proportion` functions' to clarify equal sample size assumption
+- Enhanced docstring for `mde_numeric` and `mde_proportion` functions' to clarify equal sample size assumption
+- Added business-friendly interpretation for MDE in the demo. 
 
 
 ## [0.4.5] - 2025-08-24

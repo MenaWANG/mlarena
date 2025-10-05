@@ -11,6 +11,7 @@ from mlarena.utils.data_utils import (
     find_duplicates,
     is_primary_key,
     pivot_by_group,
+    read_csv_with_encoding,
     select_existing_cols,
     transform_date_cols,
     value_counts_with_pct,
@@ -1097,3 +1098,97 @@ def test_clean_null_representations_whitespace():
     )  # All variations of null/NULL should be null
     assert cleaned["col2"].notna().sum() == 2  # Only 'A' and 'B' remain
     assert list(cleaned["col2"].dropna()) == ["A", "B"]
+
+
+def test_read_csv_with_encoding():
+    """Test read_csv_with_encoding function with various scenarios."""
+    import os
+    import tempfile
+
+    # Test 1: File not found
+    with pytest.raises(FileNotFoundError):
+        read_csv_with_encoding("nonexistent_file.csv")
+
+    # Test 2: UTF-8 file (should work with default encodings)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8"
+    ) as f:
+        f.write("name,age,city\n")
+        f.write("Alice,25,New York\n")
+        f.write("Bob,30,London\n")
+        f.write("Charlie,35,Tokyo\n")
+        utf8_file = f.name
+
+    try:
+        df = read_csv_with_encoding(utf8_file)
+        assert df.shape == (3, 3)
+        assert list(df.columns) == ["name", "age", "city"]
+        assert df["name"].tolist() == ["Alice", "Bob", "Charlie"]
+        assert df["age"].tolist() == [25, 30, 35]
+    finally:
+        os.unlink(utf8_file)
+
+    # Test 3: Custom encodings list
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="latin-1"
+    ) as f:
+        f.write("name,value\n")
+        f.write("test,123\n")
+        latin1_file = f.name
+
+    try:
+        # Should work with custom encoding list that includes latin-1
+        df = read_csv_with_encoding(latin1_file, encodings=["latin-1", "utf-8"])
+        assert df.shape == (1, 2)
+        assert df["name"].iloc[0] == "test"
+        assert df["value"].iloc[0] == 123
+    finally:
+        os.unlink(latin1_file)
+
+    # Test 4: nrows parameter
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8"
+    ) as f:
+        f.write("col1,col2\n")
+        f.write("1,a\n")
+        f.write("2,b\n")
+        f.write("3,c\n")
+        f.write("4,d\n")
+        nrows_file = f.name
+
+    try:
+        df = read_csv_with_encoding(nrows_file, nrows=2)
+        assert df.shape == (2, 2)  # Should only read first 2 rows
+        assert df["col1"].tolist() == [1, 2]
+    finally:
+        os.unlink(nrows_file)
+
+    # Test 5: Additional pandas arguments
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8"
+    ) as f:
+        f.write("col1;col2;col3\n")  # semicolon separated
+        f.write("1;a;x\n")
+        f.write("2;b;y\n")
+        sep_file = f.name
+
+    try:
+        df = read_csv_with_encoding(sep_file, sep=";")
+        assert df.shape == (2, 3)
+        assert list(df.columns) == ["col1", "col2", "col3"]
+        assert df["col2"].tolist() == ["a", "b"]
+    finally:
+        os.unlink(sep_file)
+
+    # Test 6: Verbose mode (just check it doesn't crash)
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".csv", delete=False, encoding="utf-8"
+    ) as f:
+        f.write("a,b\n1,2\n")
+        verbose_file = f.name
+
+    try:
+        df = read_csv_with_encoding(verbose_file, verbose=True)
+        assert df.shape == (1, 2)
+    finally:
+        os.unlink(verbose_file)

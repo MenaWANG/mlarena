@@ -17,6 +17,7 @@ __all__ = [
     "deduplicate_by_rank",
     "pivot_by_group",
     "clean_null_representations",
+    "read_csv_with_encoding",
 ]
 
 
@@ -1120,3 +1121,146 @@ def clean_null_representations(
         print(f"\n✨ Cleaning complete! Total null values: {total_nulls:,}")
 
     return df_clean
+
+
+def read_csv_with_encoding(
+    file_path: str,
+    encodings: Optional[List[str]] = None,
+    nrows: Optional[int] = None,
+    verbose: bool = False,
+    **read_csv_kwargs,
+) -> pd.DataFrame:
+    """
+    Attempt to read a CSV file using multiple encodings.
+
+    This function tries to read a CSV file with different character encodings,
+    which is particularly useful when working with data from various sources
+    or regions where the encoding might be unknown.
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the CSV file.
+    encodings : List[str], optional
+        Encodings to try in order. If None, uses a comprehensive list of
+        common encodings starting with UTF-8.
+    nrows : int, optional
+        Read only first n rows while testing. Useful for large files.
+        If None, reads the entire file.
+    verbose : bool, default=False
+        If True, print information about encoding attempts and success.
+    **read_csv_kwargs
+        Additional arguments forwarded to pandas.read_csv.
+
+    Returns
+    -------
+    pd.DataFrame
+        The loaded DataFrame.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the specified file does not exist.
+    UnicodeDecodeError
+        If none of the encodings succeed in reading the file.
+
+    Examples
+    --------
+    >>> # Basic usage with default encodings
+    >>> df = read_csv_with_encoding('data.csv')
+
+    >>> # Custom encodings with verbose output
+    >>> df = read_csv_with_encoding(
+    ...     'international_data.csv',
+    ...     encodings=['utf-8', 'latin-1', 'cp1252'],
+    ...     verbose=True
+    ... )
+
+    >>> # Test with limited rows for large files
+    >>> df = read_csv_with_encoding(
+    ...     'large_file.csv',
+    ...     nrows=1000,
+    ...     verbose=True
+    ... )
+
+    Notes
+    -----
+    The default encoding list prioritizes common encodings:
+    - UTF-8 variants (most common modern encoding)
+    - Western European encodings (latin-1, cp1252, iso-8859-1)
+    - ASCII (basic compatibility)
+    - Other regional encodings (Asian, Cyrillic, etc.)
+
+    When nrows is specified, only the first n rows are read during encoding
+    detection, which can significantly speed up the process for large files.
+    """
+    import os
+
+    # Default comprehensive encoding list, ordered by likelihood
+    COMMON_ENCODINGS: List[str] = [
+        "utf-8",
+        "utf-8-sig",
+        "latin-1",
+        "cp1252",
+        "iso-8859-1",
+        "ascii",
+        "utf-16",
+        "utf-32",
+        "cp850",
+        "cp437",
+        "iso-8859-15",
+        "mac_roman",
+        "big5",
+        "gb2312",
+        "shift_jis",
+        "euc-jp",
+        "euc-kr",
+        "windows-1251",
+        "koi8-r",
+        "iso-8859-2",
+        "iso-8859-5",
+        "iso-8859-7",
+        "iso-8859-8",
+        "iso-8859-9",
+    ]
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    to_try = encodings or COMMON_ENCODINGS
+
+    if verbose:
+        print(f"🔍 Attempting to read {file_path} with {len(to_try)} encodings...")
+
+    for i, enc in enumerate(to_try):
+        try:
+            if verbose:
+                print(f"   Trying encoding {i+1}/{len(to_try)}: {enc}")
+
+            df = pd.read_csv(file_path, encoding=enc, nrows=nrows, **read_csv_kwargs)
+
+            if verbose:
+                print(f"✅ Success! File read with {enc} encoding")
+                print(f"   Shape: {df.shape}")
+
+            return df
+
+        except (UnicodeDecodeError, UnicodeError):
+            if verbose:
+                print(f"   ❌ Failed with {enc}")
+            continue
+        except Exception as e:
+            # Re-raise non-encoding related errors
+            if verbose:
+                print(f"   ⚠️  Non-encoding error with {enc}: {e}")
+            raise
+
+    # If we get here, all encodings failed
+    error_msg = (
+        f"Failed to read {file_path} with any of the attempted encodings: {to_try}"
+    )
+    if verbose:
+        print(f"❌ {error_msg}")
+
+    raise UnicodeDecodeError("encoding detection", b"", 0, 0, error_msg)

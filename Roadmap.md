@@ -8,10 +8,10 @@ We welcome contributions and suggestions related to these roadmap items. If you'
 
 - **Enhanced Cross-Validation Flexibility**:
   - Add `cv_method` parameter to `tune` and `wrapper_feature_selection` functions
-  - Support either string identifiers or sklearn CV splitter objects or both
-  - Enable support for specialized CV methods like `TimeSeriesSplit`, `GroupKFold`, etc.
-  - Maintain backward compatibility with existing `cv` parameter
-  - Add examples demonstrating different CV strategies for specialized use cases
+  - Support sklearn CV splitter objects (e.g., `TimeSeriesSplit`, `GroupKFold`, `LeaveOneGroupOut`, etc.)
+  - Maintain backward compatibility with existing `cv` parameter (defaults to `StratifiedKFold`/`KFold`)
+  - When `cv_method` is provided, use it directly; otherwise fall back to current default behavior
+  - Add examples demonstrating different CV strategies for specialized use cases (time series, grouped data, etc.)
 
 - **Support for Fixed Parameters in Hyperparameter Tuning**:
   - Add `fixed_params` parameter to the `tune` method

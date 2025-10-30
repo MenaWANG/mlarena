@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.4.7] - Unreleased
+
+### Added
+- **Enhanced Cross-Validation Flexibility**: Added flexible CV strategy support across the package:
+  - **NEW**: Added `model_utils.py` module with `get_cv_strategy()` function for centralized CV handling
+    - Centralizes CV strategy logic for consistent handling across the package
+    - Supports both integer (default) and CV splitter object inputs
+    - Automatically detects CV splitter objects using `hasattr(cv, "split")`
+    - Provides consistent error handling for invalid CV strategy inputs
+    - Maintains backward compatibility with existing integer `cv` parameter
+  - **Enhanced `wrapper_feature_selection`**: Added support for custom CV splitter objects via `cv` parameter
+    - Accepts either integer (backward compatible) or sklearn CV splitter objects (e.g., `TimeSeriesSplit`, `GroupKFold`)
+    - Added optional `cv_groups` parameter for group-based cross-validation with automatic validation
+    - Intelligent warnings when group information is provided but CV splitter doesn't support groups
+    - Maintains full backward compatibility with existing integer `cv` parameter
+  - **Comprehensive Testing**: Added focused test coverage for new CV functionality:
+    - Tests for custom CV splitter objects (`StratifiedKFold`, `TimeSeriesSplit`)
+    - Group-based CV testing with `GroupKFold` and `cv_groups` parameter
+    - Warning system validation for incompatible CV splitter and group combinations
+    - Error handling for invalid group column names
+  - **Documentation & Examples**: Added demonstration of new CV capabilities in advanced usage notebook
+
+
+
 ## [0.4.6] - 2025-10-26
 
 ### Added

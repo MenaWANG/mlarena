@@ -3,6 +3,7 @@ PreProcessor module for MLArena package.
 """
 
 import re
+import warnings
 from typing import Any, List, Union
 
 import matplotlib.pyplot as plt
@@ -17,9 +18,17 @@ from sklearn.feature_selection import (
     mutual_info_regression,
 )
 from sklearn.impute import SimpleImputer
-from sklearn.model_selection import KFold, StratifiedKFold
+from sklearn.model_selection import (
+    GroupKFold,
+    GroupShuffleSplit,
+    KFold,
+    LeaveOneGroupOut,
+    StratifiedKFold,
+)
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, TargetEncoder
+
+from mlarena.utils import get_cv_strategy
 
 
 class PreProcessor(BaseEstimator, TransformerMixin):
@@ -824,7 +833,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
         n_max_features: int = None,
         min_features_to_select: int = 2,
         step: int = 1,
-        cv: int = 5,
+        cv: int | object = 5,
+        cv_groups: str = None,
         cv_variance_penalty: float = 0.1,
         scoring: str = None,
         random_state: int = 42,
@@ -856,7 +866,12 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             Minimum number of features to select.
         step : int, default=1
             Number of features to remove at each iteration.
-        cv : int, default=5
+        cv : int or CV splitter object, default=5
+            - If int: number of folds for default CV strategy (StratifiedKFold or KFold).
+            - If object with `.split()`: used directly as the CV splitter.
+        cv_group_by : str, optional
+            Column name to group the data for cross-validation.
+            If None, the data is not grouped.
             Number of folds for cross-validation.
         cv_variance_penalty : float, default=0.1
             Penalty weight for cross-validation score variance. Higher values prefer
@@ -931,7 +946,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             raise ValueError("min_features_to_select must be at least 1")
         if step < 1:
             raise ValueError("step must be at least 1")
-        if cv < 2:
+        if isinstance(cv, int) and cv < 2:
             raise ValueError("cv must be at least 2")
         if cv_variance_penalty < 0:
             raise ValueError("cv_variance_penalty must be non-negative")
@@ -946,12 +961,29 @@ class PreProcessor(BaseEstimator, TransformerMixin):
 
         if hasattr(model, "predict_proba"):
             task_type = "classification"
-            cv_strategy = StratifiedKFold(
-                n_splits=cv, shuffle=True, random_state=random_state
-            )
         else:
             task_type = "regression"
-            cv_strategy = KFold(n_splits=cv, shuffle=True, random_state=random_state)
+
+        cv_strategy = get_cv_strategy(cv, task_type, random_state)
+
+        # Handle group-based CV
+        groups = None
+        if cv_groups is not None:
+            if cv_groups not in X.columns:
+                raise ValueError(f"Grouping column '{cv_groups}' not found in X.")
+            groups = X[cv_groups]
+
+            # Check if cv_strategy supports groups
+            group_based_splitters = (GroupKFold, GroupShuffleSplit, LeaveOneGroupOut)
+            if not isinstance(cv_strategy, group_based_splitters):
+                warnings.warn(
+                    f"cv_groups='{cv_groups}' is provided but the selected CV splitter "
+                    f"({cv_strategy.__class__.__name__}) does not use groups. "
+                    "The group information will be ignored. "
+                    "If you intended group-based CV, consider using GroupKFold or similar.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
         if not scoring:
             scoring = (
@@ -992,7 +1024,7 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             n_jobs=-1,  # Use all available cores
         )
 
-        rfecv.fit(X_processed, y)
+        rfecv.fit(X_processed, y, groups=groups)
 
         # Get results
         selected_features = X.columns[rfecv.support_].tolist()

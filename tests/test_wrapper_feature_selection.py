@@ -426,3 +426,134 @@ class TestWrapperFeatureSelection:
         assert results1["selected_features"] == results2["selected_features"]
         assert results1["n_features_selected"] == results2["n_features_selected"]
         assert np.allclose(results1["cv_scores"], results2["cv_scores"])
+
+    def test_custom_cv_splitter_object(self, classification_data):
+        """Test wrapper feature selection with custom CV splitter object."""
+        from sklearn.model_selection import StratifiedKFold
+
+        X, y = classification_data
+        estimator = RandomForestClassifier(n_estimators=10, random_state=42)
+
+        # Create custom CV splitter
+        custom_cv = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+        results = PreProcessor.wrapper_feature_selection(
+            X,
+            y,
+            estimator,
+            cv=custom_cv,
+            n_max_features=8,
+            visualize=False,
+            verbose=False,
+        )
+
+        # Should work and return valid results
+        assert len(results["selected_features"]) > 0
+        assert results["n_features_selected"] <= 8
+        assert "cv_scores" in results
+        assert len(results["cv_scores"]) > 0
+
+    def test_time_series_cv_splitter(self, regression_data):
+        """Test wrapper feature selection with TimeSeriesSplit."""
+        from sklearn.model_selection import TimeSeriesSplit
+
+        X, y = regression_data
+        estimator = RandomForestRegressor(n_estimators=10, random_state=42)
+
+        # Create TimeSeriesSplit CV splitter
+        ts_cv = TimeSeriesSplit(n_splits=3)
+
+        results = PreProcessor.wrapper_feature_selection(
+            X, y, estimator, cv=ts_cv, n_max_features=8, visualize=False, verbose=False
+        )
+
+        # Should work and return valid results
+        assert len(results["selected_features"]) > 0
+        assert results["n_features_selected"] <= 8
+        assert "cv_scores" in results
+        assert len(results["cv_scores"]) > 0
+
+    def test_group_cv_with_groups_parameter(self, classification_data):
+        """Test wrapper feature selection with GroupKFold and cv_groups parameter."""
+        from sklearn.model_selection import GroupKFold
+
+        X, y = classification_data
+        estimator = RandomForestClassifier(n_estimators=10, random_state=42)
+
+        # Add a group column to X
+        np.random.seed(42)
+        X_with_groups = X.copy()
+        X_with_groups["group_col"] = np.random.randint(0, 5, size=len(X))
+
+        # Create GroupKFold CV splitter
+        group_cv = GroupKFold(n_splits=3)
+
+        results = PreProcessor.wrapper_feature_selection(
+            X_with_groups,
+            y,
+            estimator,
+            cv=group_cv,
+            cv_groups="group_col",
+            n_max_features=8,
+            visualize=False,
+            verbose=False,
+        )
+
+        # Should work and return valid results
+        assert len(results["selected_features"]) > 0
+        assert results["n_features_selected"] <= 8
+        assert "cv_scores" in results
+
+    def test_cv_groups_warning_with_incompatible_splitter(self, classification_data):
+        """Test that warning is issued when cv_groups is provided with incompatible CV splitter."""
+        from sklearn.model_selection import StratifiedKFold
+
+        X, y = classification_data
+        estimator = RandomForestClassifier(n_estimators=10, random_state=42)
+
+        # Add a group column to X
+        X_with_groups = X.copy()
+        X_with_groups["group_col"] = np.random.randint(0, 3, size=len(X))
+
+        # Use StratifiedKFold (doesn't support groups) with cv_groups parameter
+        cv_splitter = StratifiedKFold(n_splits=3, shuffle=True, random_state=42)
+
+        with pytest.warns(
+            UserWarning,
+            match="cv_groups.*is provided but the selected CV splitter.*does not use groups",
+        ):
+            results = PreProcessor.wrapper_feature_selection(
+                X_with_groups,
+                y,
+                estimator,
+                cv=cv_splitter,
+                cv_groups="group_col",
+                n_max_features=8,
+                visualize=False,
+                verbose=False,
+            )
+
+        # Should still work despite the warning
+        assert len(results["selected_features"]) > 0
+
+    def test_invalid_cv_groups_column(self, classification_data):
+        """Test error when cv_groups column doesn't exist in X."""
+        from sklearn.model_selection import GroupKFold
+
+        X, y = classification_data
+        estimator = RandomForestClassifier(n_estimators=10, random_state=42)
+
+        group_cv = GroupKFold(n_splits=3)
+
+        with pytest.raises(
+            ValueError, match="Grouping column 'nonexistent_col' not found in X"
+        ):
+            PreProcessor.wrapper_feature_selection(
+                X,
+                y,
+                estimator,
+                cv=group_cv,
+                cv_groups="nonexistent_col",
+                visualize=False,
+                verbose=False,
+            )

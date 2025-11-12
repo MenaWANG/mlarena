@@ -23,3 +23,11 @@ We welcome contributions and suggestions related to these roadmap items. If you'
     - Setting algorithm-specific parameters that don't need tuning
     - Setting regularization parameters while tuning learning rates
 
+- **Test and support for Python 3.13**:
+  - Add tests for Python 3.13
+  - Add support for Python 3.13
+
+
+
+
+

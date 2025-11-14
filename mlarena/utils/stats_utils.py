@@ -1137,6 +1137,7 @@ def calculate_cooks_d_like_influence(
         Points are selected based on having the highest absolute residuals.
         This is purely for computational efficiency and does not affect
         which points are considered influential.
+        Scores for unexamined points are set to zero and should not be interpreted literally.
     influence_outlier_method : str, default='percentile'
         Method to identify influential points (outliers) based on influence scores.
         Options:
@@ -1201,10 +1202,11 @@ def calculate_cooks_d_like_influence(
     -----
     - Understand the theory and implementation design to better harness the power of this function:
       https://towardsdatascience.com/help-your-model-learn-the-true-signal/
-    - For large datasets, consider using max_loo_points to reduce computation time
-    - User can set influence_outlier_threshold, but it is capped at max_loo_points
+    - For large datasets, consider using max_loo_points to reduce computation time.
+    - User can set influence_outlier_threshold, but it is capped at max_loo_points.
     - Consider using the same estimator you will use after managing the influential points, as
-      this ensures consistency and makes the influence detection more relevant to your final analysis
+      this ensures consistency and makes the influence detection more relevant to your final analysis.
+    - Use this function for diagnostic exploration rather than removing influential points automatically.
     """
     n_samples = X.shape[0]
     influence_scores = np.zeros(n_samples)

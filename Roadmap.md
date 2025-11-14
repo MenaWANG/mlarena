@@ -23,3 +23,18 @@ We welcome contributions and suggestions related to these roadmap items. If you'
     - Setting algorithm-specific parameters that don't need tuning
     - Setting regularization parameters while tuning learning rates
 
+- **Test and support for Python 3.13**:
+  - Add tests for Python 3.13
+  - Add support for Python 3.13
+
+- **Extend Influence Analysis to Classifiers**:
+
+  - Generalize the `calculate_cooks_d_like_influence` method to handle classification models
+  - Support probability-based metrics (e.g., Jensen–Shannon divergence, L2 distance, log-loss change) for measuring prediction shift
+  - Ensure compatibility with binary classifiers using `predict_proba` 
+  - Maintain consistent output format and aggregation with regression version
+  - Add examples demonstrating influence detection on classification datasets
+  - Add comprehensive test coverage for classification models
+
+
+

@@ -32,6 +32,7 @@ from optuna.visualization import plot_parallel_coordinate
 from sklearn.base import BaseEstimator
 from sklearn.metrics import (
     accuracy_score,
+    brier_score_loss,
     confusion_matrix,
     f1_score,
     fbeta_score,
@@ -652,6 +653,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - f_beta: F-beta score
             - auc: Area under ROC curve
             - log_loss: Logarithmic loss
+            - brier_score: Brier score (probability calibration quality)
+            - mcc: Matthews Correlation Coefficient
             - positive_rate: Percentage of positive predictions
             - base_rate: Actual positive class rate
             - n_train_samples: Number of samples in the train set
@@ -682,6 +685,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             "f_beta": fbeta_score(y_true, y_pred, beta=beta),
             "auc": roc_auc_score(y_true, y_pred_proba),
             "log_loss": log_loss(y_true, y_pred_proba),
+            "brier_score": brier_score_loss(y_true, y_pred_proba),
             "mcc": matthews_corrcoef(y_true, y_pred),
             # Additional context
             "positive_rate": np.mean(y_pred),  # % of positive predictions
@@ -709,6 +713,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             print(f"• AUC:         {metrics['auc']:.3f}    (Ranking quality)")
             print(
                 f"• Log Loss:    {metrics['log_loss']:.3f}    (Confidence-weighted error)"
+            )
+            print(
+                f"• Brier Score: {metrics['brier_score']:.3f}    (Probability calibration quality)"
             )
             print(
                 f"• Precision:   {metrics['precision']:.3f}    (True positives / Predicted positives)"
@@ -1252,7 +1259,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         tune_metric : str, optional
             Metric to optimize during hyperparameter tuning.
             If None, defaults to 'auc' for classification and 'rmse' for regression.
-            Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss', 'mcc'
+            Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss', 'brier_score', 'mcc'
             Regression metrics: 'rmse', 'mae', 'median_ae', 'smape', 'nrmse_mean', 'nrmse_iqr', 'nrmse_std'
         log_best_model : bool, default=True
             If True, logs the best model to MLflow.
@@ -1367,7 +1374,14 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 )
 
                 if task == "classification":
-                    if tune_metric not in ["auc", "f1", "accuracy", "log_loss", "mcc"]:
+                    if tune_metric not in [
+                        "auc",
+                        "f1",
+                        "accuracy",
+                        "log_loss",
+                        "brier_score",
+                        "mcc",
+                    ]:
                         raise ValueError(
                             f"Unsupported metric for classification: {tune_metric}"
                         )
@@ -1394,15 +1408,15 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             if task == "classification":
                 trial.set_user_attr(f"mean_{tune_metric}", mean_score)
                 trial.set_user_attr(f"std_{tune_metric}", std_score)
-                if tune_metric == "log_loss":
-                    # For log_loss (minimizing), add penalty like regression metrics
+                if tune_metric in ["log_loss", "brier_score"]:
+                    # For log_loss and brier_score (minimizing), add penalty like regression metrics
                     score = mean_score + cv_variance_penalty * std_score
                 else:
                     # For other classification metrics (maximizing), subtract penalty
                     score = mean_score - cv_variance_penalty * std_score
                 trial.set_user_attr(f"penalized_{tune_metric}", score)
-                # For log_loss, store negative for visualization like regression metrics
-                if tune_metric == "log_loss":
+                # For log_loss and brier_score, store negative for visualization like regression metrics
+                if tune_metric in ["log_loss", "brier_score"]:
                     trial.set_user_attr(f"negative_penalized_{tune_metric}", -score)
             else:  # regression
                 trial.set_user_attr(f"mean_{tune_metric}", mean_score)
@@ -1421,10 +1435,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             n_startup_trials=n_startup_trials, n_warmup_steps=n_warmup_steps
         )
 
-        # Create and run study with appropriate direction: minimize for log_loss and regression tasks
+        # Create and run study with appropriate direction: minimize for log_loss, brier_score and regression tasks
         direction = (
             "minimize"
-            if tune_metric == "log_loss"
+            if tune_metric in ["log_loss", "brier_score"]
             else "maximize" if task == "classification" else "minimize"
         )
 
@@ -1637,6 +1651,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                     "test_precision": final_results["precision"],
                     "test_recall": final_results["recall"],
                     "test_log_loss": final_results["log_loss"],
+                    "test_brier_score": final_results["brier_score"],
                     "test_mcc": final_results["mcc"],
                     f"cv_{tune_metric}_mean": best_trial.user_attrs[
                         f"mean_{tune_metric}"

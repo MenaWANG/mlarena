@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.8] - unreleased
+
+### Added
+- Added support for Python 3.13
+- Added `brier_score` to classification evaluation metrics:
+  - Brier score (probability calibration quality)
+  - Add brier score to the evaluation report
+  - Support brier score in the tune method
 
 ## [0.4.7] - 2025-11-01
 

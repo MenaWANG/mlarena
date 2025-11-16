@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.8] - unreleased
 
 ### Added
+- Added support for Python 3.13
 - Added `brier_score` to classification evaluation metrics:
   - Brier score (probability calibration quality)
   - Add brier score to the evaluation report

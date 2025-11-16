@@ -1,6 +1,6 @@
 # MLArena
 
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
 [![PyPI](https://img.shields.io/pypi/v/mlarena.svg)](https://pypi.org/project/mlarena/)
 [![Downloads](https://img.shields.io/pepy/dt/mlarena)](https://pepy.tech/project/mlarena)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

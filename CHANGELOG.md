@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Replaces continuous target distribution plot with class distribution stacked bar chart
     - Shows percentage of influential vs non-influential points within each class
     - Provides clear visual breakdown of how influence is distributed across different classes
-
+  - **Documentation & Examples**: Added demonstration of new functionality in the 5.case_cooks_like_influence_demo notebook
 
 
 ## [0.4.7] - 2025-11-01

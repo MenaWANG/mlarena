@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.8] - unreleased
+## [0.5.0] - unreleased
 
 ### Added
 - Added support for Python 3.13
@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Brier score (probability calibration quality)
   - Add brier score to the evaluation report
   - Support brier score in the tune method
+- **Enhanced `calculate_cooks_d_like_influence` with binary classification support**:
+  - **Classification model support**: 
+    Added automatic model type detection using `hasattr(model, "predict_proba")`
+    - For classification models, uses probability predictions instead of hard class predictions
+    - Uses positive class probabilities ([:, 1]) for binary classification influence calculation
+  - **Metrics**: Maintains MSE-based influence scoring for consistency with regression implementation
+  - **Backward compatibility**: Preserves all existing functionality for regression models
+
+
 
 ## [0.4.7] - 2025-11-01
 

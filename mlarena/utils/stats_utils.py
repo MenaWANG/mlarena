@@ -1219,7 +1219,13 @@ def calculate_cooks_d_like_influence(
 
     full_model = model_class(**model_params)
     full_model.fit(X, y)
-    y_pred_full = full_model.predict(X)
+    # Detect model type
+    is_classification = hasattr(full_model, "predict_proba")
+    # Full-model predictions
+    if is_classification:
+        y_pred_full = full_model.predict_proba(X)[:, 1]
+    else:
+        y_pred_full = full_model.predict(X)
 
     # Calculate initial residuals
     residuals = np.abs(y - y_pred_full)
@@ -1256,10 +1262,16 @@ def calculate_cooks_d_like_influence(
         loo_model = model_class(**model_params)
         loo_model.fit(X_train_loo, y_train_loo)
 
-        y_pred_loo_on_full_data = loo_model.predict(X)
-        influence_scores[original_data_index] = mean_squared_error(
-            y_pred_full, y_pred_loo_on_full_data
-        )
+        if is_classification:
+            y_pred_loo_on_full_data = loo_model.predict_proba(X)[:, 1]
+            influence_scores[original_data_index] = np.mean(
+                (y_pred_full - y_pred_loo_on_full_data) ** 2
+            )
+        else:
+            y_pred_loo_on_full_data = loo_model.predict(X)
+            influence_scores[original_data_index] = mean_squared_error(
+                y_pred_full, y_pred_loo_on_full_data
+            )
 
         # Reset mask for next iteration
         loo_mask[original_data_index] = True

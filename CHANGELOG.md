@@ -20,6 +20,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Uses positive class probabilities ([:, 1]) for binary classification influence calculation
   - **Metrics**: Maintains MSE-based influence scoring for consistency with regression implementation
   - **Backward compatibility**: Preserves all existing functionality for regression models
+  - **Enhanced visualization for classification tasks**:
+    - Replaces continuous target distribution plot with class distribution stacked bar chart
+    - Shows percentage of influential vs non-influential points within each class
+    - Provides clear visual breakdown of how influence is distributed across different classes
 
 
 

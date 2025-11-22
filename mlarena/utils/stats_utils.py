@@ -1219,7 +1219,13 @@ def calculate_cooks_d_like_influence(
 
     full_model = model_class(**model_params)
     full_model.fit(X, y)
-    y_pred_full = full_model.predict(X)
+    # Detect model type
+    is_classification = hasattr(full_model, "predict_proba")
+    # Full-model predictions
+    if is_classification:
+        y_pred_full = full_model.predict_proba(X)[:, 1]
+    else:
+        y_pred_full = full_model.predict(X)
 
     # Calculate initial residuals
     residuals = np.abs(y - y_pred_full)
@@ -1256,10 +1262,16 @@ def calculate_cooks_d_like_influence(
         loo_model = model_class(**model_params)
         loo_model.fit(X_train_loo, y_train_loo)
 
-        y_pred_loo_on_full_data = loo_model.predict(X)
-        influence_scores[original_data_index] = mean_squared_error(
-            y_pred_full, y_pred_loo_on_full_data
-        )
+        if is_classification:
+            y_pred_loo_on_full_data = loo_model.predict_proba(X)[:, 1]
+            influence_scores[original_data_index] = np.mean(
+                (y_pred_full - y_pred_loo_on_full_data) ** 2
+            )
+        else:
+            y_pred_loo_on_full_data = loo_model.predict(X)
+            influence_scores[original_data_index] = mean_squared_error(
+                y_pred_full, y_pred_loo_on_full_data
+            )
 
         # Reset mask for next iteration
         loo_mask[original_data_index] = True
@@ -1420,7 +1432,7 @@ def calculate_cooks_d_like_influence(
         # Influence Score Distribution (spans both columns)
         ax_infl = fig.add_subplot(gs[0, :])
 
-        # Plot influence score distribution
+        # Plot 1: Influence score distribution
         sns.histplot(
             influence_scores,
             bins=50,
@@ -1532,21 +1544,8 @@ def calculate_cooks_d_like_influence(
             )
         sns.despine(ax=ax_infl)
 
-        # Target Distribution (spans both columns)
+        # plot 2: Target Distribution (spans both columns)
         ax_dist = fig.add_subplot(gs[1, :])
-
-        # Plot target distribution
-        sns.histplot(
-            y,
-            bins=50,
-            kde=True,
-            ax=ax_dist,
-            color=MPL_BLUE,
-            alpha=0.5,
-            label="All Points",
-            stat="density",
-            edgecolor="grey",
-        )
 
         # Add markers for influential points
         if isinstance(y, pd.Series):
@@ -1554,28 +1553,98 @@ def calculate_cooks_d_like_influence(
         else:
             y_influential = y[influential_indices]
 
-        # Get max density for marker placement
-        max_density = max(p.get_height() for p in ax_dist.patches)
-        y_offset = max_density * 0.02
+        if is_classification:
+            # Generate stacked bar to show the distribution of the classes and the influential points
+            # Convert y to array if it's a Series
+            y_array = y.values if hasattr(y, "values") else y
+            y_array = y_array.astype(int)
 
-        ax_dist.scatter(
-            y_influential,
-            [y_offset] * len(influential_indices),
-            color=MPL_RED,
-            s=60,
-            alpha=0.85,
-            label=f"High Influence Points (n={len(influential_indices)})",
-            zorder=5,
-            marker="v",
-        )
+            classes = np.unique(y_array)
+            counts = np.array([(y_array == c).sum() for c in classes])
+            inf_counts = np.array(
+                [(y_array[influential_indices] == c).sum() for c in classes]
+            )
+            non_inf_counts = counts - inf_counts
 
-        ax_dist.set_title(
-            "Target Distribution with High-Influence Points", fontsize=13, pad=15
-        )
-        ax_dist.set_xlabel("Target Value", fontsize=12)
-        ax_dist.set_ylabel("Density", fontsize=12)
-        ax_dist.legend()
-        sns.despine(ax=ax_dist)
+            # Calculate percentage within each class
+            non_inf_pct = non_inf_counts / counts * 100
+            inf_pct = inf_counts / counts * 100
+            ylabel = "Percentage within Class (%)"
+
+            # Plot stacked bars
+            bar_width = 0.35
+            x = np.arange(len(classes))
+
+            ax_dist.bar(
+                x,
+                non_inf_pct,
+                color=MPL_BLUE,
+                alpha=0.5,
+                width=bar_width,
+                label="Not Influential",
+            )
+            ax_dist.bar(
+                x,
+                inf_pct,
+                bottom=non_inf_pct,
+                color=MPL_RED,
+                alpha=0.85,
+                width=bar_width,
+                label=f"High Influence Points (n={len(influential_indices)})",
+            )
+
+            ax_dist.set_xticks(x)
+            ax_dist.set_xticklabels(classes)  # Actual class labels
+            ax_dist.set_title(
+                "Class Distribution with High-Influence Points", fontsize=13, pad=15
+            )
+            ax_dist.set_xlabel("Class Label", fontsize=12)
+            ax_dist.set_ylabel(ylabel, fontsize=12)
+            ax_dist.legend(
+                loc="upper center",
+                bbox_to_anchor=(0.5, 1),
+                fontsize=10,
+                framealpha=0.9,
+                ncol=1,
+            )
+            sns.despine(ax=ax_dist)
+
+        else:
+            # Plot target distribution
+            sns.histplot(
+                y,
+                bins=50,
+                kde=True,
+                ax=ax_dist,
+                color=MPL_BLUE,
+                alpha=0.5,
+                label="All Points",
+                stat="density",
+                edgecolor="grey",
+            )
+
+            # Get max density for marker placement
+            max_density = max(p.get_height() for p in ax_dist.patches)
+            y_offset = max_density * 0.02
+
+            ax_dist.scatter(
+                y_influential,
+                [y_offset] * len(influential_indices),
+                color=MPL_RED,
+                s=60,
+                alpha=0.85,
+                label=f"High Influence Points (n={len(influential_indices)})",
+                zorder=5,
+                marker="v",
+            )
+
+            ax_dist.set_title(
+                "Target Distribution with High-Influence Points", fontsize=13, pad=15
+            )
+            ax_dist.set_xlabel("Target Value", fontsize=12)
+            ax_dist.set_ylabel("Density", fontsize=12)
+            ax_dist.legend()
+            sns.despine(ax=ax_dist)
 
         # Feature scatter plots
         row_idx = 2  # Start from third row (after both distributions)

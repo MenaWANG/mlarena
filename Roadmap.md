@@ -40,5 +40,14 @@ We welcome contributions and suggestions related to these roadmap items. If you'
   - [x] Add examples demonstrating influence detection on classification datasets
   - [x] Add comprehensive test coverage for classification models
 
+- **Column Order Consistency for Predictions**:
+  - Some tree-based libraries (e.g. XGBoost) rely on column position rather than column names during prediction. If the column order in test data differs from training data, the model will silently use wrong feature values, leading to incorrect predictions without raising errors. To protect its users against such silent errors, MLArena can add a consistency layer to automatically align column orders, preventing these issues from underlying algorithms and enhancing robustness across all supported algorithms.
+  - [x] Store training feature column order during `fit()` method
+  - [x] Automatically reorder prediction data columns to match training order in `predict()` method
+  - [x] Validate that all expected training columns are present in prediction data
+  - [x] Raise informative error if required columns are missing
+  - [ ] Add tests to verify correct behavior with mismatched column orders
+  - [ ] Add examples demonstrating protection against XGBoost column order issues
+
 
 

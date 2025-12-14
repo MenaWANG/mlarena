@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+
+
+## [0.5.1] - not released 
+
+### Added
+- Added automatic alignment of prediction column order:
+  - Some tree-based libraries (e.g. XGBoost) rely on column position rather than column names during prediction. If the column order differs between training and prediction data, the model will silently use wrong feature values, leading to incorrect predictions without raising errors. To protect users against such silent errors, MLArena now automatically aligns column orders for prediction data.
+  - Stores training feature column order during `fit()` method
+  - Automatically reorders prediction data columns to match training order in `predict()` method
+
+
+
 ## [0.5.0] - 2025-11-23
 
 ### Added

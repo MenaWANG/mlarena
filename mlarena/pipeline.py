@@ -180,7 +180,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             Model predictions (probabilities for classification, values for regression).
         """
         # ensure the column order of the model input matches the training data
-        model_input = model_input[self._feature_columns]  
+        model_input = model_input[self._feature_columns]
         if self.preprocessor is not None:
             processed_model_input = self.preprocessor.transform(model_input.copy())
         else:

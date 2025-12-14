@@ -139,6 +139,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         early_stopping_rounds : int, optional
             Number of rounds without improvement before early stopping.
         """
+        self._feature_columns = X_train.columns.tolist()
         if self.preprocessor is not None:
             X_train_preprocessed = self.preprocessor.fit_transform(
                 X_train.copy(), y_train.copy()
@@ -178,7 +179,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         np.ndarray
             Model predictions (probabilities for classification, values for regression).
         """
-
+        # ensure the column order of the model input matches the training data
+        model_input = model_input[self._feature_columns]  
         if self.preprocessor is not None:
             processed_model_input = self.preprocessor.transform(model_input.copy())
         else:

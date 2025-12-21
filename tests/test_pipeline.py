@@ -385,6 +385,105 @@ def test_explain_dependence_plot_errors():
         pipeline.explain_dependence("Feature_1", "NonExistentFeature")
 
 
+def test_column_order_consistency():
+    """Test automatic column reordering for prediction data"""
+    print("\nTesting Column Order Consistency...")
+
+    # Test 1: Classification with reordered columns
+    print("Testing classification with reordered columns...")
+    X_clf, y_clf = make_classification(n_samples=100, n_features=4, random_state=42)
+    feature_names = ["Feature_A", "Feature_B", "Feature_C", "Feature_D"]
+    X_clf = pd.DataFrame(X_clf, columns=feature_names)
+    y_clf = pd.Series(y_clf)
+
+    # Train model
+    model_clf = RandomForestClassifier(n_estimators=10, random_state=42)
+    pipeline_clf = MLPipeline(model=model_clf)
+    pipeline_clf.fit(X_clf, y_clf)
+
+    # Predict with same order
+    X_test_same_order = X_clf.iloc[:10].copy()
+    pred_same_order = pipeline_clf.predict(context=None, model_input=X_test_same_order)
+
+    # Predict with different column order
+    X_test_reordered = X_clf.iloc[:10][
+        ["Feature_D", "Feature_A", "Feature_C", "Feature_B"]
+    ].copy()
+    pred_reordered = pipeline_clf.predict(context=None, model_input=X_test_reordered)
+
+    # Predictions should be identical regardless of input column order
+    np.testing.assert_array_almost_equal(
+        pred_same_order,
+        pred_reordered,
+        decimal=10,
+        err_msg="Predictions differ when columns are reordered",
+    )
+    print("✓ Classification predictions are consistent across column orders")
+
+    # Test 2: Regression with reordered columns
+    print("Testing regression with reordered columns...")
+    X_reg, y_reg = make_regression(n_samples=100, n_features=4, random_state=42)
+    X_reg = pd.DataFrame(X_reg, columns=feature_names)
+    y_reg = pd.Series(y_reg)
+
+    # Train model
+    model_reg = RandomForestRegressor(n_estimators=10, random_state=42)
+    pipeline_reg = MLPipeline(model=model_reg)
+    pipeline_reg.fit(X_reg, y_reg)
+
+    # Predict with same order
+    X_test_reg_same = X_reg.iloc[:10].copy()
+    pred_reg_same = pipeline_reg.predict(context=None, model_input=X_test_reg_same)
+
+    # Predict with different column order
+    X_test_reg_reordered = X_reg.iloc[:10][
+        ["Feature_C", "Feature_D", "Feature_A", "Feature_B"]
+    ].copy()
+    pred_reg_reordered = pipeline_reg.predict(
+        context=None, model_input=X_test_reg_reordered
+    )
+
+    # Predictions should be identical
+    np.testing.assert_array_almost_equal(
+        pred_reg_same,
+        pred_reg_reordered,
+        decimal=10,
+        err_msg="Regression predictions differ when columns are reordered",
+    )
+    print("✓ Regression predictions are consistent across column orders")
+
+    # Test 3: Missing column raises error
+    print("Testing error handling for missing columns...")
+    X_missing = X_clf.iloc[:10][["Feature_A", "Feature_B"]].copy()  # Missing C and D
+
+    with pytest.raises(KeyError):
+        pipeline_clf.predict(context=None, model_input=X_missing)
+    print("✓ KeyError raised correctly for missing columns")
+
+    # Test 4: Extra columns are ignored
+    print("Testing that extra columns are ignored...")
+    X_extra = X_clf.iloc[:10].copy()
+    X_extra["Feature_E"] = 999  # Add extra column
+    X_extra["Feature_F"] = -999  # Add another extra column
+
+    # Reorder with extra columns
+    X_extra_reordered = X_extra[
+        ["Feature_F", "Feature_B", "Feature_E", "Feature_A", "Feature_D", "Feature_C"]
+    ]
+    pred_extra = pipeline_clf.predict(context=None, model_input=X_extra_reordered)
+
+    # Should match original predictions (extra columns ignored)
+    np.testing.assert_array_almost_equal(
+        pred_same_order,
+        pred_extra,
+        decimal=10,
+        err_msg="Predictions differ when extra columns are present",
+    )
+    print("✓ Extra columns are correctly ignored")
+
+    print("All column order consistency tests passed!")
+
+
 if __name__ == "__main__":
     print("Starting MLPipeline tests...")
 
@@ -414,5 +513,11 @@ if __name__ == "__main__":
     print("=" * 50)
     test_explain_dependence()
     test_explain_dependence_plot_errors()
+
+    # Test column order consistency
+    print("\n" + "=" * 50)
+    print("Running Column Order Consistency Tests")
+    print("=" * 50)
+    test_column_order_consistency()
 
     print("\nAll tests completed successfully!")

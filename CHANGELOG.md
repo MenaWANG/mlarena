@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-## [0.5.1] - not released 
+## [0.5.1] - 2025-12-21 
 
 ### Added
 - Added automatic alignment of prediction column order:
@@ -20,7 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Verifies predictions are identical regardless of input column order
     - Validates that missing columns raise appropriate errors
     - Confirms extra columns are ignored
-
 
 
 ## [0.5.0] - 2025-11-23

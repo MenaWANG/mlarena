@@ -46,8 +46,8 @@ We welcome contributions and suggestions related to these roadmap items. If you'
   - [x] Automatically reorder prediction data columns to match training order in `predict()` method
   - [x] Validate that all expected training columns are present in prediction data
   - [x] Raise informative error if required columns are missing
-  - [ ] Add tests to verify correct behavior with mismatched column orders
-  - [ ] Add examples demonstrating protection against XGBoost column order issues
+  - [x] Add tests to verify correct behavior with mismatched column orders
+
 
 
 

@@ -15,6 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Some tree-based libraries (e.g. XGBoost) rely on column position rather than column names during prediction. If the column order differs between training and prediction data, the model will silently use wrong feature values, leading to incorrect predictions without raising errors. To protect users against such silent errors, MLArena now automatically aligns column orders for prediction data.
   - Stores training feature column order during `fit()` method
   - Automatically reorders prediction data columns to match training order in `predict()` method
+  - Added comprehensive tests to verify column order consistency:
+    - Tests for both classification and regression models
+    - Verifies predictions are identical regardless of input column order
+    - Validates that missing columns raise appropriate errors
+    - Confirms extra columns are ignored
 
 
 

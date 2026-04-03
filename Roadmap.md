@@ -48,6 +48,34 @@ We welcome contributions and suggestions related to these roadmap items. If you'
   - [x] Raise informative error if required columns are missing
   - [x] Add tests to verify correct behavior with mismatched column orders
 
+- **Agent-Friendliness Improvements**:
+  - MLArena is increasingly used in AI-driven and agentic workflows where programmatic discoverability, type safety, and side-effect predictability matter. The following improvements make the package easier to use reliably in such contexts.
+  - **Type Hints & PEP 561 Compliance**:
+    - [ ] Add full type annotations to `MLPipeline.tune` method signature
+    - [ ] Add full type annotations to `PreProcessor.__init__` and other under-typed public methods
+    - [ ] Add a `py.typed` marker file to declare the package as typed (PEP 561)
+  - **Headless / Non-Interactive Visualization**:
+    - [ ] Audit all public methods that generate plots and ensure a consistent `visualize: bool = True` parameter is available
+    - [ ] Ensure all plot-generating methods consistently return the `Figure` or `Axes` object (or a `dict` of them for multi-plot methods) regardless of the `visualize` flag — so callers can always capture artefacts programmatically without being forced to choose between rendering and capturing
+    - [ ] Document the recommended `matplotlib.use("Agg")` pattern for headless/agent environments in the README and docstrings
+  - **MLflow Side-Effect Transparency**:
+    - [ ] Clearly document which methods require an active MLflow run and what happens when none is present
+    - [ ] Ensure `log_model=False` (default) truly produces no MLflow side effects
+  - **Docstring & Discoverability**:
+    - [ ] Add a module-level docstring to `pipeline.py` listing all public classes and methods with one-line summaries, so agents can orient without reading the full file
+    - [ ] Fix the stale `mlarena.exceptions` reference in `docs/api.rst` (module does not exist)
+    - [ ] Ensure all `utils` submodule `__all__` lists are complete and accurate
+- **Agent-Friendly Documentation**:
+  - Structured, machine-readable documentation that helps AI agents and agent developers work with MLArena correctly. Two complementary files serve distinct audiences:
+    - `llms.txt` is consumed **directly by agents** — it is the package's machine-readable entry point.
+    - `AGENTS.md` is written **for developers building agentic systems** on top of MLArena — it documents the integration concerns a human needs to handle before handing control to an agent.
+  - **`llms.txt`** (see [llmstxt.org](https://llmstxt.org) convention):
+    - [ ] Create a `/llms.txt` file at the repo root following the emerging `llms.txt` standard — a concise, markdown-formatted entry point for LLMs describing what the package does, its public API, and key usage patterns
+    - [ ] Include links to the most relevant documentation pages (README, API reference, example notebooks) so agents can fetch deeper context on demand
+    - [ ] Keep it maintained alongside releases so it reflects the current API
+  - **`AGENTS.md`**:
+    - [ ] Create an `AGENTS.md` file targeted at developers integrating MLArena into agentic pipelines, covering: recommended import patterns, known side effects (MLflow run requirements, plotting defaults), environment setup for headless use, and explicit do/don't examples
+
 
 
 

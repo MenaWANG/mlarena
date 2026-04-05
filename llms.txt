@@ -1,0 +1,194 @@
+# MLArena
+
+> Version: 0.5.1 | License: MIT | Python: 3.10–3.13
+> An algorithm-agnostic machine learning toolkit for model training, diagnostics, and optimization. Built on `mlflow.pyfunc`, it provides a unified interface for any scikit-learn compatible model across classification and regression tasks.
+
+## Quick Install
+
+```bash
+pip install mlarena==0.5.1
+```
+
+## Public API
+
+Three top-level exports cover all core functionality:
+
+```python
+from mlarena import MLPipeline, PreProcessor
+import mlarena.utils as utils
+```
+
+### MLPipeline
+
+The central class. Extends `mlflow.pyfunc.PythonModel`, so it is directly deployable via MLflow.
+
+Task type (classification vs regression) is **auto-detected** from whether the model has `predict_proba`.
+
+**Instance methods**
+
+| Method | Description |
+|---|---|
+| `fit(X_train, y_train, eval_set=None, early_stopping_rounds=None)` | Train model after applying preprocessor. Stores training column order for prediction safety. |
+| `predict(context, model_input)` | Returns probabilities (classification) or values (regression). Automatically reorders columns to match training order. Pass `context=None` when calling outside MLflow. |
+| `evaluate(X_test, y_test, threshold=0.5, beta=1.0, verbose=True, visualize=True, log_model=False)` | Returns a `dict` of metrics. Set `visualize=False` for headless use. Set `log_model=True` only inside an active MLflow run. |
+| `explain_model(X, plot_size="auto", plot_type="auto", max_features=20)` | Computes SHAP values and plots global feature importance. Stores `self.shap_values` and `self.X_explain` for downstream use. Must be called before `explain_case` or `explain_dependence`. |
+| `explain_case(n)` | SHAP waterfall plot for case `n` (1-based index). Requires `explain_model()` first. |
+| `explain_dependence(feature_1, feature_2=None)` | SHAP dependence scatter plot. If `feature_2` is omitted, strongest interaction is auto-selected. |
+
+**Static methods**
+
+| Method | Description |
+|---|---|
+| `MLPipeline.tune(X, y, algorithm, preprocessor, param_ranges, ...)` | Optuna-based hyperparameter tuning with cross-validation. Returns `dict` with `best_params`, `best_pipeline`, `study`, and metrics. Set `log_best_model=False` to suppress MLflow logging. Set `visualize=False` for headless use. |
+| `MLPipeline.threshold_analysis(y_true, y_pred_proba, beta=1.0, method="bootstrap", ...)` | Finds optimal classification threshold maximising F-beta. Returns `dict` with `optimal_threshold`, `threshold_std`, and confidence intervals (bootstrap only). |
+| `MLPipeline.can_use_spark_tuning()` | Returns `bool` indicating whether Spark-based distributed tuning is available. |
+
+**Key `tune` parameters**
+
+| Parameter | Default | Notes |
+|---|---|---|
+| `param_ranges` | — | `dict` of `{param: (min, max)}` for int/float or `{param: [a, b, c]}` for categorical |
+| `max_evals` | `500` | Max Optuna trials |
+| `early_stopping` | `50` | Trials without improvement before stopping |
+| `cv` | `5` | Int (folds) or sklearn splitter object (e.g. `TimeSeriesSplit`) |
+| `tune_metric` | `None` | Auto-defaults to `"auc"` (classification) or `"rmse"` (regression) |
+| `log_best_model` | `True` | Requires an active MLflow run when `True` |
+| `visualize` | `True` | Set `False` for headless/agent environments |
+
+---
+
+### PreProcessor
+
+A scikit-learn `BaseEstimator` + `TransformerMixin`. Handles imputation, scaling, one-hot encoding, and target encoding in a single transformer.
+
+```python
+preprocessor = PreProcessor(
+    target_encode_cols=["high_cardinality_col"],  # optional
+    num_impute_strategy="median",                 # default
+    cat_impute_strategy="most_frequent",          # default
+)
+```
+
+Fit and transform happen automatically inside `MLPipeline.fit()`. Use standalone with `.fit_transform(X, y)` / `.transform(X)`.
+
+---
+
+### mlarena.utils
+
+Flat namespace of helper functions. Import explicitly by name:
+
+```python
+from mlarena.utils import plot_box_scatter, is_primary_key, compare_groups
+```
+
+**Plot utilities** (`mlarena.utils.plot_utils`)
+
+| Function | Description |
+|---|---|
+| `plot_box_scatter(df, x, y, ...)` | Box + scatter plot with optional statistical tests (ANOVA, Welch, Kruskal) |
+| `plot_stacked_bar(df, ...)` | Stacked bar chart with chi-square / G-test |
+| `plot_metric_event_over_time(df, ...)` | Time series with event annotations and dual y-axes |
+| `plot_distribution_over_time(df, ...)` | Distribution over time with flexible aggregation |
+| `plot_stacked_bar_over_time(df, ...)` | Categorical distribution over time |
+
+**Statistical utilities** (`mlarena.utils.stats_utils`)
+
+| Function | Description |
+|---|---|
+| `compare_groups(df, ...)` | Statistical testing across groups with visualization |
+| `add_stratified_groups(df, ...)` | Create balanced groups with stratification |
+| `optimize_stratification_strategy(df, ...)` | Find optimal stratification columns |
+| `calculate_threshold_stats(...)` | Threshold statistics for classification |
+| `calculate_group_thresholds(...)` | Per-group threshold calculation |
+| `power_analysis_numeric(...)` | Power calculation for t-tests |
+| `power_analysis_proportion(...)` | Power calculation for proportion tests |
+| `sample_size_numeric(...)` | Required sample size for numeric outcomes |
+| `sample_size_proportion(...)` | Required sample size for proportion tests |
+| `numeric_effectsize(...)` | Cohen's d effect size |
+| `calculate_cooks_d_like_influence(...)` | Algorithm-agnostic influence analysis (classification + regression) |
+
+**Data utilities** (`mlarena.utils.data_utils`)
+
+| Function | Description |
+|---|---|
+| `is_primary_key(df, cols)` | Validates uniqueness with diagnostics |
+| `find_duplicates(df, cols)` | Identifies duplicate patterns |
+| `deduplicate_by_rank(df, ...)` | Resolves duplicates with business logic |
+| `clean_dollar_cols(df, cols)` | Standardises financial string columns |
+| `value_counts_with_pct(df, col)` | Value counts with percentages |
+| `transform_date_cols(df, cols)` | Smart date parsing |
+| `drop_fully_null_cols(df)` | Removes all-null columns |
+| `print_schema_alphabetically(df)` | Sorted schema display |
+| `select_existing_cols(df, cols)` | Safe column selection |
+| `filter_rows_by_substring(df, col, s)` | Substring row filter |
+| `filter_columns_by_substring(df, s)` | Substring column filter |
+| `clean_null_representations(df)` | Normalises null-like strings |
+| `read_csv_with_encoding(path)` | Auto-detects CSV encoding |
+| `pivot_by_group(df, ...)` | Group-based pivot |
+
+**I/O utilities** (`mlarena.utils.io_utils`)
+
+| Function | Description |
+|---|---|
+| `save_object(obj, path, ...)` | Pickle or joblib serialisation with optional date stamping |
+| `load_object(path)` | Auto-detects backend and loads object |
+
+**Model utilities** (`mlarena.utils.model_utils`)
+
+| Function | Description |
+|---|---|
+| `get_cv_strategy(cv, task)` | Returns appropriate sklearn CV splitter |
+
+---
+
+## Typical Usage Pattern
+
+```python
+import lightgbm as lgb
+from mlarena import MLPipeline, PreProcessor
+
+# 1. Preprocess
+preprocessor = PreProcessor(target_encode_cols=["category_col"])
+
+# 2. Train
+pipe = MLPipeline(model=lgb.LGBMClassifier(), preprocessor=preprocessor)
+pipe.fit(X_train, y_train)
+
+# 3. Evaluate (headless-safe)
+metrics = pipe.evaluate(X_test, y_test, visualize=False)
+
+# 4. Explain
+pipe.explain_model(X_test)
+pipe.explain_case(n=1)
+
+# 5. Tune (headless-safe, no MLflow logging)
+results = MLPipeline.tune(
+    X, y,
+    algorithm=lgb.LGBMClassifier,
+    preprocessor=PreProcessor(),
+    param_ranges={"n_estimators": (50, 500), "max_depth": (3, 10)},
+    visualize=False,
+    log_best_model=False,
+)
+best_pipeline = results["best_pipeline"]
+```
+
+---
+
+## Known Side Effects for Agents
+
+- **Plotting**: Methods with `visualize=True` (default) call `plt.show()`. In headless environments, set `visualize=False` or configure `matplotlib.use("Agg")` before import.
+- **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. The safe defaults are `log_model=False` and `log_best_model=True` — note `tune` defaults to logging; pass `log_best_model=False` explicitly if no run is active.
+- **Column order**: `predict()` auto-reorders columns to match training order and raises an error if expected columns are missing.
+- **SHAP dependency**: `explain_case()` and `explain_dependence()` raise a warning and return early if `explain_model()` has not been called first.
+
+---
+
+## Further Reading
+
+- [README](https://github.com/MenaWANG/mlarena/blob/master/README.md) — full feature matrix and visual examples
+- [Basic usage notebook](https://github.com/MenaWANG/mlarena/blob/master/examples/1.basic_usage.ipynb)
+- [Advanced usage notebook](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb)
+- [Utils notebooks](https://github.com/MenaWANG/mlarena/blob/master/examples/) — plot, data, stats, io utilities
+- [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md)
+- [PyPI](https://pypi.org/project/mlarena/)

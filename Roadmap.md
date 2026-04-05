@@ -70,7 +70,7 @@ We welcome contributions and suggestions related to these roadmap items. If you'
     - `llms.txt` is consumed **directly by agents** — it is the package's machine-readable entry point.
     - `AGENTS.md` is written **for developers building agentic systems** on top of MLArena — it documents the integration concerns a human needs to handle before handing control to an agent.
   - **`llms.txt`** (see [llmstxt.org](https://llmstxt.org) convention):
-    - [ ] Create a `/llms.txt` file at the repo root following the emerging `llms.txt` standard — a concise, markdown-formatted entry point for LLMs describing what the package does, its public API, and key usage patterns
+    - [x] Create a `/llms.txt` file at the repo root following the emerging `llms.txt` standard — a concise, markdown-formatted entry point for LLMs describing what the package does, its public API, and key usage patterns
     - [ ] Include links to the most relevant documentation pages (README, API reference, example notebooks) so agents can fetch deeper context on demand
     - [ ] Keep it maintained alongside releases so it reflects the current API
   - **`AGENTS.md`**:

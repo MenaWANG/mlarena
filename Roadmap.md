@@ -61,6 +61,8 @@ We welcome contributions and suggestions related to these roadmap items. If you'
   - **MLflow Side-Effect Transparency**:
     - [ ] Clearly document which methods require an active MLflow run and what happens when none is present
     - [ ] Ensure `log_model=False` (default) truly produces no MLflow side effects
+    - [ ] Change `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs
+    - [ ] Keep backward compatibility note in changelog/docs: users who want logging can pass `log_best_model=True`
   - **Docstring & Discoverability**:
     - [ ] Add a module-level docstring to `pipeline.py` listing all public classes and methods with one-line summaries, so agents can orient without reading the full file
     - [ ] Fix the stale `mlarena.exceptions` reference in `docs/api.rst` (module does not exist)

@@ -39,7 +39,7 @@ Task type (classification vs regression) is **auto-detected** from whether the m
 
 | Method | Description |
 |---|---|
-| `MLPipeline.tune(X, y, algorithm, preprocessor, param_ranges, ...)` | Optuna-based hyperparameter tuning with cross-validation. Returns `dict` with `best_params`, `best_pipeline`, `study`, and metrics. Set `log_best_model=False` to suppress MLflow logging. Set `visualize=False` for headless use. |
+| `MLPipeline.tune(X, y, algorithm, preprocessor, param_ranges, ...)` | Optuna-based hyperparameter tuning with cross-validation. Returns `dict` with `best_params`, `best_pipeline`, `study`, and metrics. Set `log_best_model=False` to suppress MLflow logging. Set `visualize=False` for headless use. Note: `cv` is currently an integer fold count. |
 | `MLPipeline.threshold_analysis(y_true, y_pred_proba, beta=1.0, method="bootstrap", ...)` | Finds optimal classification threshold maximising F-beta. Returns `dict` with `optimal_threshold`, `threshold_std`, and confidence intervals (bootstrap only). |
 | `MLPipeline.can_use_spark_tuning()` | Returns `bool` indicating whether Spark-based distributed tuning is available. |
 
@@ -50,7 +50,7 @@ Task type (classification vs regression) is **auto-detected** from whether the m
 | `param_ranges` | — | `dict` of `{param: (min, max)}` for int/float or `{param: [a, b, c]}` for categorical |
 | `max_evals` | `500` | Max Optuna trials |
 | `early_stopping` | `50` | Trials without improvement before stopping |
-| `cv` | `5` | Int (folds) or sklearn splitter object (e.g. `TimeSeriesSplit`) |
+| `cv` | `5` | Integer fold count |
 | `tune_metric` | `None` | Auto-defaults to `"auc"` (classification) or `"rmse"` (regression) |
 | `log_best_model` | `True` | Requires an active MLflow run when `True` |
 | `visualize` | `True` | Set `False` for headless/agent environments |
@@ -178,8 +178,8 @@ best_pipeline = results["best_pipeline"]
 ## Known Side Effects for Agents
 
 - **Plotting**: Methods with `visualize=True` (default) call `plt.show()`. In headless environments, set `visualize=False` or configure `matplotlib.use("Agg")` before import.
-- **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. The safe defaults are `log_model=False` and `log_best_model=True` — note `tune` defaults to logging; pass `log_best_model=False` explicitly if no run is active.
-- **Column order**: `predict()` auto-reorders columns to match training order and raises an error if expected columns are missing.
+- **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. `evaluate` is safe by default (`log_model=False`), but `tune` defaults to logging; pass `log_best_model=False` explicitly if no run is active.
+- **Column order**: `predict()` auto-reorders columns to match training order and raises a `KeyError` if expected columns are missing.
 - **SHAP dependency**: `explain_case()` and `explain_dependence()` raise a warning and return early if `explain_model()` has not been called first.
 
 ---

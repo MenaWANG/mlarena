@@ -60,7 +60,7 @@ We welcome contributions and suggestions related to these roadmap items. If you'
     - [ ] Document the recommended `matplotlib.use("Agg")` pattern for headless/agent environments in the README and docstrings
   - **MLflow Side-Effect Transparency**:
     - [ ] Clearly document which methods require an active MLflow run and what happens when none is present
-    - [ ] Ensure `log_model=False` (default) truly produces no MLflow side effects
+    - [x] Ensure `log_model=False` (default) truly produces no MLflow side effects
     - [ ] Change `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs
     - [ ] Keep backward compatibility note in changelog/docs: users who want logging can pass `log_best_model=True`
   - **Docstring & Discoverability**:

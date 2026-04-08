@@ -52,7 +52,7 @@ Task type (classification vs regression) is **auto-detected** from whether the m
 | `early_stopping` | `50` | Trials without improvement before stopping |
 | `cv` | `5` | Integer fold count |
 | `tune_metric` | `None` | Auto-defaults to `"auc"` (classification) or `"rmse"` (regression) |
-| `log_best_model` | `True` | Requires an active MLflow run when `True` |
+| `log_best_model` | `False` | Requires an active MLflow run when `True` |
 | `visualize` | `True` | Set `False` for headless/agent environments |
 
 ---
@@ -178,7 +178,7 @@ best_pipeline = results["best_pipeline"]
 ## Known Side Effects for Agents
 
 - **Plotting**: Methods with `visualize=True` (default) call `plt.show()`. In headless environments, set `visualize=False` or configure `matplotlib.use("Agg")` before import.
-- **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. `evaluate` is safe by default (`log_model=False`), but `tune` defaults to logging; pass `log_best_model=False` explicitly if no run is active.
+- **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. Both methods are safe by default (`log_model=False`, `log_best_model=False`). Pass `log_best_model=True` if you explicitly want tuning-time MLflow logging.
 - **Column order**: `predict()` auto-reorders columns to match training order and raises a `KeyError` if expected columns are missing.
 - **SHAP dependency**: `explain_case()` and `explain_dependence()` raise a warning and return early if `explain_model()` has not been called first.
 

@@ -1206,7 +1206,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         visualize=True,
         task=None,
         tune_metric=None,
-        log_best_model=True,
+        log_best_model=False,
         disable_optuna_logging=True,
         configure_plotly=True,
         show_progress_bar=True,
@@ -1263,7 +1263,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             If None, defaults to 'auc' for classification and 'rmse' for regression.
             Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss', 'brier_score', 'mcc'
             Regression metrics: 'rmse', 'mae', 'median_ae', 'smape', 'nrmse_mean', 'nrmse_iqr', 'nrmse_std'
-        log_best_model : bool, default=True
+        log_best_model : bool, default=False
             If True, logs the best model to MLflow.
         disable_optuna_logging : bool, default=True
             If True, suppresses Optuna's verbose logging.

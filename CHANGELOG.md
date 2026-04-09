@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.5.2] - Unreleased
 
+### Added
+- Added llms.txt, a machine-readable package guide for LLM/agent workflows, including API overview, defaults, side effects, headless usage guidance, and links for deeper docs.
+
 ### Changed
 - Changed `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs.
 

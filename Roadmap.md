@@ -51,7 +51,7 @@ We welcome contributions and suggestions related to these roadmap items. If you'
 - **Agent-Friendliness Improvements**:
   - MLArena is increasingly used in AI-driven and agentic workflows where programmatic discoverability, type safety, and side-effect predictability matter. The following improvements make the package easier to use reliably in such contexts.
   - **Type Hints & PEP 561 Compliance**:
-    - [ ] Add full type annotations to `MLPipeline.tune` method signature
+    - [x] Add full type annotations to `MLPipeline.tune` method signature
     - [ ] Add full type annotations to `PreProcessor.__init__` and other under-typed public methods
     - [ ] Add a `py.typed` marker file to declare the package as typed (PEP 561)
   - **Headless / Non-Interactive Visualization**:

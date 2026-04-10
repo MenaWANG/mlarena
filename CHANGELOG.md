@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Changed `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs.
+- Added full type annotations to the `MLPipeline.tune` method signature for better IDE/type-checker support.
 
 
 ## [0.5.1] - 2025-12-21 

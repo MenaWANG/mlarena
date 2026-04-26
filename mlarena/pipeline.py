@@ -6,7 +6,7 @@ import logging
 import warnings
 
 # Standard library imports
-from typing import Any
+from typing import Any, Literal
 
 from optuna.exceptions import ExperimentalWarning
 
@@ -57,6 +57,10 @@ from sklearn.model_selection import (
 
 # Local imports
 from .preprocessor import PreProcessor
+
+NumericRange = tuple[int | float, int | float]
+ParamRange = NumericRange | list[Any]
+ParamRanges = dict[str, ParamRange]
 
 
 class MLPipeline(mlflow.pyfunc.PythonModel):
@@ -1189,32 +1193,32 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
     @staticmethod
     def tune(
-        X,
-        y,
-        algorithm,
-        preprocessor,
-        param_ranges,
-        max_evals=500,
-        random_state=42,
-        beta=1,
-        early_stopping=50,
-        n_startup_trials=5,
-        n_warmup_steps=0,
-        verbose=0,
-        cv=5,
-        cv_variance_penalty=0.1,
-        visualize=True,
-        task=None,
-        tune_metric=None,
-        log_best_model=True,
-        disable_optuna_logging=True,
-        configure_plotly=True,
-        show_progress_bar=True,
-        use_spark=False,
-        n_jobs=None,
-        study_name=None,
-        mlflow_storage=None,
-    ):
+        X: pd.DataFrame,
+        y: pd.Series,
+        algorithm: type[BaseEstimator],
+        preprocessor: PreProcessor | None,
+        param_ranges: ParamRanges,
+        max_evals: int = 500,
+        random_state: int = 42,
+        beta: float = 1,
+        early_stopping: int | None = 50,
+        n_startup_trials: int = 5,
+        n_warmup_steps: int = 0,
+        verbose: int = 0,
+        cv: int = 5,
+        cv_variance_penalty: float = 0.1,
+        visualize: bool = True,
+        task: Literal["classification", "regression"] | None = None,
+        tune_metric: str | None = None,
+        log_best_model: bool = False,
+        disable_optuna_logging: bool = True,
+        configure_plotly: bool = True,
+        show_progress_bar: bool = True,
+        use_spark: bool = False,
+        n_jobs: int | None = None,
+        study_name: str | None = None,
+        mlflow_storage: str | None = None,
+    ) -> dict[str, Any]:
         """
         Static method to tune hyperparameters using Optuna.
 
@@ -1226,7 +1230,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             Target.
         algorithm : class
             ML algorithm class (e.g., lgb.LGBMClassifier).
-        preprocessor : Any or None
+        preprocessor : PreProcessor or None
             Data preprocessing pipeline.
         param_ranges : dict
             Dictionary of parameter ranges for Optuna.
@@ -1263,7 +1267,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             If None, defaults to 'auc' for classification and 'rmse' for regression.
             Classification metrics: 'auc', 'f1', 'accuracy', 'log_loss', 'brier_score', 'mcc'
             Regression metrics: 'rmse', 'mae', 'median_ae', 'smape', 'nrmse_mean', 'nrmse_iqr', 'nrmse_std'
-        log_best_model : bool, default=True
+        log_best_model : bool, default=False
             If True, logs the best model to MLflow.
         disable_optuna_logging : bool, default=True
             If True, suppresses Optuna's verbose logging.

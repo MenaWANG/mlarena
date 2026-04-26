@@ -51,7 +51,7 @@ We welcome contributions and suggestions related to these roadmap items. If you'
 - **Agent-Friendliness Improvements**:
   - MLArena is increasingly used in AI-driven and agentic workflows where programmatic discoverability, type safety, and side-effect predictability matter. The following improvements make the package easier to use reliably in such contexts.
   - **Type Hints & PEP 561 Compliance**:
-    - [ ] Add full type annotations to `MLPipeline.tune` method signature
+    - [x] Add full type annotations to `MLPipeline.tune` method signature
     - [ ] Add full type annotations to `PreProcessor.__init__` and other under-typed public methods
     - [ ] Add a `py.typed` marker file to declare the package as typed (PEP 561)
   - **Headless / Non-Interactive Visualization**:
@@ -60,8 +60,8 @@ We welcome contributions and suggestions related to these roadmap items. If you'
     - [ ] Document the recommended `matplotlib.use("Agg")` pattern for headless/agent environments in the README and docstrings
   - **MLflow Side-Effect Transparency**:
     - [ ] Clearly document which methods require an active MLflow run and what happens when none is present
-    - [ ] Ensure `log_model=False` (default) truly produces no MLflow side effects
-    - [ ] Change `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs
+    - [x] Ensure `log_model=False` (default) truly produces no MLflow side effects
+    - [x] Change `MLPipeline.tune` default from `log_best_model=True` to `log_best_model=False` so tuning is safe-by-default outside active MLflow runs
     - [ ] Keep backward compatibility note in changelog/docs: users who want logging can pass `log_best_model=True`
   - **Docstring & Discoverability**:
     - [ ] Add a module-level docstring to `pipeline.py` listing all public classes and methods with one-line summaries, so agents can orient without reading the full file

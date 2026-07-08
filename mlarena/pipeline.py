@@ -1883,25 +1883,3 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             return model_info
         finally:
             mlflow.end_run()
-
-
-# Backward compatibility alias with deprecation warning
-class ML_PIPELINE(MLPipeline):
-    """
-    Deprecated: Use MLPipeline instead to follow Python naming conventions (PEP 8).
-    ML_PIPELINE will be removed in a future version.
-
-    Please update your code:
-        from mlarena import MLPipeline  # New (recommended)
-        # instead of: from mlarena import ML_PIPELINE
-    """
-
-    def __init__(self, *args, **kwargs):
-        warnings.warn(
-            "ML_PIPELINE is deprecated and will be removed in a future version. "
-            "Please use MLPipeline instead. "
-            "See upgrade guide: https://github.com/MenaWANG/mlarena/blob/master/docs/upgrading.md",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-        super().__init__(*args, **kwargs)

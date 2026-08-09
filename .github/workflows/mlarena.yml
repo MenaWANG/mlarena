@@ -36,7 +36,7 @@ jobs:
 
     - name: Run tests
       run: |
-        poetry run pytest
+        poetry run pytest --cov=mlarena --cov-report=term-missing
 
   publish:
     needs: test

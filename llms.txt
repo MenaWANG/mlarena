@@ -1,12 +1,12 @@
 # MLArena
 
-> Version: 0.5.1 | License: MIT | Python: 3.10–3.13
+> Version: 0.5.2 | License: MIT | Python: 3.10–3.13
 > An algorithm-agnostic machine learning toolkit for model training, diagnostics, and optimization. Built on `mlflow.pyfunc`, it provides a unified interface for any scikit-learn compatible model across classification and regression tasks.
 
 ## Quick Install
 
 ```bash
-pip install mlarena==0.5.1
+pip install mlarena==0.5.2
 ```
 
 ## Public API
@@ -17,6 +17,11 @@ Three top-level exports cover all core functionality:
 from mlarena import MLPipeline, PreProcessor
 import mlarena.utils as utils
 ```
+
+**Import behavior**
+
+- `import mlarena.utils...` and `from mlarena import PreProcessor` do **not** load `MLPipeline` or SHAP.
+- `from mlarena import MLPipeline` loads the pipeline module (including SHAP).
 
 ### MLPipeline
 
@@ -30,7 +35,7 @@ Task type (classification vs regression) is **auto-detected** from whether the m
 |---|---|
 | `fit(X_train, y_train, eval_set=None, early_stopping_rounds=None)` | Train model after applying preprocessor. Stores training column order for prediction safety. |
 | `predict(context, model_input)` | Returns probabilities (classification) or values (regression). Automatically reorders columns to match training order. Pass `context=None` when calling outside MLflow. |
-| `evaluate(X_test, y_test, threshold=0.5, beta=1.0, verbose=True, visualize=True, log_model=False)` | Returns a `dict` of metrics. Set `visualize=False` for headless use. Set `log_model=True` only inside an active MLflow run. |
+| `evaluate(X_test, y_test, threshold=0.5, beta=1.0, verbose=True, visualize=True, log_model=False)` | Returns a comprehensive metrics `dict` (classification: precision, recall, F-scores, AUC, MCC, log loss, Brier score, etc.; regression: RMSE, MAE, R², NRMSE, SMAPE, etc.). With `visualize=True` (default), also renders professional-looking, publishable diagnostic plots (classification: metrics vs threshold, ROC, confusion matrix; regression: residuals and prediction-error plots). Use `visualize=False` for headless/agent use. Set `log_model=True` only inside an active MLflow run. |
 | `explain_model(X, plot_size="auto", plot_type="auto", max_features=20)` | Computes SHAP values and plots global feature importance. Stores `self.shap_values` and `self.X_explain` for downstream use. Must be called before `explain_case` or `explain_dependence`. |
 | `explain_case(n)` | SHAP waterfall plot for case `n` (1-based index). Requires `explain_model()` first. |
 | `explain_dependence(feature_1, feature_2=None)` | SHAP dependence scatter plot. If `feature_2` is omitted, strongest interaction is auto-selected. |
@@ -51,6 +56,7 @@ Task type (classification vs regression) is **auto-detected** from whether the m
 | `max_evals` | `500` | Max Optuna trials |
 | `early_stopping` | `50` | Trials without improvement before stopping |
 | `cv` | `5` | Integer fold count |
+| `cv_variance_penalty` | `0.1` | Penalises high-variance CV scores to favour stable hyperparameters |
 | `tune_metric` | `None` | Auto-defaults to `"auc"` (classification) or `"rmse"` (regression) |
 | `log_best_model` | `False` | Requires an active MLflow run when `True` |
 | `visualize` | `True` | Set `False` for headless/agent environments |
@@ -177,6 +183,7 @@ best_pipeline = results["best_pipeline"]
 
 ## Known Side Effects for Agents
 
+- **Breaking change (0.5.2)**: `ML_PIPELINE` was removed (deprecated since v0.3.0). Use `MLPipeline` instead.
 - **Plotting**: Methods with `visualize=True` (default) call `plt.show()`. In headless environments, set `visualize=False` or configure `matplotlib.use("Agg")` before import.
 - **MLflow**: `evaluate(..., log_model=True)` and `tune(..., log_best_model=True)` require an **active MLflow run**. Both methods are safe by default (`log_model=False`, `log_best_model=False`). Pass `log_best_model=True` if you explicitly want tuning-time MLflow logging.
 - **Column order**: `predict()` auto-reorders columns to match training order and raises a `KeyError` if expected columns are missing.
@@ -191,4 +198,6 @@ best_pipeline = results["best_pipeline"]
 - [Advanced usage notebook](https://github.com/MenaWANG/mlarena/blob/master/examples/2.advanced_usage.ipynb)
 - [Utils notebooks](https://github.com/MenaWANG/mlarena/blob/master/examples/) — plot, data, stats, io utilities
 - [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md)
+- [Upgrading guide](https://github.com/MenaWANG/mlarena/blob/master/docs/upgrading.md) — breaking changes and migrations
+- [Intro article (Towards Data Science)](https://towardsdatascience.com/build-algorithm-agnostic-ml-pipelines-in-a-breeze/) — conceptual overview and workflow motivation; use repo docs/notebooks for current API details
 - [PyPI](https://pypi.org/project/mlarena/)

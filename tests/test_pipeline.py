@@ -70,6 +70,76 @@ def test_supports_verbose():
     print("Verbose parameter support detection tests passed.")
 
 
+@pytest.mark.parametrize("container", [np.asarray, list, pd.Series])
+@pytest.mark.parametrize("method", ["cv", "bootstrap"])
+def test_threshold_analysis_accepts_array_like_inputs(container, method):
+    y_true = container([0, 1, 0, 1, 0, 1, 0, 1, 0, 1])
+    y_pred_proba = container([0.1, 0.8, 0.2, 0.7, 0.3, 0.9, 0.4, 0.6, 0.2, 0.8])
+
+    results = MLPipeline.threshold_analysis(
+        y_true,
+        y_pred_proba,
+        method=method,
+        cv_splits=2,
+        bootstrap_iterations=5,
+    )
+
+    assert 0 <= results["optimal_threshold"] <= 1
+
+
+def test_threshold_analysis_rejects_inconsistent_lengths():
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        MLPipeline.threshold_analysis([0, 1], [0.1])
+
+
+@pytest.mark.parametrize(
+    ("model", "dataset_factory"),
+    [
+        (LogisticRegression(), make_classification),
+        (LinearRegression(), make_regression),
+    ],
+)
+def test_evaluate_accepts_list_target(model, dataset_factory):
+    X, y = dataset_factory(n_samples=40, n_features=4, random_state=42)
+    X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(4)])
+    pipeline = MLPipeline(model=model)
+    pipeline.fit(X, pd.Series(y))
+
+    results = pipeline.evaluate(X, y.tolist(), verbose=False, visualize=False)
+
+    assert isinstance(results, dict)
+
+
+def test_evaluate_rejects_target_with_inconsistent_length():
+    X, y = make_regression(n_samples=20, n_features=4, random_state=42)
+    X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(4)])
+    pipeline = MLPipeline(model=LinearRegression())
+    pipeline.fit(X, pd.Series(y))
+
+    with pytest.raises(ValueError, match="inconsistent numbers of samples"):
+        pipeline.evaluate(X, y[:-1], verbose=False, visualize=False)
+
+
+def test_tune_accepts_numpy_target():
+    X, y = make_classification(n_samples=50, n_features=4, random_state=42)
+    X = pd.DataFrame(X, columns=[f"feature_{i}" for i in range(4)])
+
+    results = MLPipeline.tune(
+        X=X,
+        y=y,
+        algorithm=DecisionTreeClassifier,
+        preprocessor=None,
+        param_ranges={"max_depth": (2, 3)},
+        max_evals=1,
+        cv=2,
+        early_stopping=None,
+        visualize=False,
+        show_progress_bar=False,
+    )
+
+    assert isinstance(results["best_pipeline"], MLPipeline)
+
+
 def test_tune_with_verbose_support():
     print("\nTesting tuning with verbose-supporting algorithm...")
 

@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added MLflow logging tests covering metadata and sample forwarding, input preservation, opt-in logging through `evaluate()`, and error propagation with run cleanup.
 - Added isolated classification and regression model log/load round-trip tests using temporary SQLite tracking and local artifacts, verifying model metadata, artifact contents, and prediction consistency. These tests exercise the installed MLflow version; compatibility handling for `artifact_path` and `name` remains planned.
 
+### Changed
+
+- `MLPipeline.evaluate()`, `MLPipeline.tune()`, and `MLPipeline.threshold_analysis()` now accept one-dimensional array-like targets, including pandas Series, NumPy arrays, and Python lists. Inputs are normalized with scikit-learn validation, and inconsistent lengths or unsupported target shapes fail early with clear errors.
+
 ## [0.5.2] - 2026-08-09
 
 ### Added

@@ -27,6 +27,7 @@ import pandas as pd
 import seaborn as sns
 import shap
 from mlflow.models.signature import infer_signature
+from numpy.typing import ArrayLike
 from optuna.pruners import MedianPruner
 from optuna.visualization import plot_parallel_coordinate
 from sklearn.base import BaseEstimator
@@ -57,6 +58,7 @@ from sklearn.model_selection import (
 
 # Local imports
 from .preprocessor import PreProcessor
+from .utils.validation_utils import validate_1d_array, validate_consistent_length
 
 NumericRange = tuple[int | float, int | float]
 ParamRange = NumericRange | list[Any]
@@ -1048,7 +1050,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
     def evaluate(
         self,
         X_test: pd.DataFrame,
-        y_test: pd.Series,
+        y_test: ArrayLike,
         threshold: float = 0.5,
         beta: float = 1.0,
         verbose: bool = True,
@@ -1062,8 +1064,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         ----------
         X_test : pd.DataFrame
             Test features DataFrame.
-        y_test : pd.Series
-            True target values.
+        y_test : array-like
+            One-dimensional true target values. Values must align with ``X_test``
+            by row order; pandas index labels are not used for alignment.
         threshold : float, default=0.5
             Classification threshold.
         beta : float, default=1.0
@@ -1082,8 +1085,15 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             threshold, precision, recall, F-scores, and AUC. For regression, includes
             RMSE, R², and other regression metrics.
         """
+        y_test = validate_1d_array(y_test, name="y_test")
+        validate_consistent_length(X_test, y_test)
+
         if self.task == "classification":
             y_pred_proba = self.predict(context=None, model_input=X_test)
+            y_pred_proba = validate_1d_array(
+                y_pred_proba, name="predicted probabilities"
+            )
+            validate_consistent_length(y_test, y_pred_proba)
             metrics = self._evaluate_classification_model(
                 y_test, y_pred_proba, threshold=threshold, beta=beta, verbose=verbose
             )
@@ -1093,6 +1103,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 )
         else:  # regression
             y_pred = self.predict(context=None, model_input=X_test)
+            y_pred = validate_1d_array(y_pred, name="predictions")
+            validate_consistent_length(y_test, y_pred)
             metrics = self._evaluate_regression_model(y_test, y_pred, verbose=verbose)
             if visualize:
                 self._plot_regression_metrics(X_test, y_test, y_pred)
@@ -1194,7 +1206,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
     @staticmethod
     def tune(
         X: pd.DataFrame,
-        y: pd.Series,
+        y: ArrayLike,
         algorithm: type[BaseEstimator],
         preprocessor: PreProcessor | None,
         param_ranges: ParamRanges,
@@ -1226,8 +1238,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
         ----------
         X : pd.DataFrame
             Features.
-        y : pd.Series
-            Target.
+        y : array-like
+            One-dimensional target values. Values must align with ``X`` by row
+            order; pandas index labels are not used for alignment.
         algorithm : class
             ML algorithm class (e.g., lgb.LGBMClassifier).
         preprocessor : PreProcessor or None
@@ -1299,6 +1312,9 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - model_info: MLflow model info (if logged)
             - Various test and CV metrics based on task type
         """
+        y = validate_1d_array(y, name="y")
+        validate_consistent_length(X, y)
+
         # Configure optuna logging to suppress outputs
         if disable_optuna_logging:
             optuna.logging.set_verbosity(optuna.logging.WARNING)
@@ -1361,13 +1377,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
                 X_fold_train = X_train_full.iloc[train_idx]
                 X_fold_val = X_train_full.iloc[val_idx]
 
-                # For numpy arrays or pandas Series
-                if isinstance(y_train_full, pd.Series):
-                    y_fold_train = y_train_full.iloc[train_idx]
-                    y_fold_val = y_train_full.iloc[val_idx]
-                else:
-                    y_fold_train = y_train_full[train_idx]
-                    y_fold_val = y_train_full[val_idx]
+                y_fold_train = y_train_full[train_idx]
+                y_fold_val = y_train_full[val_idx]
 
                 model = MLPipeline(
                     model=algorithm(**params),
@@ -1700,8 +1711,8 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
     @staticmethod
     def threshold_analysis(
-        y_true: pd.Series,
-        y_pred_proba: np.ndarray,
+        y_true: ArrayLike,
+        y_pred_proba: ArrayLike,
         beta: float = 1.0,
         method: str = "bootstrap",
         cv_splits: int = 5,
@@ -1713,10 +1724,11 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         Parameters
         ----------
-        y_true : pd.Series
-            True labels.
-        y_pred_proba : np.ndarray
-            Predicted probabilities.
+        y_true : array-like
+            One-dimensional true labels.
+        y_pred_proba : array-like
+            One-dimensional predicted probabilities. Values are paired with
+            ``y_true`` by row order; pandas index labels are not used for alignment.
         beta : float, default=1.0
             F-beta score parameter.
         method : str, default='bootstrap'
@@ -1741,6 +1753,10 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             - ci_lower: Lower bound of 95% confidence interval
             - ci_upper: Upper bound of 95% confidence interval
         """
+        y_true = validate_1d_array(y_true, name="y_true")
+        y_pred_proba = validate_1d_array(y_pred_proba, name="y_pred_proba")
+        validate_consistent_length(y_true, y_pred_proba)
+
         np.random.seed(random_state)
         thresholds_values = []
 
@@ -1751,7 +1767,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             )
 
             for train_idx, val_idx in cv.split(y_true, y_true):
-                y_true_val = y_true.iloc[val_idx]
+                y_true_val = y_true[val_idx]
                 y_pred_proba_val = y_pred_proba[val_idx]
 
                 precisions, recalls, pr_thresholds = precision_recall_curve(
@@ -1779,7 +1795,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
             for _ in range(bootstrap_iterations):
                 # Bootstrap sampling
                 indices = np.random.choice(n_samples, size=n_samples, replace=True)
-                y_true_boot = y_true.iloc[indices]
+                y_true_boot = y_true[indices]
                 y_pred_proba_boot = y_pred_proba[indices]
 
                 precisions, recalls, pr_thresholds = precision_recall_curve(

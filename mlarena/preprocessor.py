@@ -856,8 +856,8 @@ class PreProcessor(BaseEstimator, TransformerMixin):
             Target variable.
         model : sklearn estimator
             A supervised learning estimator with a fit method that provides information
-            about feature importance either through a coef_ attribute or through a
-            feature_importances_ attribute.
+            about feature importance either through a ``coef_`` attribute or through a
+            ``feature_importances_`` attribute.
         n_max_features : int, optional
             Maximum number of features to consider. If None, defaults to n_samples // 10
             to prevent overfitting. The method will select the optimal number of features

@@ -57,6 +57,6 @@ This section will be updated with upgrade instructions for future breaking chang
 
 ## Need Help?
 
-- Check the [Changelog](../CHANGELOG.md) for detailed version notes
+- Check the [Changelog](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for detailed version notes
 - Open an [issue](https://github.com/MenaWANG/mlarena/issues) if you need assistance
-- Review the [API documentation](api.rst) for current method signatures 
+- Review the [API documentation](api.rst) for current method signatures

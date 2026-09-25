@@ -14,6 +14,13 @@
 
 It blends smart automation that embeds ML best practices with comprehensive tools for expert-level customization and diagnostics. This unique combination fills the gap between manual ML development and fully automated AutoML platforms. Moreover, it comes with a suite of practical utilities for data analysis and visualizations - see our [comparison with AutoML platforms](https://github.com/MenaWANG/mlarena/blob/master/docs/comparision-autoML.md) to determine which approach best fits your needs.
 
+## Documentation
+
+Start with the [Quickstart](https://github.com/MenaWANG/mlarena/blob/master/docs/quickstart.md), read the
+[user guide](https://github.com/MenaWANG/mlarena/blob/master/docs/user-guide.md), or browse the [API reference](https://github.com/MenaWANG/mlarena/blob/master/docs/api.rst).
+For local HTML previews and GitHub Pages setup, see
+[Building and publishing documentation](https://github.com/MenaWANG/mlarena/blob/master/docs/publishing.md).
+
 ## Publications
 
 

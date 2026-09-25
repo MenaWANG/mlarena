@@ -156,7 +156,8 @@ def transform_date_cols(
         A column name or list of column names to be transformed to dates.
     str_date_format : str, default="%Y%m%d"
         The string format of the dates, using Python's `strftime`/`strptime` directives.
-        Common directives include:
+        Common directives include::
+
             %d: Day of the month as a zero-padded decimal (e.g., 25)
             %m: Month as a zero-padded decimal number (e.g., 08)
             %b: Abbreviated month name (e.g., Aug)
@@ -164,17 +165,16 @@ def transform_date_cols(
             %Y: Four-digit year (e.g., 2024)
             %y: Two-digit year (e.g., 24)
 
-        Example formats:
+        Example formats::
+
             "%Y%m%d"   → '20240825'
             "%d-%m-%Y" → '25-08-2024'
             "%d%b%Y"   → '25Aug2024'
             "%d%B%Y"   → '25August2024'
             "%d%b%y"   → '25Aug24'
 
-        Note:
-            If the format uses %b or %B (month names),
-            strings like '25AUG2024' or '25august2024'
-            will be automatically converted to title case before parsing.
+        If the format uses %b or %B (month names), strings like '25AUG2024'
+        or '25august2024' will be automatically converted to title case before parsing.
 
     Returns
     -------
@@ -183,6 +183,7 @@ def transform_date_cols(
         When only date information is provided (no time component), the time will be set to midnight (00:00:00).
 
         To extract just the date component later, you can use:
+
             - df['date_col'].dt.date  # Returns datetime.date objects
             - df['date_col'].dt.normalize()  # Returns datetime64[ns] at midnight
             - df['date_col'].dt.floor('D')  # Returns datetime64[ns] at midnight

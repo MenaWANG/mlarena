@@ -1112,11 +1112,14 @@ def calculate_cooks_d_like_influence(
     This is an extension of Cook's Distance that works with any ML model, not just linear regression.
 
     The influence score is calculated by:
+
     1. Training a model on the full dataset
     2. For each point (or selected points):
+
        - Remove the point
        - Train a new model
        - Calculate how much the predictions change across all points
+
     3. The influence score is the mean squared difference in predictions between the full model and the leave-one-out model.
 
     Parameters
@@ -1141,15 +1144,18 @@ def calculate_cooks_d_like_influence(
     influence_outlier_method : str, default='percentile'
         Method to identify influential points (outliers) based on influence scores.
         Options:
+
         - 'percentile': Select points above a percentile threshold
         - 'zscore': Select points beyond N standard deviations from the mean
         - 'top_k': Select the K points with highest influence scores
         - 'iqr': Select points above Q3 + k * IQR threshold
         - 'mean_multiple': Select points with influence scores > N times the mean
+
         Note: When max_loo_points is set, only 'percentile' and 'top_k' methods are available
         since other methods require all influence scores to be calculated.
     influence_outlier_threshold : float or int, default=99
         Threshold for identifying influential points:
+
         - For 'percentile': Points above this percentile are marked influential
           (e.g., 95 means top 5% most influential points)
         - For 'zscore': Points with absolute z-scores above this value are marked influential
@@ -1158,7 +1164,9 @@ def calculate_cooks_d_like_influence(
         - For 'iqr': Multiplier k for Q3 + k*IQR threshold (typically 1.5 or 3.0)
         - For 'mean_multiple': Points with influence scores > N times the mean
           (e.g., 3 as suggested in literature regarding diagnostics of linear regression)
+
         Note: When max_loo_points is set:
+
         - The number of influential points will be capped at max_loo_points
         - Uncalculated points are assumed to have zero influence
     random_state : Optional[int], default=None

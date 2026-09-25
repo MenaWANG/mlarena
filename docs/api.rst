@@ -1,85 +1,12 @@
-API Reference
+API reference
 =============
 
-This section provides detailed documentation for the MLArena API.
+These pages use the installed checkout's docstrings and signatures.
+See :doc:`user-guide` for workflow constraints and defaults.
 
-PreProcessor
------------
+.. toctree::
+   :maxdepth: 1
 
-.. autoclass:: mlarena.preprocessor.PreProcessor
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-   .. automethod:: fit
-
-   .. automethod:: transform
-
-   .. automethod:: fit_transform
-
-   .. automethod:: analyze_features
-
-   .. automethod:: get_encoding_recommendations
-
-   .. automethod:: visualize_target_encoding
-
-MLPipeline
-----------
-
-.. autoclass:: mlarena.pipeline.MLPipeline
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-   .. automethod:: __init__
-
-   .. automethod:: fit
-
-   .. automethod:: predict
-
-   .. automethod:: evaluate
-
-   .. automethod:: explain_model
-
-   .. automethod:: explain_case
-
-   .. automethod:: tune
-
-   .. automethod:: threshold_analysis
-
-Utils
------
-
-Input/Output
-~~~~~~~~~~~~
-
-.. automodule:: mlarena.utils.io_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Data Utilities
-~~~~~~~~~~~~~~
-
-.. automodule:: mlarena.utils.data_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Plot Utilities
-~~~~~~~~~~~~~~
-
-.. automodule:: mlarena.utils.plot_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-Exceptions
----------
-
-.. automodule:: mlarena.exceptions
-   :members:
-   :undoc-members:
-   :show-inheritance: 
+   api/preprocessor
+   api/pipeline
+   api/utilities

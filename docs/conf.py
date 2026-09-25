@@ -1,29 +1,31 @@
-import os
-import sys
+"""Sphinx configuration for MLArena."""
 
-sys.path.insert(0, os.path.abspath('..'))
+import tomllib
+from pathlib import Path
 
-project = 'MLArena'
-copyright = '2025, Mena Wang'
-author = 'Mena Wang'
+ROOT = Path(__file__).resolve().parents[1]
+with (ROOT / "pyproject.toml").open("rb") as metadata_file:
+    release = tomllib.load(metadata_file)["tool"]["poetry"]["version"]
 
+project = "MLArena"
+author = "Mena Wang"
+copyright = "2026, Mena Wang"
+version = release
 extensions = [
-    'sphinx.ext.autodoc',
-    'sphinx.ext.napoleon',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.intersphinx',
-    'sphinx.ext.todo',
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
+    "sphinx.ext.githubpages",
+    "myst_parser",
 ]
-
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
-
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static']
-
-intersphinx_mapping = {
-    'python': ('https://docs.python.org/3', None),
-    'numpy': ('https://numpy.org/doc/stable/', None),
-    'pandas': ('https://pandas.pydata.org/docs/', None),
-    'sklearn': ('https://scikit-learn.org/stable/', None),
-} 
+root_doc = "index"
+myst_heading_anchors = 3
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+html_theme = "sphinx_rtd_theme"
+html_title = f"MLArena {release} documentation"
+html_theme_options = {"navigation_depth": 3}
+autodoc_member_order = "bysource"
+autodoc_typehints = "description"
+autodoc_class_signature = "separated"
+napoleon_numpy_docstring = True
+pygments_style = "sphinx"

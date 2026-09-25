@@ -1,0 +1,5 @@
+# Install the package separately for real API imports.
+sphinx>=8.2,<9
+sphinx-rtd-theme>=3,<4
+myst-parser>=4,<5
+markdown-it-py>=3,<4

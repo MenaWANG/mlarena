@@ -1,4 +1,4 @@
-## Comparison with AutoML Platforms
+# Comparison with AutoML Platforms
 
 While MLArena and AutoML platforms both aim to streamline machine learning workflows, they serve different purposes and user needs:
 

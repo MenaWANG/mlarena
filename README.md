@@ -12,14 +12,16 @@
 
 `mlarena` is an algorithm-agnostic machine learning toolkit for streamlined model training, diagnostics, and optimization. Implemented as a custom `mlflow.pyfunc` model, it ensures seamless integration with the MLflow ecosystem for robust experiment tracking, model versioning, and framework-agnostic deployment.
 
-It blends smart automation that embeds ML best practices with comprehensive tools for expert-level customization and diagnostics. This unique combination fills the gap between manual ML development and fully automated AutoML platforms. Moreover, it comes with a suite of practical utilities for data analysis and visualizations - see our [comparison with AutoML platforms](https://github.com/MenaWANG/mlarena/blob/master/docs/comparision-autoML.md) to determine which approach best fits your needs.
+It blends smart automation that embeds ML best practices with comprehensive tools for expert-level customization and diagnostics. This unique combination fills the gap between manual ML development and fully automated AutoML platforms. Moreover, it comes with a suite of practical utilities for data analysis and visualizations - see our [comparison with AutoML platforms](https://menawang.github.io/mlarena/comparision-autoML.html) to determine which approach best fits your needs.
 
 ## Documentation
 
-Start with the [Quickstart](https://github.com/MenaWANG/mlarena/blob/master/docs/quickstart.md), read the
-[user guide](https://github.com/MenaWANG/mlarena/blob/master/docs/user-guide.md), or browse the [API reference](https://github.com/MenaWANG/mlarena/blob/master/docs/api.rst).
-For local HTML previews and GitHub Pages setup, see
-[Building and publishing documentation](https://github.com/MenaWANG/mlarena/blob/master/docs/publishing.md).
+Read the [MLArena documentation](https://menawang.github.io/mlarena/).
+Start with the [Quickstart](https://menawang.github.io/mlarena/quickstart.html), read the
+[user guide](https://menawang.github.io/mlarena/user-guide.html), or browse the
+[API reference](https://menawang.github.io/mlarena/api.html).
+For local previews and publishing updates, see
+[Building and publishing documentation](https://menawang.github.io/mlarena/publishing.html).
 
 ## Publications
 

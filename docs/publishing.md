@@ -1,5 +1,10 @@
 # Building and publishing documentation
 
+The documentation is published at
+[MLArena documentation](https://menawang.github.io/mlarena/) through GitHub Pages.
+It follows the repository's default branch and may include changes newer than
+the PyPI release.
+
 ## Build locally
 
 Use Python 3.12 for documentation builds. From the repository root, create and
@@ -28,10 +33,26 @@ Visit `http://localhost:8000`. Generated files are ignored by Git.
 Edit Markdown/reStructuredText pages or the relevant Python docstrings, then
 rebuild. Package versions are read from `pyproject.toml`.
 
-## Enable GitHub Pages once
+## Publish updates
 
-After the documentation changes and `.github/workflows/docs.yml` have been
-merged into the repository's default branch:
+GitHub Pages is already configured for this repository. To update the site:
+
+1. Edit the documentation or Python docstrings, then run the local checks above.
+2. Open a pull request and wait for the documentation and project checks to pass.
+3. Merge into the default branch. The **Documentation** workflow builds and
+   deploys the updated site automatically.
+4. Wait for both jobs to pass, then check the changed pages on the
+   [published site](https://menawang.github.io/mlarena/).
+
+To rebuild the current default branch without a new commit, open
+**Actions → Documentation → Run workflow** and select the default branch.
+A documentation-only update does not require a PyPI release.
+
+## Initial setup for a fork or new repository
+
+These steps are only needed when setting up another repository, or restoring
+its Pages configuration. First merge `.github/workflows/docs.yml` into its
+default branch, then:
 
 1. Open the repository's **Settings → Pages**.
 2. Under **Build and deployment**, set **Source** to **GitHub Actions**.
@@ -39,8 +60,8 @@ merged into the repository's default branch:
 4. Wait for both the build and deployment jobs to pass. The deployment job
    reports the published URL.
 
-The expected project URL is `https://menawang.github.io/mlarena/`, unless a
-custom domain is configured. See GitHub's
+Use the URL reported by the deployment job; a fork has its own Pages URL.
+See GitHub's
 [custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
 for the publishing setup.
 

@@ -6,6 +6,7 @@ authors = ["Mena Wang <ningwang25@gmail.com>"]
 readme = "README.md"
 homepage = "https://github.com/MenaWANG/mlarena"
 repository = "https://github.com/MenaWANG/mlarena"
+documentation = "https://menawang.github.io/mlarena/"
 license = "MIT"
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -72,4 +73,4 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
-line_length = 88 
+line_length = 88

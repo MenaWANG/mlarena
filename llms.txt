@@ -5,6 +5,9 @@
 
 ## Quick Install
 
+For the complete guide and API reference, see the
+[MLArena documentation](https://menawang.github.io/mlarena/).
+
 ```bash
 pip install mlarena==0.5.2
 ```

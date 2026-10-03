@@ -54,9 +54,9 @@ from mlarena import MLPipeline
 
 ## Next release: MLflow 3
 
-The next release requires **MLflow >=3.16.0,<4**. MLflow 2.x is no longer
+The next release requires **MLflow >=3.0.1,<4**. MLflow 2.x is no longer
 supported by the development version. CI tests Python 3.10–3.13 with both
-MLflow 3.16.0 and the latest stable 3.x release.
+MLflow 3.0.1 and the latest stable 3.x release.
 
 ### Existing installations
 

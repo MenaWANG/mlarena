@@ -36,11 +36,11 @@ jobs:
 
     - name: Install minimum supported MLflow
       if: matrix.mlflow == 'minimum'
-      run: poetry run pip install "mlflow==3.16.0"
+      run: poetry run pip install "mlflow==3.0.1"
 
     - name: Install latest supported MLflow
       if: matrix.mlflow == 'latest'
-      run: poetry run pip install --upgrade "mlflow>=3.16.0,<4"
+      run: poetry run pip install --upgrade "mlflow>=3.0.1,<4"
 
     - name: Verify dependency consistency
       run: |

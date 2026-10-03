@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-10-03
 
 ### Added
 
@@ -13,11 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added GitHub Actions checks for documentation builds and executable Quickstart examples, with automatic GitHub Pages deployment from the default branch.
 - Added MLflow logging tests covering metadata and sample forwarding, input preservation, opt-in logging through `evaluate()`, and error propagation with run cleanup.
 - Added isolated classification and regression model log/load round-trip tests using temporary SQLite tracking and local artifacts, verifying model metadata, artifact contents, prediction consistency, public evaluation and tuning logging, and run cleanup after an artifact failure.
-- Added a Python 3.10–3.13 CI matrix testing both MLflow 3.16.0 and the latest stable MLflow 3.x, including dependency consistency checks.
+- Added a Python 3.10–3.13 CI matrix testing both MLflow 3.0.1 and the latest stable MLflow 3.x, including dependency consistency checks.
 
 ### Changed
 
-- **Breaking:** The next release requires `mlflow>=3.16.0,<4` and logs models with the MLflow 3 `name` API. The minimum supported MLflow version is raised to incorporate fixes for security vulnerabilities in the upstream MLflow dependency, including the fixes released in MLflow 3.15.0 and follow-up webhook SSRF hardening released in MLflow 3.16.0. See the upstream advisories for the [model-loading vulnerability](https://github.com/mlflow/mlflow/security/advisories/GHSA-gqvg-gmmx-x4hm) and [webhook SSRF vulnerability](https://github.com/mlflow/mlflow/security/advisories/GHSA-7gwp-5pfp-969j). Previously published MLArena releases retain their original dependency requirements. Users who need MLflow 2.x can remain on MLArena 0.5.2 or earlier with their existing dependency pins. See the [upgrade guide](docs/upgrading.md) for tracking-server and model-loading considerations.
+- **Breaking:** MLArena 0.6.0 requires `mlflow>=3.0.1,<4` and logs models with the MLflow 3 `name` API. Previously published MLArena releases retain their original dependency requirements. Users who need MLflow 2.x can remain on MLArena 0.5.2 or earlier with their existing dependency pins. See the [upgrade guide](docs/upgrading.md) for tracking-server and model-loading considerations.
 - Updated README and `llms.txt` documentation links and package metadata to point to the published documentation site; updated the publishing guide for ongoing site updates.
 - `MLPipeline.evaluate()`, `MLPipeline.tune()`, and `MLPipeline.threshold_analysis()` now accept one-dimensional array-like targets, including pandas Series, NumPy arrays, and Python lists. Inputs are normalized with scikit-learn validation, and inconsistent lengths or unsupported target shapes fail early with clear errors.
 

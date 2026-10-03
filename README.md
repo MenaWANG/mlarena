@@ -52,27 +52,17 @@ The concepts and methodologies behind MLArena:
 
 ## Installation
 
-The development version targets **MLflow >=3.16.0,<4**. The published 0.5.2
-installation examples below retain their original dependency requirements.
-See the [upgrade guide](https://menawang.github.io/mlarena/upgrading.html)
-before moving an existing environment to the next release.
+MLArena **0.6.0** requires Python **3.10–3.13** and **MLflow >=3.0.1,<4**.
+Install in a compatible python environment, including Databricks serverless:
 
-The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
-
-```bash
-%pip install mlarena==0.5.2
+```python
+%pip install mlarena==0.6.0
 ```
 
-If you are using the package in [Databricks ML Cluster with DBR runtime >= 16.0](https://learn.microsoft.com/en-us/azure/databricks/release-notes/runtime/16.0ml), you can install without dependencies like below:
+On [Databricks ML Runtime >=17.3](https://docs.databricks.com/aws/en/release-notes/runtime/17.3lts-ml), you can install MLArena using the bundled dependencies，provided they meet its version requirements.
 
-```bash
-%pip install mlarena==0.5.2 --no-deps
-```
-If you are using earlier DBR runtimes, simply install `optuna` in addition like below. Note: As of 2025-04-26, `optuna` is recommended by Databricks, while `hyperopt` will be [removed from Databricks ML Runtime](https://docs.databricks.com/aws/en/machine-learning/automl-hyperparam-tuning/).
-
-```bash
-%pip install mlarena==0.5.2 --no-deps
-%pip install optuna==3.6.1
+```python
+%pip install mlarena==0.6.0 --no-deps
 ```
 
 ## Usage Example

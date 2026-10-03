@@ -6907,4 +6907,4 @@ demo-dependencies = ["lightgbm"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.14"
-content-hash = "33aad6bc06648298a5f35f53e8f28a958e8b872efbf8335812ea18c4c19447c4"
+content-hash = "798d3239f2fc5b45b39cfe355310f825e3f956cef57d09419b33c34d35190241"

@@ -52,6 +52,11 @@ The concepts and methodologies behind MLArena:
 
 ## Installation
 
+The development version targets **MLflow >=3.16.0,<4**. The published 0.5.2
+installation examples below retain their original dependency requirements.
+See the [upgrade guide](https://menawang.github.io/mlarena/upgrading.html)
+before moving an existing environment to the next release.
+
 The package is undergoing rapid development at the moment (pls see [CHANGELOG](https://github.com/MenaWANG/mlarena/blob/master/CHANGELOG.md) for details), it is therefore highly recommended to install with specific versions. For example
 
 ```bash

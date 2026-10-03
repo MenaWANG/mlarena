@@ -31,13 +31,13 @@ We welcome contributions and suggestions related to these roadmap items. If you'
 
 - **MLflow 3 Compatibility and Migration**:
   - Treat the move from MLflow 2.x to 3.x as a user-facing compatibility change rather than only a dependency update
-  - [ ] Test MLArena against both its minimum supported MLflow version and the latest MLflow 3.x release before raising the minimum version in `pyproject.toml`
-  - [ ] Update `MLPipeline._log_model` for the MLflow 3 model API, with particular attention to migrating `mlflow.pyfunc.log_model(artifact_path="ml_pipeline", ...)` to the preferred `name="ml_pipeline"` form
-  - [ ] Decide whether to retain MLflow 2.x compatibility through version-aware handling or require MLflow 3.x in the next breaking release
+  - [x] Add CI coverage for the minimum supported MLflow 3.16.0 and the latest stable MLflow 3.x on Python 3.10–3.13
+  - [x] Update `MLPipeline._log_model` to use `mlflow.pyfunc.log_model(name="ml_pipeline", ...)`
+  - [x] Require `mlflow>=3.16.0,<4` in the next breaking release; keep published MLArena 0.5.2 available for MLflow 2.x users
   - [ ] Verify model logging and loading, `ModelInfo` fields and model URIs, active-run lifecycle and `mlflow.end_run()`, additional artifacts, signatures, and input examples
   - [ ] Verify compatibility with existing models and metadata stored under the MLflow 2.x run-artifact layout, since MLflow 3 stores logged-model artifacts as first-class model entities
-  - [ ] Add regression tests covering `log_model=True` and loading the resulting model under the supported MLflow versions
-  - [ ] Document the migration and any minimum-version change in the changelog and release notes, including action required by users running an MLflow tracking server
+  - [x] Add regression tests covering `log_model=True`, `log_best_model=True`, and loading the resulting models under the supported MLflow versions
+  - [x] Document the migration and minimum-version change in the changelog and upgrade guide, including action required by users running an MLflow tracking server
 
 - **Extend Influence Analysis to Classifiers**:
 

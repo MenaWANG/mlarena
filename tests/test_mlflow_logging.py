@@ -9,14 +9,17 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, create_autospec, sentinel
 
+import matplotlib.pyplot as plt
 import mlflow
 import numpy as np
 import pandas as pd
 import pytest
 from mlflow.models.model import ModelInfo
+from sklearn.datasets import make_classification, make_regression
 from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
-from mlarena import MLPipeline
+from mlarena import MLPipeline, PreProcessor
 
 
 @pytest.fixture
@@ -52,7 +55,7 @@ def test_log_model_defaults_and_return_value(mlflow_calls):
 
     assert result is sentinel.model_info
     mlflow_calls.log_model.assert_called_once_with(
-        artifact_path="ml_pipeline",
+        name="ml_pipeline",
         python_model=pipeline,
         artifacts={},
         signature=None,
@@ -191,7 +194,10 @@ def isolated_tracking(tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("task", ["regression", "classification"])
-def test_log_model_round_trip(isolated_tracking, regression_data, tmp_path, task):
+@pytest.mark.parametrize("with_preprocessor", [False, True])
+def test_log_model_round_trip(
+    isolated_tracking, regression_data, tmp_path, task, with_preprocessor
+):
     """Catch real API/serialization/storage changes that mocks cannot detect."""
     client, experiment_id = isolated_tracking
     X, y = regression_data
@@ -200,7 +206,13 @@ def test_log_model_round_trip(isolated_tracking, regression_data, tmp_path, task
         y = pd.Series([0, 0, 0, 1, 0, 1, 1, 1])
     else:
         model = LinearRegression()
-    pipeline = MLPipeline(model=model)
+    if with_preprocessor:
+        X = X.assign(category=pd.Categorical(["a", "b"] * 4))
+        X.loc[0, "x2"] = np.nan
+    original = X.copy(deep=True)
+    pipeline = MLPipeline(
+        model=model, preprocessor=PreProcessor() if with_preprocessor else None
+    )
     pipeline.fit(X, y)
     expected = pipeline.predict(None, X)
     artifact = tmp_path / "notes.txt"
@@ -219,6 +231,11 @@ def test_log_model_round_trip(isolated_tracking, regression_data, tmp_path, task
     assert isinstance(model_info, ModelInfo)
     assert model_info.run_id == run_id
     assert model_info.model_uri
+    assert model_info.model_id
+    assert model_info.model_uri == f"models:/{model_info.model_id}"
+    logged_model = client.get_logged_model(model_info.model_id)
+    assert logged_model.name == "ml_pipeline"
+    assert logged_model.source_run_id == run_id
     assert model_info.signature is not None
     assert mlflow.active_run() is None
     stored_run = client.get_run(run_id)
@@ -229,7 +246,13 @@ def test_log_model_round_trip(isolated_tracking, regression_data, tmp_path, task
     # Use the returned URI, not a hardcoded MLflow 2 run-artifact path: MLflow 3
     # models are first-class entities with their own artifact locations.
     loaded = mlflow.pyfunc.load_model(model_info.model_uri)
-    np.testing.assert_allclose(loaded.predict(X), expected)
+    # MLflow enforces its string schema before calling MLPipeline.predict and
+    # does not accept pandas CategoricalDtype. Match the logging input example.
+    serving_input = X.copy(deep=True)
+    for column in serving_input.select_dtypes(include=["category"]).columns:
+        serving_input[column] = serving_input[column].astype("object")
+    np.testing.assert_allclose(loaded.predict(serving_input), expected)
+    pd.testing.assert_frame_equal(X, original)
     assert isinstance(loaded.unwrap_python_model(), MLPipeline)
     local_model = mlflow.artifacts.download_artifacts(
         artifact_uri=model_info.model_uri, dst_path=str(tmp_path / "download")
@@ -237,3 +260,80 @@ def test_log_model_round_trip(isolated_tracking, regression_data, tmp_path, task
     assert (Path(local_model) / "artifacts" / "notes.txt").read_text(
         encoding="utf-8"
     ) == "logging round-trip fixture"
+
+
+@pytest.mark.parametrize("task", ["regression", "classification"])
+@pytest.mark.parametrize("operation", ["evaluate", "tune"])
+def test_public_logging_round_trip(isolated_tracking, task, operation):
+    """Exercise public entry points, including final tuned-model serialization."""
+    client, experiment_id = isolated_tracking
+    if task == "classification":
+        values, y = make_classification(
+            n_samples=80,
+            n_features=4,
+            n_informative=3,
+            n_redundant=0,
+            random_state=42,
+        )
+        algorithm = DecisionTreeClassifier
+        metric = "auc"
+    else:
+        values, y = make_regression(
+            n_samples=80, n_features=4, noise=0.5, random_state=42
+        )
+        algorithm = DecisionTreeRegressor
+        metric = "rmse"
+    X = pd.DataFrame(values, columns=["a", "b", "c", "d"])
+    run = mlflow.start_run(experiment_id=experiment_id)
+    try:
+        if operation == "evaluate":
+            pipeline = MLPipeline(model=algorithm(random_state=42))
+            pipeline.fit(X, y)
+            results = pipeline.evaluate(
+                X, y, log_model=True, visualize=False, verbose=False
+            )
+        else:
+            results = MLPipeline.tune(
+                X,
+                y,
+                algorithm=algorithm,
+                preprocessor=None,
+                param_ranges={"max_depth": [2, 3], "random_state": [42]},
+                max_evals=2,
+                cv=2,
+                log_best_model=True,
+                visualize=False,
+                show_progress_bar=False,
+            )
+            pipeline = results["best_pipeline"]
+        info = results["model_info"]
+        assert info.run_id == run.info.run_id
+        assert info.signature is not None
+        assert mlflow.active_run() is None
+        stored = client.get_run(run.info.run_id)
+        assert stored.info.status == "FINISHED"
+        assert metric in stored.data.metrics
+        assert stored.data.params
+        loaded = mlflow.pyfunc.load_model(info.model_uri)
+        np.testing.assert_allclose(loaded.predict(X), pipeline.predict(None, X))
+        np.testing.assert_allclose(
+            loaded.predict(X[X.columns[::-1]]), pipeline.predict(None, X)
+        )
+    finally:
+        plt.close("all")
+
+
+def test_real_logging_failure_ends_run(isolated_tracking, regression_data, tmp_path):
+    """A failed artifact download must not leave the caller's run active."""
+    client, experiment_id = isolated_tracking
+    X, y = regression_data
+    pipeline = MLPipeline(model=LinearRegression())
+    pipeline.fit(X, y)
+    mlflow.start_run(experiment_id=experiment_id)
+    with pytest.raises(mlflow.exceptions.MlflowException):
+        pipeline._log_model(
+            additional_artifacts={"missing": str(tmp_path / "missing.txt")},
+            sample_input=X.iloc[:2],
+            sample_output=y.iloc[:2].to_numpy(),
+        )
+    assert mlflow.active_run() is None

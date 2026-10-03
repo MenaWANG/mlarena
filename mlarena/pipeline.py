@@ -1890,7 +1890,7 @@ class MLPipeline(mlflow.pyfunc.PythonModel):
 
         try:
             model_info = mlflow.pyfunc.log_model(
-                artifact_path="ml_pipeline",
+                name="ml_pipeline",
                 python_model=self,
                 artifacts=artifacts,
                 signature=signature,

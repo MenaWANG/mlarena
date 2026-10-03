@@ -65,6 +65,9 @@ estimator and the data size; start with a representative sample.
 
 ## MLflow
 
+The development version requires `mlflow>=3.16.0,<4`. For changes from the
+published MLArena 0.5.2 release, see the [upgrade guide](upgrading.md).
+
 Training alone does not automatically log a model. To log during evaluation,
 configure your MLflow tracking URI and experiment, then use
 `evaluate(..., log_model=True)`. The returned dictionary includes `model_info`.
@@ -74,6 +77,9 @@ The logging helper ends the active MLflow run after attempting to log the model.
 Plan run boundaries accordingly. A logged model can be loaded with
 `mlflow.pyfunc.load_model(model_info.model_uri)`; the loaded model accepts
 `loaded_model.predict(X)` without an explicit `context` argument.
+
+MLflow's loaded wrapper requires pandas `category` columns to be converted to
+`object` before prediction. See the [serving input example](upgrading.md#model-logging-and-loading).
 
 ## Utilities
 

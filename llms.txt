@@ -14,6 +14,11 @@ pip install mlarena==0.5.2
 
 ## Public API
 
+The development version targets MLflow >=3.16.0,<4. The published 0.5.2 release
+retains its original dependencies. See [upgrade guidance](https://menawang.github.io/mlarena/upgrading.html)
+before updating a tracking server or managed runtime. Load newly logged models
+using the returned `model_info.model_uri`, not a constructed run-artifact URI.
+
 Three top-level exports cover all core functionality:
 
 ```python

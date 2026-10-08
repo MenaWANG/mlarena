@@ -65,8 +65,8 @@ estimator and the data size; start with a representative sample.
 
 ## MLflow
 
-The development version requires `mlflow>=3.0.1,<4`. For changes from the
-published MLArena 0.5.2 release, see the [upgrade guide](upgrading.md).
+MLArena 0.6.0 requires `mlflow>=3.0.1,<4`. For changes from MLArena 0.5.2,
+see the [upgrade guide](upgrading.md).
 
 Training alone does not automatically log a model. To log during evaluation,
 configure your MLflow tracking URI and experiment, then use

@@ -3,7 +3,7 @@
 This guide helps you upgrade between major versions of MLArena that contain breaking changes.
 
 ## Table of Contents
-- [Next release: MLflow 3](#next-release-mlflow-3)
+- [Upgrading to v0.6.0: MLflow 3](#upgrading-to-v060-mlflow-3)
 - [Upgrading to v0.3.0](#upgrading-to-v030)
 - [Upgrading to v0.5.2](#upgrading-to-v052)
 - [Future Versions](#future-versions)  
@@ -52,10 +52,10 @@ results = MLPipeline.tune(X, y, algorithm, preprocessor, param_ranges)
 from mlarena import MLPipeline
 ```
 
-## Next release: MLflow 3
+## Upgrading to v0.6.0: MLflow 3
 
-The next release requires **MLflow >=3.0.1,<4**. MLflow 2.x is no longer
-supported by the development version. CI tests Python 3.10–3.13 with both
+MLArena 0.6.0 requires **MLflow >=3.0.1,<4** and drops support for MLflow 2.x.
+CI tests Python 3.10–3.13 with both
 MLflow 3.0.1 and the latest stable 3.x release.
 
 ### Existing installations

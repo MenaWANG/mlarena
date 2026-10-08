@@ -33,7 +33,7 @@ We welcome contributions and suggestions related to these roadmap items. If you'
   - Treat the move from MLflow 2.x to 3.x as a user-facing compatibility change rather than only a dependency update
   - [x] Add CI coverage for the minimum supported MLflow 3.0.1 and the latest stable MLflow 3.x on Python 3.10–3.13
   - [x] Update `MLPipeline._log_model` to use `mlflow.pyfunc.log_model(name="ml_pipeline", ...)`
-  - [x] Require `mlflow>=3.0.1,<4` in the next breaking release; keep published MLArena 0.5.2 available for MLflow 2.x users
+  - [x] Require `mlflow>=3.0.1,<4` in MLArena 0.6.0; keep published MLArena 0.5.2 available for MLflow 2.x users
   - [ ] Verify model logging and loading, `ModelInfo` fields and model URIs, active-run lifecycle and `mlflow.end_run()`, additional artifacts, signatures, and input examples
   - [ ] Verify compatibility with existing models and metadata stored under the MLflow 2.x run-artifact layout, since MLflow 3 stores logged-model artifacts as first-class model entities
   - [x] Add regression tests covering `log_model=True`, `log_best_model=True`, and loading the resulting models under the supported MLflow versions

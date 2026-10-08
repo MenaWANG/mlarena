@@ -1,6 +1,6 @@
 # MLArena
 
-> Version: 0.5.2 | License: MIT | Python: 3.10–3.13
+> Version: 0.6.0 | License: MIT | Python: 3.10–3.13
 > An algorithm-agnostic machine learning toolkit for model training, diagnostics, and optimization. Built on `mlflow.pyfunc`, it provides a unified interface for any scikit-learn compatible model across classification and regression tasks.
 
 ## Quick Install
@@ -9,12 +9,12 @@ For the complete guide and API reference, see the
 [MLArena documentation](https://menawang.github.io/mlarena/).
 
 ```bash
-pip install mlarena==0.5.2
+pip install mlarena==0.6.0
 ```
 
 ## Public API
 
-The development version targets MLflow >=3.0.1,<4. The published 0.5.2 release
+MLArena 0.6.0 requires MLflow >=3.0.1,<4. The published 0.5.2 release
 retains its original dependencies. See [upgrade guidance](https://menawang.github.io/mlarena/upgrading.html)
 before updating a tracking server or managed runtime. Load newly logged models
 using the returned `model_info.model_uri`, not a constructed run-artifact URI.

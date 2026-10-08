@@ -53,6 +53,7 @@ The concepts and methodologies behind MLArena:
 ## Installation
 
 MLArena **0.6.0** requires Python **3.10–3.13** and **MLflow >=3.0.1,<4**.
+
 Install in a compatible python environment, including Databricks serverless:
 
 ```python
@@ -64,6 +65,7 @@ On [Databricks ML Runtime >=17.3](https://docs.databricks.com/aws/en/release-not
 ```python
 %pip install mlarena==0.6.0 --no-deps
 ```
+For MLflow 2.x, install MLArena **0.5.2 or earlier** and retain your existing dependency pins.
 
 ## Usage Example
 

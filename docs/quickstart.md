@@ -4,10 +4,10 @@ MLArena supports Python 3.10–3.13. Start in a virtual environment and install
 the package from your terminal:
 
 ```bash
-python -m pip install mlarena==0.5.2
+python -m pip install mlarena==0.6.0
 ```
 
-In a notebook, use `%pip install mlarena==0.5.2`. LightGBM is optional;
+In a notebook, use `%pip install mlarena==0.6.0`. LightGBM is optional;
 the example below uses scikit-learn and requires no dataset downloads.
 
 ## Train a binary classifier
